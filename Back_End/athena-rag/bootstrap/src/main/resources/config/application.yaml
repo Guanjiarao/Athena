@@ -1,0 +1,11 @@
+server:
+  port: 9090
+  servlet:
+    context-path: /api/ragent
+
+spring:
+  application:
+    name: athena-rag
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+

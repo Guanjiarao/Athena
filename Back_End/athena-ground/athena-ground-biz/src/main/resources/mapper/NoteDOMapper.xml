@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="athena.ground.biz.domain.mapper.NoteDOMapper">
+    <resultMap id="BaseResultMap" type="athena.ground.biz.domain.dataobject.NoteDO">
+        <id column="id" jdbcType="BIGINT" property="id" />
+        <result column="title" jdbcType="VARCHAR" property="title" />
+        <result column="user_id" jdbcType="BIGINT" property="userId" />
+        <result column="topic_id" jdbcType="BIGINT" property="topicId" />
+        <result column="topic_name" jdbcType="VARCHAR" property="topicName" />
+        <result column="is_top" jdbcType="BIT" property="isTop" />
+        <result column="type" jdbcType="TINYINT" property="type" />
+        <result column="img_urls" jdbcType="VARCHAR" property="imgUrls" />
+        <result column="video_url" jdbcType="VARCHAR" property="videoUrl" />
+        <result column="visible" jdbcType="TINYINT" property="visible" />
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+        <result column="update_time" jdbcType="TIMESTAMP" property="updateTime" />
+        <result column="status" jdbcType="TINYINT" property="status" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, title, user_id, topic_id, topic_name, is_top, `type`, img_urls,
+    video_url, visible, create_time, update_time, `status`
+    </sql>
+
+    <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from tb_note
+        where id = #{id,jdbcType=BIGINT}
+    </select>
+
+    <delete id="deleteByPrimaryKey" parameterType="java.lang.Long">
+        delete from tb_note
+        where id = #{id,jdbcType=BIGINT}
+    </delete>
+
+    <!-- 移除 useGeneratedKeys 配置，手动传入 id，同时删除liked/comments相关逻辑 -->
+    <insert id="insert" parameterType="athena.ground.biz.domain.dataobject.NoteDO">
+        insert into tb_note (id, title, user_id,
+                             topic_id, topic_name, is_top,
+                             `type`, img_urls, video_url, visible,
+                             create_time, update_time, `status`
+        )
+        values (#{id,jdbcType=BIGINT}, #{title,jdbcType=VARCHAR}, #{userId,jdbcType=BIGINT},
+                #{topicId,jdbcType=BIGINT}, #{topicName,jdbcType=VARCHAR}, #{isTop,jdbcType=BIT},
+                #{type,jdbcType=TINYINT}, #{imgUrls,jdbcType=VARCHAR}, #{videoUrl,jdbcType=VARCHAR}, #{visible,jdbcType=TINYINT},
+                NOW(), NOW(), IFNULL(#{status,jdbcType=TINYINT}, 1)
+               )
+    </insert>
+
+    <!-- 移除 useGeneratedKeys 配置，添加 id 的非空判断，删除liked/comments相关逻辑 -->
+    <insert id="insertSelective" parameterType="athena.ground.biz.domain.dataobject.NoteDO">
+        insert into tb_note
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">
+                id,
+            </if>
+            <if test="title != null">
+                title,
+            </if>
+            <if test="userId != null">
+                user_id,
+            </if>
+            <if test="topicId != null">
+                topic_id,
+            </if>
+            <if test="topicName != null">
+                topic_name,
+            </if>
+            <if test="isTop != null">
+                is_top,
+            </if>
+            <if test="type != null">
+                `type`,
+            </if>
+            <if test="imgUrls != null">
+                img_urls,
+            </if>
+            <if test="videoUrl != null">
+                video_url,
+            </if>
+            <if test="visible != null">
+                visible,
+            </if>
+            create_time,
+            update_time,
+            <if test="status != null or status == null">
+                `status`,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">
+                #{id,jdbcType=BIGINT},
+            </if>
+            <if test="title != null">
+                #{title,jdbcType=VARCHAR},
+            </if>
+            <if test="userId != null">
+                #{userId,jdbcType=BIGINT},
+            </if>
+            <if test="topicId != null">
+                #{topicId,jdbcType=BIGINT},
+            </if>
+            <if test="topicName != null">
+                #{topicName,jdbcType=VARCHAR},
+            </if>
+            <if test="isTop != null">
+                #{isTop,jdbcType=BIT},
+            </if>
+            <if test="type != null">
+                #{type,jdbcType=TINYINT},
+            </if>
+            <if test="imgUrls != null">
+                #{imgUrls,jdbcType=VARCHAR},
+            </if>
+            <if test="videoUrl != null">
+                #{videoUrl,jdbcType=VARCHAR},
+            </if>
+            <if test="visible != null">
+                #{visible,jdbcType=TINYINT},
+            </if>
+            NOW(),
+            NOW(),
+            <if test="status != null or status == null">
+                IFNULL(#{status,jdbcType=TINYINT}, 1),
+            </if>
+        </trim>
+    </insert>
+
+    <update id="updateByPrimaryKeySelective" parameterType="athena.ground.biz.domain.dataobject.NoteDO">
+        update tb_note
+        <set>
+            <if test="title != null">
+                title = #{title,jdbcType=VARCHAR},
+            </if>
+            <if test="userId != null">
+                user_id = #{userId,jdbcType=BIGINT},
+            </if>
+            <if test="topicId != null">
+                topic_id = #{topicId,jdbcType=BIGINT},
+            </if>
+            <if test="topicName != null">
+                topic_name = #{topicName,jdbcType=VARCHAR},
+            </if>
+            <if test="isTop != null">
+                is_top = #{isTop,jdbcType=BIT},
+            </if>
+            <if test="type != null">
+                `type` = #{type,jdbcType=TINYINT},
+            </if>
+            <if test="imgUrls != null">
+                img_urls = #{imgUrls,jdbcType=VARCHAR},
+            </if>
+            <if test="videoUrl != null">
+                video_url = #{videoUrl,jdbcType=VARCHAR},
+            </if>
+            <if test="visible != null">
+                visible = #{visible,jdbcType=TINYINT},
+            </if>
+            update_time = NOW(),
+            <if test="createTime != null">
+                create_time = #{createTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="status != null">
+                `status` = #{status,jdbcType=TINYINT},
+            </if>
+        </set>
+        where id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <update id="updateByPrimaryKey" parameterType="athena.ground.biz.domain.dataobject.NoteDO">
+        update tb_note
+        set title = #{title,jdbcType=VARCHAR},
+            user_id = #{userId,jdbcType=BIGINT},
+            topic_id = #{topicId,jdbcType=BIGINT},
+            topic_name = #{topicName,jdbcType=VARCHAR},
+            is_top = #{isTop,jdbcType=BIT},
+            `type` = #{type,jdbcType=TINYINT},
+            img_urls = #{imgUrls,jdbcType=VARCHAR},
+            video_url = #{videoUrl,jdbcType=VARCHAR},
+            visible = #{visible,jdbcType=TINYINT},
+            create_time = #{createTime,jdbcType=TIMESTAMP},
+            update_time = NOW(),
+            `status` = #{status,jdbcType=TINYINT}
+        where id = #{id,jdbcType=BIGINT}
+    </update>
+</mapper>

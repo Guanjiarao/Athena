@@ -1,0 +1,47 @@
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: ground
+          uri: lb://athena-ground
+          predicates:
+            - Path=/athena/blog/**
+        - id: relation
+          uri: lb://athena-relation
+          predicates:
+            - Path=/athena/relation/**
+        - id: comment
+          uri: lb://athena-comment
+          predicates:
+            - Path=/athena/comment/**
+        - id: oss
+          uri: lb://athena-oss
+          predicates:
+            - Path=/athena/file/**
+        - id: record
+          uri: lb://athena-record
+          predicates:
+            - Path=/athena/record/**,/athena/menstruation/**
+        - id: userauth
+          uri: lb://athena-userauth
+          predicates:
+            - Path=/athena/login/**,/athena/user/**
+        - id: rag-athena-ask
+          uri: http://localhost:9090
+          predicates:
+            - Path=/athena/rag/ask
+          filters:
+            - RemoveRequestHeader=userId
+            - SetPath=/api/ragent/athena/rag/ask
+        - id: rag
+          uri: http://localhost:9090
+          predicates:
+            - Path=/athena/rag/**
+          filters:
+            - RemoveRequestHeader=userId
+            - RewritePath=/athena/rag/(?<segment>.*), /api/ragent/${segment}
+
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true

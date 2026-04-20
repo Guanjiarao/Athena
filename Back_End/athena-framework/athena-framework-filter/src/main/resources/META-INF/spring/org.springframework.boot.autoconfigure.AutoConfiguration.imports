@@ -1,0 +1,2 @@
+athena.athenaframework.config.ContextAutoConfiguration
+athena.athenaframework.config.FeignContextAutoConfiguration

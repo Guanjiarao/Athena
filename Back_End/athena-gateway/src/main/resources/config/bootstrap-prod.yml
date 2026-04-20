@@ -1,0 +1,19 @@
+spring:
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:d3fcf00a-f83d-4710-8a2e-2dda647187c8}
+        file-extension: yaml
+        shared-configs:
+          - data-id: base.yaml
+            refresh: true
+          - data-id: redis.yaml
+            refresh: true
+          - data-id: sa-token.yaml
+            refresh: true
+          - data-id: gateway.yaml
+            refresh: true
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:d3fcf00a-f83d-4710-8a2e-2dda647187c8}

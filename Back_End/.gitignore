@@ -1,0 +1,62 @@
+# --- Build outputs ---
+**/target/
+!**/src/main/**/target/
+!**/src/test/**/target/
+**/build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# Maven / generated files
+.flattened-pom.xml
+.mvn/wrapper/maven-wrapper.jar
+
+# --- Java / IDE ---
+*.class
+*.log
+logs/
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+.classpath
+.project
+.settings/
+.factorypath
+.springBeans
+.sts4-cache/
+.apt_generated/
+
+# --- OS files ---
+.DS_Store
+Thumbs.db
+
+# --- Frontend ---
+**/node_modules/
+**/dist/
+**/dist-ssr/
+**/.vite/
+.npm-cache/
+
+# --- Environment / secrets ---
+.env
+.env.*
+*.local
+
+# --- Local runtime / temporary files ---
+temp/
+tmp/
+*.pid
+*.seed
+
+# --- Local config that may contain personal secrets ---
+**/src/main/resources/config/application-dev.yml
+**/src/main/resources/config/application-dev.yaml
+**/src/main/resources/config/application-local.yml
+**/src/main/resources/config/application-local.yaml
+**/src/main/resources/config/bootstrap-dev.yml
+**/src/main/resources/config/bootstrap-local.yml
+**/src/main/resources/config/bootstrap-local.yaml
+
+# --- Local test artifacts / exports ---
+**/scripts/logs/

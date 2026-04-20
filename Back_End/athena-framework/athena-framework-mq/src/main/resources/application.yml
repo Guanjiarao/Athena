@@ -1,0 +1,6 @@
+rocketmq:
+  name-server: 121.41.200.73:9876
+  producer:
+    group: athena-xiaoxiaolanfeng
+    vip-channel-enabled: false
+    send-message-timeout: 10000
