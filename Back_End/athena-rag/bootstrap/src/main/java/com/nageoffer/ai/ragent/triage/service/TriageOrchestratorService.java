@@ -15,28 +15,18 @@
  * limitations under the License.
  */
 
-package com.nageoffer.ai.ragent;
+package com.nageoffer.ai.ragent.triage.service;
 
-import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
+import com.nageoffer.ai.ragent.triage.controller.request.TriageAnalyzeRequest;
+import com.nageoffer.ai.ragent.triage.controller.vo.TriageAnalyzeResponse;
 
 /**
- * Ragent 核心应用启动类
+ * 就医助手编排服务。
  */
-@SpringBootApplication
-@EnableScheduling
-@MapperScan(basePackages = {
-        "com.nageoffer.ai.ragent.rag.dao.mapper",
-        "com.nageoffer.ai.ragent.ingestion.dao.mapper",
-        "com.nageoffer.ai.ragent.knowledge.dao.mapper",
-        "com.nageoffer.ai.ragent.user.dao.mapper",
-        "com.nageoffer.ai.ragent.triage.dao.mapper"
-})
-public class RagentApplication {
+public interface TriageOrchestratorService {
 
-    public static void main(String[] args) {
-        SpringApplication.run(RagentApplication.class, args);
-    }
+    /**
+     * 执行一轮完整的 Orchestrator-Worker 分诊分析。
+     */
+    TriageAnalyzeResponse analyze(TriageAnalyzeRequest request);
 }

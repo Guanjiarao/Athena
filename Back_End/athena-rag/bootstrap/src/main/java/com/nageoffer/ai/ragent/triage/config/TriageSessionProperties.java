@@ -15,28 +15,27 @@
  * limitations under the License.
  */
 
-package com.nageoffer.ai.ragent;
+package com.nageoffer.ai.ragent.triage.config;
 
-import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
+import lombok.Data;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
 
 /**
- * Ragent 核心应用启动类
+ * triage 会话配置。
  */
-@SpringBootApplication
-@EnableScheduling
-@MapperScan(basePackages = {
-        "com.nageoffer.ai.ragent.rag.dao.mapper",
-        "com.nageoffer.ai.ragent.ingestion.dao.mapper",
-        "com.nageoffer.ai.ragent.knowledge.dao.mapper",
-        "com.nageoffer.ai.ragent.user.dao.mapper",
-        "com.nageoffer.ai.ragent.triage.dao.mapper"
-})
-public class RagentApplication {
+@Data
+@Configuration
+@ConfigurationProperties(prefix = "triage.session")
+public class TriageSessionProperties {
 
-    public static void main(String[] args) {
-        SpringApplication.run(RagentApplication.class, args);
-    }
+    /**
+     * Redis Key 前缀。
+     */
+    private String keyPrefix = "triage:session:";
+
+    /**
+     * 会话存活时间（分钟）。
+     */
+    private Long ttlMinutes = 120L;
 }

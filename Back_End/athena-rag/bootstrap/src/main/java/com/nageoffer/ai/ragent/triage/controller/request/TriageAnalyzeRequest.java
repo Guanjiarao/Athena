@@ -15,28 +15,34 @@
  * limitations under the License.
  */
 
-package com.nageoffer.ai.ragent;
+package com.nageoffer.ai.ragent.triage.controller.request;
 
-import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
- * Ragent 核心应用启动类
+ * 就医助手分析请求。
+ *
+ * <p>sessionId 可由前端带入，用于串联一轮问诊上下文；
+ * 如果前端不传，后端会自动生成。</p>
  */
-@SpringBootApplication
-@EnableScheduling
-@MapperScan(basePackages = {
-        "com.nageoffer.ai.ragent.rag.dao.mapper",
-        "com.nageoffer.ai.ragent.ingestion.dao.mapper",
-        "com.nageoffer.ai.ragent.knowledge.dao.mapper",
-        "com.nageoffer.ai.ragent.user.dao.mapper",
-        "com.nageoffer.ai.ragent.triage.dao.mapper"
-})
-public class RagentApplication {
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class TriageAnalyzeRequest {
 
-    public static void main(String[] args) {
-        SpringApplication.run(RagentApplication.class, args);
-    }
+    /**
+     * 会话 ID，可为空。
+     */
+    private String sessionId;
+
+    /**
+     * 用户原始输入。
+     */
+    @NotBlank(message = "userInput 不能为空")
+    private String userInput;
 }

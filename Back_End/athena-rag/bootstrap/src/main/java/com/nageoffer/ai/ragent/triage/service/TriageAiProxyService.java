@@ -15,28 +15,27 @@
  * limitations under the License.
  */
 
-package com.nageoffer.ai.ragent;
+package com.nageoffer.ai.ragent.triage.service;
 
-import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
+import com.nageoffer.ai.ragent.triage.controller.request.ClientChatCompletionRequest;
+import com.nageoffer.ai.ragent.triage.controller.request.VisionAnalyzeRequest;
+import com.nageoffer.ai.ragent.triage.controller.vo.ClientChatCompletionResponse;
+import com.nageoffer.ai.ragent.triage.controller.vo.VisionAnalyzeResponse;
 
 /**
- * Ragent 核心应用启动类
+ * 面向前端的 AI 代理服务。
+ *
+ * <p>用于彻底下线前端 API Key，把文本和视觉类模型调用统一收口到后端。</p>
  */
-@SpringBootApplication
-@EnableScheduling
-@MapperScan(basePackages = {
-        "com.nageoffer.ai.ragent.rag.dao.mapper",
-        "com.nageoffer.ai.ragent.ingestion.dao.mapper",
-        "com.nageoffer.ai.ragent.knowledge.dao.mapper",
-        "com.nageoffer.ai.ragent.user.dao.mapper",
-        "com.nageoffer.ai.ragent.triage.dao.mapper"
-})
-public class RagentApplication {
+public interface TriageAiProxyService {
 
-    public static void main(String[] args) {
-        SpringApplication.run(RagentApplication.class, args);
-    }
+    /**
+     * 代理文本补全能力。
+     */
+    ClientChatCompletionResponse complete(ClientChatCompletionRequest request);
+
+    /**
+     * 代理视觉分析能力。
+     */
+    VisionAnalyzeResponse analyzeVision(VisionAnalyzeRequest request);
 }

@@ -15,28 +15,34 @@
  * limitations under the License.
  */
 
-package com.nageoffer.ai.ragent;
-
-import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
+package com.nageoffer.ai.ragent.triage.engine;
 
 /**
- * Ragent 核心应用启动类
+ * Explicit finite-state-machine states for triage orchestration.
  */
-@SpringBootApplication
-@EnableScheduling
-@MapperScan(basePackages = {
-        "com.nageoffer.ai.ragent.rag.dao.mapper",
-        "com.nageoffer.ai.ragent.ingestion.dao.mapper",
-        "com.nageoffer.ai.ragent.knowledge.dao.mapper",
-        "com.nageoffer.ai.ragent.user.dao.mapper",
-        "com.nageoffer.ai.ragent.triage.dao.mapper"
-})
-public class RagentApplication {
+public enum TriageState {
 
-    public static void main(String[] args) {
-        SpringApplication.run(RagentApplication.class, args);
+    INIT(false),
+
+    PARSING(false),
+
+    VALIDATING(false),
+
+    RISK_ASSESSING(false),
+
+    REPORT_GENERATING(false),
+
+    COMPLETED(true),
+
+    INTERRUPTED(true);
+
+    private final boolean terminal;
+
+    TriageState(boolean terminal) {
+        this.terminal = terminal;
+    }
+
+    public boolean isTerminal() {
+        return terminal;
     }
 }

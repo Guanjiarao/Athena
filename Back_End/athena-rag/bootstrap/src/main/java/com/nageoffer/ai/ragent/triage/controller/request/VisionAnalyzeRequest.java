@@ -15,28 +15,37 @@
  * limitations under the License.
  */
 
-package com.nageoffer.ai.ragent;
+package com.nageoffer.ai.ragent.triage.controller.request;
 
-import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
- * Ragent 核心应用启动类
+ * 前端视觉分析代理请求。
  */
-@SpringBootApplication
-@EnableScheduling
-@MapperScan(basePackages = {
-        "com.nageoffer.ai.ragent.rag.dao.mapper",
-        "com.nageoffer.ai.ragent.ingestion.dao.mapper",
-        "com.nageoffer.ai.ragent.knowledge.dao.mapper",
-        "com.nageoffer.ai.ragent.user.dao.mapper",
-        "com.nageoffer.ai.ragent.triage.dao.mapper"
-})
-public class RagentApplication {
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class VisionAnalyzeRequest {
 
-    public static void main(String[] args) {
-        SpringApplication.run(RagentApplication.class, args);
-    }
+    /**
+     * 视觉模型名，可为空，后端会使用默认值。
+     */
+    private String model;
+
+    /**
+     * 已可公网访问的图片 URL。
+     */
+    @NotBlank(message = "imageUrl 不能为空")
+    private String imageUrl;
+
+    /**
+     * 用户侧任务 Prompt。
+     */
+    @NotBlank(message = "prompt 不能为空")
+    private String prompt;
 }

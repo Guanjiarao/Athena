@@ -211,3 +211,13 @@ sa-token:
 
 app:
   demo-mode: false
+
+triage:
+  session:
+    ttl-minutes: 120
+    key-prefix: triage:session:
+  ai:
+    text-model: qwen-plus
+    report-model: qwen3-max
+    vision-model: qwen-vl-max
+

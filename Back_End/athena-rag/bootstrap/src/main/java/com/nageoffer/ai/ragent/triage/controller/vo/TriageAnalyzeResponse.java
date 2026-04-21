@@ -15,28 +15,42 @@
  * limitations under the License.
  */
 
-package com.nageoffer.ai.ragent;
+package com.nageoffer.ai.ragent.triage.controller.vo;
 
-import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
- * Ragent 核心应用启动类
+ * 就医助手统一分析响应。
+ *
+ * <p>按照前端约定，接口始终返回统一四元组：
+ * action + data + message + riskLevel。</p>
  */
-@SpringBootApplication
-@EnableScheduling
-@MapperScan(basePackages = {
-        "com.nageoffer.ai.ragent.rag.dao.mapper",
-        "com.nageoffer.ai.ragent.ingestion.dao.mapper",
-        "com.nageoffer.ai.ragent.knowledge.dao.mapper",
-        "com.nageoffer.ai.ragent.user.dao.mapper",
-        "com.nageoffer.ai.ragent.triage.dao.mapper"
-})
-public class RagentApplication {
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class TriageAnalyzeResponse {
 
-    public static void main(String[] args) {
-        SpringApplication.run(RagentApplication.class, args);
-    }
+    /**
+     * 编排器动作。
+     */
+    private String action;
+
+    /**
+     * 动作对应的结构化数据载荷。
+     */
+    private Object data;
+
+    /**
+     * 前端可直接展示的摘要消息。
+     */
+    private String message;
+
+    /**
+     * 风险等级；未评估时为 0。
+     */
+    private Integer riskLevel;
 }

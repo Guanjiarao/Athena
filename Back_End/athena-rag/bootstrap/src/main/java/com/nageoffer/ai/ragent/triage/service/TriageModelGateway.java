@@ -15,28 +15,29 @@
  * limitations under the License.
  */
 
-package com.nageoffer.ai.ragent;
+package com.nageoffer.ai.ragent.triage.service;
 
-import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
+import com.nageoffer.ai.ragent.framework.convention.ChatMessage;
+
+import java.util.List;
 
 /**
- * Ragent 核心应用启动类
+ * triage 场景专属模型门面。
  */
-@SpringBootApplication
-@EnableScheduling
-@MapperScan(basePackages = {
-        "com.nageoffer.ai.ragent.rag.dao.mapper",
-        "com.nageoffer.ai.ragent.ingestion.dao.mapper",
-        "com.nageoffer.ai.ragent.knowledge.dao.mapper",
-        "com.nageoffer.ai.ragent.user.dao.mapper",
-        "com.nageoffer.ai.ragent.triage.dao.mapper"
-})
-public class RagentApplication {
+public interface TriageModelGateway {
 
-    public static void main(String[] args) {
-        SpringApplication.run(RagentApplication.class, args);
-    }
+    /**
+     * triage 文本类调用。
+     */
+    String chatWithTextModel(List<ChatMessage> messages, Double temperature, Double topP, Integer maxTokens);
+
+    /**
+     * triage 报告生成调用。
+     */
+    String chatWithReportModel(List<ChatMessage> messages, Double temperature, Double topP, Integer maxTokens);
+
+    /**
+     * triage 视觉模型名称。
+     */
+    String resolveVisionModel(String requestModel);
 }

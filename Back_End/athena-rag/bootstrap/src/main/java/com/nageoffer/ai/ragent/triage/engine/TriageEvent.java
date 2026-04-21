@@ -15,28 +15,26 @@
  * limitations under the License.
  */
 
-package com.nageoffer.ai.ragent;
-
-import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
+package com.nageoffer.ai.ragent.triage.engine;
 
 /**
- * Ragent 核心应用启动类
+ * Events that drive the triage FSM.
  */
-@SpringBootApplication
-@EnableScheduling
-@MapperScan(basePackages = {
-        "com.nageoffer.ai.ragent.rag.dao.mapper",
-        "com.nageoffer.ai.ragent.ingestion.dao.mapper",
-        "com.nageoffer.ai.ragent.knowledge.dao.mapper",
-        "com.nageoffer.ai.ragent.user.dao.mapper",
-        "com.nageoffer.ai.ragent.triage.dao.mapper"
-})
-public class RagentApplication {
+public enum TriageEvent {
 
-    public static void main(String[] args) {
-        SpringApplication.run(RagentApplication.class, args);
-    }
+    START_ANALYSIS,
+
+    PARSE_SUCCESS,
+
+    MISSING_INFO,
+
+    INFO_COMPLETE,
+
+    HIGH_RISK,
+
+    LOW_RISK,
+
+    REPORT_READY,
+
+    FAILURE
 }
