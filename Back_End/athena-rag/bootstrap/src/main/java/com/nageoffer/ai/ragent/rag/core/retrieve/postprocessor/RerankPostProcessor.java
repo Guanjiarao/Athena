@@ -17,6 +17,7 @@
 
 package com.nageoffer.ai.ragent.rag.core.retrieve.postprocessor;
 
+import cn.hutool.core.util.StrUtil;
 import com.nageoffer.ai.ragent.framework.convention.RetrievedChunk;
 import com.nageoffer.ai.ragent.infra.rerank.RerankService;
 import com.nageoffer.ai.ragent.rag.core.retrieve.channel.SearchChannelResult;
@@ -26,6 +27,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Rerank 后置处理器
@@ -64,10 +67,53 @@ public class RerankPostProcessor implements SearchResultPostProcessor {
             return chunks;
         }
 
-        return rerankService.rerank(
+        List<RetrievedChunk> reranked = rerankService.rerank(
                 context.getMainQuestion(),
                 chunks,
                 context.getTopK()
         );
+
+        if (reranked.isEmpty()) {
+            log.info("Rerank 完成，但无结果 - question={}", context.getMainQuestion());
+            return reranked;
+        }
+
+        String topSummary = reranked.stream()
+                .limit(Math.min(5, reranked.size()))
+                .map(this::formatChunkSummary)
+                .collect(Collectors.joining(" | "));
+
+        Float top1Score = reranked.get(0).getScore();
+        Float top3Avg = (float) reranked.stream()
+                .limit(Math.min(3, reranked.size()))
+                .map(RetrievedChunk::getScore)
+                .filter(score -> score != null)
+                .mapToDouble(Float::doubleValue)
+                .average()
+                .orElse(0D);
+
+        log.info("Rerank Top结果 - question={}, top1Score={}, top3Avg={}, topK={}, topChunks=[{}]",
+                context.getMainQuestion(),
+                top1Score,
+                top3Avg,
+                reranked.size(),
+                topSummary
+        );
+
+        return reranked;
+    }
+
+    private String formatChunkSummary(RetrievedChunk chunk) {
+        if (chunk == null) {
+            return "chunk=null";
+        }
+        Map<String, Object> metadata = chunk.getMetadata();
+        Object noteId = metadata == null ? null : metadata.get("noteId");
+        Object title = metadata == null ? null : metadata.get("title");
+        return String.format("score=%s,noteId=%s,title=%s,chunkId=%s",
+                chunk.getScore(),
+                noteId,
+                StrUtil.blankToDefault(title == null ? null : String.valueOf(title), "-"),
+                StrUtil.blankToDefault(chunk.getId(), "-"));
     }
 }

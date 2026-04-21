@@ -5,7 +5,7 @@ import athena.insight.biz.domain.dataobject.NoteTopicRelationDO;
 import athena.insight.biz.domain.dataobject.TopicDO;
 import athena.insight.biz.domain.mapper.NoteFeatureMapper;
 import athena.insight.biz.domain.mapper.NoteTopicRelationMapper;
-import athena.insight.biz.rpc.GroundRpc;
+import athena.insight.biz.rpc.GroundFeignApi;
 import athena.insight.biz.service.NoteFeatureService;
 import athena.insight.biz.service.TopicService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -35,7 +35,7 @@ public class NoteFeatureServiceImpl implements NoteFeatureService {
     private NoteTopicRelationMapper noteTopicRelationMapper;
 
     @Resource
-    private GroundRpc groundRpc;
+    private GroundFeignApi groundFeignApi;
 
     @Resource
     private TopicService topicService;
@@ -68,7 +68,7 @@ public class NoteFeatureServiceImpl implements NoteFeatureService {
             return null;
         }
 
-        Map<String, Object> detail = groundRpc.getBlogDetail(noteId, type);
+        Map<String, Object> detail = groundFeignApi.getBlogDetail(noteId, type);
         if (detail == null || detail.isEmpty()) {
             detail = base;
         }
@@ -119,7 +119,7 @@ public class NoteFeatureServiceImpl implements NoteFeatureService {
     public List<NoteFeatureDO> refreshPublicPool(Integer pageNum, Integer pageSize) {
         int actualPageNum = pageNum == null || pageNum <= 0 ? 1 : pageNum;
         int actualPageSize = pageSize == null || pageSize <= 0 ? 50 : Math.min(pageSize, 200);
-        List<Map<String, Object>> blogs = groundRpc.getBlogListPage(actualPageNum, actualPageSize);
+        List<Map<String, Object>> blogs = groundFeignApi.getBlogListPage(actualPageNum, actualPageSize);
         if (blogs == null || blogs.isEmpty()) {
             return Collections.emptyList();
         }
@@ -133,7 +133,7 @@ public class NoteFeatureServiceImpl implements NoteFeatureService {
 
     private Map<String, Object> findBlogBase(Long noteId) {
         for (int page = 1; page <= 20; page++) {
-            List<Map<String, Object>> blogs = groundRpc.getBlogListPage(page, 50);
+            List<Map<String, Object>> blogs = groundFeignApi.getBlogListPage(page, 50);
             if (blogs == null || blogs.isEmpty()) {
                 break;
             }

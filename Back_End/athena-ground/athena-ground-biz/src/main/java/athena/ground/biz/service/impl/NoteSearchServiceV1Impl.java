@@ -8,7 +8,7 @@ import athena.ground.biz.domain.dataobject.NoteCountDO;
 import athena.ground.biz.domain.dto.BlogListDTO;
 import athena.ground.biz.domain.mapper.NoteBasicDOMapper;
 import athena.ground.biz.domain.mapper.NoteCountDOMapper;
-import athena.ground.biz.rpc.UserAuthFeginApi;
+import athena.ground.biz.rpc.UserAuthFeignApi;
 import athena.ground.biz.service.NoteSearchService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +32,7 @@ public class NoteSearchServiceV1Impl implements NoteSearchService {
     private NoteCountDOMapper noteCountDOMapper;
 
     @Resource
-    private UserAuthFeginApi userAuthFeginApi;
+    private UserAuthFeignApi userAuthFeginApi;
 
     @Override
     public Result searchPublicNotes(String keyword, Integer type, Integer channelId, Integer pageNum, Integer pageSize) {

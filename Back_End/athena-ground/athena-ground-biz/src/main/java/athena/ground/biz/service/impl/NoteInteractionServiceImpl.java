@@ -15,7 +15,7 @@ import athena.ground.biz.domain.mapper.NoteCountDOMapper;
 import athena.ground.biz.domain.mapper.NoteLikeDOMapper;
 import athena.ground.biz.mq.event.NoteInteractionEvent;
 import athena.ground.biz.mq.producer.NoteInteractionProducer;
-import athena.ground.biz.rpc.UserAuthFeginApi;
+import athena.ground.biz.rpc.UserAuthFeignApi;
 import athena.ground.biz.service.NoteInteractionService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -48,7 +48,7 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
     private NoteBasicDOMapper noteBasicMapper;
 
     @Resource
-    private UserAuthFeginApi userAuthFeginApi;
+    private UserAuthFeignApi userAuthFeignApi;
 
     @Resource
     private NoteInteractionProducer noteInteractionProducer;
@@ -289,7 +289,7 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
                     BlogListDTO dto = new BlogListDTO();
                     Long noteId = noteDO.getNoteId();
                     Long userId = noteDO.getUserId();
-                    UserDTO byUserId = userAuthFeginApi.findByUserId(userId);
+                    UserDTO byUserId = userAuthFeignApi.findByUserId(userId);
                     NoteCountDO noteCountDO = noteCountDOMapper.selectByNoteId(noteId);
                     dto.setLikeTotal(noteCountDO != null ? noteCountDO.getLikeTotal() : 0L);
                     BeanUtils.copyProperties(noteDO, dto);

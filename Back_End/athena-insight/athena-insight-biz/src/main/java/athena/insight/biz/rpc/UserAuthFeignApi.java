@@ -11,7 +11,7 @@ import java.util.List;
 
 @Slf4j
 @Component
-public class UserAuthRpc {
+public class UserAuthFeignApi {
 
     @Resource
     private UserFeignApi userFeignApi;
@@ -19,7 +19,7 @@ public class UserAuthRpc {
     public UserDTO findByUserId(Long userId) {
         Result<UserDTO> result = userFeignApi.findById(userId);
         if (result == null || result.getCode() != 200) {
-            log.warn("[UserAuthRpc] 查询用户失败, userId={}", userId);
+            log.warn("[UserAuthFeignApi] 查询用户失败, userId={}", userId);
             return null;
         }
         return result.getData();
@@ -28,7 +28,7 @@ public class UserAuthRpc {
     public List<UserDTO> findByUserIds(List<Long> userIds) {
         Result<List<UserDTO>> result = userFeignApi.findByUserIds(userIds);
         if (result == null || result.getCode() != 200) {
-            log.warn("[UserAuthRpc] 批量查询用户失败, userIds={}", userIds);
+            log.warn("[UserAuthFeignApi] 批量查询用户失败, userIds={}", userIds);
             return null;
         }
         return result.getData();

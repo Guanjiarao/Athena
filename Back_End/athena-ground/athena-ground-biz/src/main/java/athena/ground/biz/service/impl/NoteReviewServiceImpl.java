@@ -15,8 +15,8 @@ import athena.ground.biz.domain.mapper.NoteBasicDOMapper;
 import athena.ground.biz.domain.mapper.NoteContentDOMapper;
 import athena.ground.biz.domain.mapper.NoteCountDOMapper;
 import athena.ground.biz.domain.mapper.NoteDOMapper;
-import athena.ground.biz.rpc.InsightRpc;
-import athena.ground.biz.rpc.UserAuthFeginApi;
+import athena.ground.biz.rpc.InsightFeatureFeignApi;
+import athena.ground.biz.rpc.UserAuthFeignApi;
 import athena.ground.biz.service.AthenaNoteDocumentUploadService;
 import athena.ground.biz.service.NoteReviewService;
 import jakarta.annotation.Resource;
@@ -55,10 +55,10 @@ public class NoteReviewServiceImpl implements NoteReviewService {
     private NoteCountDOMapper noteCountDOMapper;
 
     @Resource
-    private UserAuthFeginApi userAuthFeginApi;
+    private UserAuthFeignApi userAuthFeginApi;
 
     @Resource
-    private InsightRpc insightRpc;
+    private InsightFeatureFeignApi insightFeginApi;
 
     @Resource
     private AthenaNoteDocumentUploadService athenaNoteDocumentUploadService;
@@ -149,7 +149,7 @@ public class NoteReviewServiceImpl implements NoteReviewService {
                 log.error("审核通过后上传知识库失败, noteId={}", payload.noteId(), e);
             }
         }
-        insightRpc.refreshNoteFeature(payload.noteId());
+        insightFeginApi.refreshNoteFeature(payload.noteId());
         Result<Void> result = Result.ok();
         result.setMessage("审核通过");
         return result;
@@ -166,7 +166,7 @@ public class NoteReviewServiceImpl implements NoteReviewService {
         }
         try {
             updateRejectStatus(request.getNoteId(), UserIdHolder.getUserId(), request.getReviewRemark());
-            insightRpc.refreshNoteFeature(request.getNoteId());
+            insightFeginApi.refreshNoteFeature(request.getNoteId());
             Result<Void> result = Result.ok();
             result.setMessage("审核拒绝成功");
             return result;

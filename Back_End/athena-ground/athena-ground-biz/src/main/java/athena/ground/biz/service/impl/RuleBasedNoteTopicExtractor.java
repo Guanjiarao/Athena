@@ -1,5 +1,6 @@
 package athena.ground.biz.service.impl;
 
+import athena.ground.biz.config.NoteTopicExtractorProperties;
 import athena.ground.biz.domain.dataobject.TopicDO;
 import athena.ground.biz.domain.mapper.TopicMapper;
 import athena.ground.biz.mq.event.NoteTopicBuildEvent;
@@ -15,7 +16,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,24 +24,36 @@ public class RuleBasedNoteTopicExtractor implements NoteTopicExtractor {
     @Resource
     private TopicMapper topicMapper;
 
+    @Resource
+    private NoteTopicExtractorProperties noteTopicExtractorProperties;
+
     @Override
     public List<TopicMatchResult> extract(NoteTopicBuildEvent event) {
         String title = normalize(event.getTitle());
         String content = normalize(event.getContent());
         Map<String, BigDecimal> topicWeights = new LinkedHashMap<>();
 
-        addWeightIfMatches(topicWeights, "经期护理", title, content, Set.of("经期", "姨妈", "生理期", "月经"), new BigDecimal("1.0"), new BigDecimal("0.6"));
-        addWeightIfMatches(topicWeights, "痛经缓解", title, content, Set.of("痛经", "腹痛", "热敷", "缓解疼痛", "姨妈痛"), new BigDecimal("1.0"), new BigDecimal("0.6"));
-        addWeightIfMatches(topicWeights, "睡眠调节", title, content, Set.of("失眠", "睡不好", "睡不着", "熬夜", "睡眠"), new BigDecimal("1.0"), new BigDecimal("0.6"));
-        addWeightIfMatches(topicWeights, "情绪调节", title, content, Set.of("焦虑", "烦躁", "情绪低落", "压力", "崩溃"), new BigDecimal("1.0"), new BigDecimal("0.6"));
-        addWeightIfMatches(topicWeights, "饮食管理", title, content, Set.of("饮食", "忌口", "补铁", "吃什么", "食物"), new BigDecimal("1.0"), new BigDecimal("0.6"));
+        for (NoteTopicExtractorProperties.TopicRule rule : noteTopicExtractorProperties.getRules()) {
+            if (rule == null || !StringUtils.hasText(rule.getTopicName())) {
+                continue;
+            }
+            addWeightIfMatches(topicWeights,
+                    rule.getTopicName(),
+                    title,
+                    content,
+                    rule.getKeywords(),
+                    defaultWeight(rule.getTitleWeight(), "1.0"),
+                    defaultWeight(rule.getContentWeight(), "0.6"));
+        }
 
         if (event.getChannelId() != null) {
-            if (event.getChannelId() == 4) {
-                topicWeights.merge("经期护理", new BigDecimal("0.4"), BigDecimal::add);
-            }
-            if (event.getChannelId() == 2) {
-                topicWeights.merge("饮食管理", new BigDecimal("0.2"), BigDecimal::add);
+            for (NoteTopicExtractorProperties.ChannelBoostRule boostRule : noteTopicExtractorProperties.getChannelBoosts()) {
+                if (boostRule == null || boostRule.getChannelId() == null || !StringUtils.hasText(boostRule.getTopicName())) {
+                    continue;
+                }
+                if (event.getChannelId().equals(boostRule.getChannelId())) {
+                    topicWeights.merge(boostRule.getTopicName(), defaultWeight(boostRule.getWeight(), "0.2"), BigDecimal::add);
+                }
             }
         }
 
@@ -70,12 +82,18 @@ public class RuleBasedNoteTopicExtractor implements NoteTopicExtractor {
                                     String topicName,
                                     String title,
                                     String content,
-                                    Set<String> keywords,
+                                    List<String> keywords,
                                     BigDecimal titleWeight,
                                     BigDecimal contentWeight) {
+        if (keywords == null || keywords.isEmpty()) {
+            return;
+        }
         BigDecimal weight = BigDecimal.ZERO;
         for (String keyword : keywords) {
             String normalizedKeyword = normalize(keyword);
+            if (!StringUtils.hasText(normalizedKeyword)) {
+                continue;
+            }
             if (StringUtils.hasText(title) && title.contains(normalizedKeyword)) {
                 weight = weight.add(titleWeight);
             }
@@ -86,6 +104,10 @@ public class RuleBasedNoteTopicExtractor implements NoteTopicExtractor {
         if (weight.compareTo(BigDecimal.ZERO) > 0) {
             topicWeights.merge(topicName, weight, BigDecimal::add);
         }
+    }
+
+    private BigDecimal defaultWeight(BigDecimal value, String fallback) {
+        return value == null ? new BigDecimal(fallback) : value;
     }
 
     private String normalize(String value) {

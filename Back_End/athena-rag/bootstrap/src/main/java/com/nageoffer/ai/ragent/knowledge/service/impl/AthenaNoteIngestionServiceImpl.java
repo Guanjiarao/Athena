@@ -153,8 +153,8 @@ public class AthenaNoteIngestionServiceImpl implements AthenaNoteIngestionServic
                                 .nodeType("chunker")
                                 .settings(objectMapper.valueToTree(ChunkerSettings.builder()
                                         .strategy(ChunkingMode.STRUCTURE_AWARE)
-                                        .chunkSize(1400)
-                                        .overlapSize(0)
+                                        .chunkSize(512)
+                                        .overlapSize(64)
                                         .build()))
                                 .nextNodeId("indexer")
                                 .build(),

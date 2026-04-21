@@ -6,9 +6,9 @@ import athena.insight.biz.domain.dataobject.UserFeatureSnapshotDO;
 import athena.insight.biz.domain.dto.FeatureRefreshDTO;
 import athena.insight.biz.domain.mapper.UserFeatureSnapshotMapper;
 import athena.insight.biz.domain.vo.UserFeatureSnapshotVO;
-import athena.insight.biz.rpc.GroundRpc;
-import athena.insight.biz.rpc.RecordRpc;
-import athena.insight.biz.rpc.UserAuthRpc;
+import athena.insight.biz.rpc.GroundFeignApi;
+import athena.insight.biz.rpc.RecordFeignApi;
+import athena.insight.biz.rpc.UserAuthFeignApi;
 import athena.insight.biz.service.TopicService;
 import athena.insight.biz.service.UserFeatureService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -26,9 +26,9 @@ import java.util.stream.Collectors;
 @Service
 public class UserFeatureServiceImpl implements UserFeatureService {
     @Resource private UserFeatureSnapshotMapper userFeatureSnapshotMapper;
-    @Resource private UserAuthRpc userAuthRpc;
-    @Resource private GroundRpc groundRpc;
-    @Resource private RecordRpc recordRpc;
+    @Resource private UserAuthFeignApi userAuthFeignApi;
+    @Resource private GroundFeignApi groundFeignApi;
+    @Resource private RecordFeignApi recordFeignApi;
     @Resource private TopicService topicService;
 
     @Override
@@ -43,14 +43,14 @@ public class UserFeatureServiceImpl implements UserFeatureService {
         Long userId = request.getUserId();
         UserFeatureSnapshotDO snapshotDO = findByUserId(userId);
         LocalDateTime now = LocalDateTime.now();
-        UserDTO userDTO = userAuthRpc.findByUserId(userId);
-        List<Map<String, Object>> userBlogs = groundRpc.getBlogListByUserId(userId, 1, 50);
-        List<Map<String, Object>> likedBlogs = groundRpc.likeList();
-        List<Map<String, Object>> collectedBlogs = groundRpc.collectList();
-        List<Map<String, Object>> viewedBlogs = groundRpc.viewHistory(null, 50);
-        Map<String, Object> cycleStats = recordRpc.getCycleStats(userId);
-        Map<String, Object> prediction = recordRpc.getPrediction(userId);
-        List<Map<String, Object>> recentRecords = recordRpc.getRecords(userId, LocalDate.now().minusDays(30).toString(), LocalDate.now().toString());
+        UserDTO userDTO = userAuthFeignApi.findByUserId(userId);
+        List<Map<String, Object>> userBlogs = groundFeignApi.getBlogListByUserId(userId, 1, 50);
+        List<Map<String, Object>> likedBlogs = groundFeignApi.likeList();
+        List<Map<String, Object>> collectedBlogs = groundFeignApi.collectList();
+        List<Map<String, Object>> viewedBlogs = groundFeignApi.viewHistory(null, 50);
+        Map<String, Object> cycleStats = recordFeignApi.getCycleStats(userId);
+        Map<String, Object> prediction = recordFeignApi.getPrediction(userId);
+        List<Map<String, Object>> recentRecords = recordFeignApi.getRecords(userId, LocalDate.now().minusDays(30).toString(), LocalDate.now().toString());
         String baseFeatureJson = buildBaseFeatureJson(userId, userDTO);
         String behaviorFeatureJson = buildBehaviorFeatureJson(userId, userBlogs, likedBlogs, collectedBlogs, viewedBlogs);
         String healthFeatureJson = buildHealthFeatureJson(userId, cycleStats, prediction, recentRecords);

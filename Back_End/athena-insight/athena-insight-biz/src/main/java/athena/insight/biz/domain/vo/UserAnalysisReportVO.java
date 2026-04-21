@@ -15,6 +15,8 @@ public class UserAnalysisReportVO {
 
     private String summary;
 
+    private String summarySource;
+
     private List<String> healthFocuses;
 
     private List<String> contentFocuses;

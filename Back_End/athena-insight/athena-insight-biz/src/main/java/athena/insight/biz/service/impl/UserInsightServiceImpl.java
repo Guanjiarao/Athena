@@ -109,9 +109,9 @@ public class UserInsightServiceImpl implements UserInsightService {
 
         if (currentModeType != null) {
             values.add(switch (currentModeType) {
-                case 1 -> "当前记录以经期模式为主，可持续关注周期稳定性";
-                case 2 -> "当前记录以备孕模式为主，可持续关注身体节律变化";
-                case 3 -> "当前记录以怀孕模式为主，建议持续关注日常状态变化";
+                case 0 -> "当前记录以正常模式为主，可持续关注日常健康变化";
+                case 1 -> "当前记录以备孕模式为主，可持续关注身体节律变化";
+                case 2 -> "当前记录以怀孕模式为主，建议持续关注日常状态变化";
                 default -> "当前健康记录已有明确模式特征";
             });
         }

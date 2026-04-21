@@ -1,4 +1,4 @@
-package athena.relation.biz.rpc;
+package athena.comment.biz.rpc;
 
 import athena.athenaframework.DTO.UserDTO;
 import athena.athenaframework.result.Result;
@@ -7,11 +7,12 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.List;
 
 @Slf4j
 @Component
-public class UserAuthFeginApi {
+public class UserAuthFeignApi {
     @Resource
     private UserFeignApi userFeignApi;
 
@@ -27,6 +28,9 @@ public class UserAuthFeginApi {
 
     public List<UserDTO> findByUserIds(List<Long> userIds)
     {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyList();
+        }
         Result<List<UserDTO>> byUserIds = userFeignApi.findByUserIds(userIds);
         if(byUserIds==null||byUserIds.getCode()!=200)
         {

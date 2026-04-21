@@ -7,6 +7,8 @@ public class RecommendQueryDTO {
 
     private Byte type;
 
+    private Integer channelId;
+
     private Integer pageNum;
 
     private Integer pageSize;

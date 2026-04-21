@@ -6,6 +6,7 @@ import athena.insight.biz.domain.vo.RecommendResultVO;
 import athena.insight.biz.domain.vo.UserAnalysisReportVO;
 import athena.insight.biz.domain.vo.UserFeatureSnapshotVO;
 import athena.insight.biz.domain.vo.UserInsightVO;
+import athena.insight.biz.service.AiReportNarrationService;
 import athena.insight.biz.service.RecommendationService;
 import athena.insight.biz.service.ReportService;
 import athena.insight.biz.service.UserFeatureService;
@@ -17,9 +18,13 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class ReportServiceImpl implements ReportService {
+
+    private static final String SUMMARY_SOURCE_RULE = "RULE";
+    private static final String SUMMARY_SOURCE_AI = "AI";
 
     @Resource
     private UserFeatureService userFeatureService;
@@ -30,11 +35,15 @@ public class ReportServiceImpl implements ReportService {
     @Resource
     private RecommendationService recommendationService;
 
+    @Resource
+    private AiReportNarrationService aiReportNarrationService;
+
     @Override
     public UserAnalysisReportVO generateReport(ReportQueryDTO request) {
         UserAnalysisReportVO vo = new UserAnalysisReportVO();
         if (request == null || request.getUserId() == null) {
             vo.setSummary("暂无可用的用户报告数据");
+            vo.setSummarySource(SUMMARY_SOURCE_RULE);
             vo.setHealthFocuses(Collections.emptyList());
             vo.setContentFocuses(Collections.emptyList());
             vo.setRiskTags(Collections.emptyList());
@@ -55,7 +64,6 @@ public class ReportServiceImpl implements ReportService {
         vo.setCurrentModeType(JsonHelper.getInt(healthNode, "currentModeType"));
         vo.setAverageCycleLength(JsonHelper.getInt(healthNode, "averageCycleLength"));
         vo.setAverageDurationDays(JsonHelper.getInt(healthNode, "averageDurationDays"));
-        vo.setSummary(buildSummary(featureSnapshotVO, insightVO, healthFocuses, contentFocuses));
         vo.setHealthFocuses(healthFocuses);
         vo.setContentFocuses(contentFocuses);
         vo.setRiskTags(riskTags);
@@ -67,6 +75,11 @@ public class ReportServiceImpl implements ReportService {
         recommendQueryDTO.setPageSize(3);
         RecommendResultVO recommendResultVO = recommendationService.recommend(request.getUserId(), recommendQueryDTO);
         vo.setReadingSuggestions(recommendResultVO == null ? Collections.emptyList() : recommendResultVO.getItems());
+
+        String fallbackSummary = buildSummary(featureSnapshotVO, insightVO, healthFocuses, contentFocuses);
+        String finalSummary = aiReportNarrationService.generateSummary(vo, fallbackSummary);
+        vo.setSummary(finalSummary);
+        vo.setSummarySource(Objects.equals(finalSummary, fallbackSummary) ? SUMMARY_SOURCE_RULE : SUMMARY_SOURCE_AI);
         return vo;
     }
 

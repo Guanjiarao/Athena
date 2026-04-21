@@ -4,7 +4,7 @@ import athena.ground.biz.constant.NoteTopicBuildConstants;
 import athena.ground.biz.domain.dataobject.NoteTopicRelationDO;
 import athena.ground.biz.domain.mapper.NoteTopicRelationMapper;
 import athena.ground.biz.mq.event.NoteTopicBuildEvent;
-import athena.ground.biz.rpc.InsightRpc;
+import athena.ground.biz.rpc.InsightFeatureFeignApi;
 import athena.ground.biz.service.NoteTopicBuildService;
 import athena.ground.biz.service.NoteTopicExtractor;
 import jakarta.annotation.Resource;
@@ -25,7 +25,7 @@ public class NoteTopicBuildServiceImpl implements NoteTopicBuildService {
     private NoteTopicRelationMapper noteTopicRelationMapper;
 
     @Resource
-    private InsightRpc insightRpc;
+    private InsightFeatureFeignApi insightFeignApi;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -52,6 +52,6 @@ public class NoteTopicBuildServiceImpl implements NoteTopicBuildService {
                 deleted,
                 inserted,
                 results.stream().map(NoteTopicExtractor.TopicMatchResult::topicName).toList());
-        insightRpc.refreshNoteFeature(event.getNoteId());
+        insightFeignApi.refreshNoteFeature(event.getNoteId());
     }
 }

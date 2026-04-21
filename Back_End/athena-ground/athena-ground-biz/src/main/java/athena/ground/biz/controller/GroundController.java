@@ -58,7 +58,7 @@ public class GroundController {
     /**
      * 根据 noteIdList 批量查询笔记基础信息
      */
-    @PostMapping("/noteBasic/listByNoteIds")
+    @PostMapping("listByNoteIds")
     public Result getNoteBasicListByNoteIdList(@RequestBody NoteIdListQueryDTO queryDTO) {
         return groundService.getNoteBasicListByNoteIdList(queryDTO == null ? null : queryDTO.getNoteIdList());
     }

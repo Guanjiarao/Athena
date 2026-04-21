@@ -1,4 +1,4 @@
-package athena.ground.biz.rpc;
+package athena.relation.biz.rpc;
 
 import athena.athenaframework.DTO.UserDTO;
 import athena.athenaframework.result.Result;
@@ -11,7 +11,7 @@ import java.util.List;
 
 @Slf4j
 @Component
-public class UserAuthFeginApi {
+public class UserAuthFeignApi {
     @Resource
     private UserFeignApi userFeignApi;
 

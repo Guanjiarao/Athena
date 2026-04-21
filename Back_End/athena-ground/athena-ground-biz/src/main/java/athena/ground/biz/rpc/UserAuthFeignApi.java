@@ -1,4 +1,4 @@
-package athena.comment.biz.rpc;
+package athena.ground.biz.rpc;
 
 import athena.athenaframework.DTO.UserDTO;
 import athena.athenaframework.result.Result;
@@ -7,12 +7,11 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
 import java.util.List;
 
 @Slf4j
 @Component
-public class UserAuthFeginApi {
+public class UserAuthFeignApi {
     @Resource
     private UserFeignApi userFeignApi;
 
@@ -28,12 +27,6 @@ public class UserAuthFeginApi {
 
     public List<UserDTO> findByUserIds(List<Long> userIds)
     {
-        if (userIds == null || userIds.isEmpty()) {
-            // 返回空列表，避免执行无效的 SQL
-            return Collections.emptyList();
-            // 或者可以记录警告日志
-            // log.warn("findByUserIds 传入的用户ID列表为空");
-        }
         Result<List<UserDTO>> byUserIds = userFeignApi.findByUserIds(userIds);
         if(byUserIds==null||byUserIds.getCode()!=200)
         {

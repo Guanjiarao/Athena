@@ -29,6 +29,11 @@ public interface InsightGroundFeignApi {
                                 @RequestParam("pageNum") Integer pageNum,
                                 @RequestParam("pageSize") Integer pageSize);
 
+    @GetMapping(PREFIX + "/listBychannelId")
+    Result<?> getBlogListByChannelId(@RequestParam("channelId") Integer channelId,
+                                     @RequestParam("pageNum") Integer pageNum,
+                                     @RequestParam("pageSize") Integer pageSize);
+
     @GetMapping(PREFIX + "/likeList")
     Result<?> likeList();
 

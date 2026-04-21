@@ -11,7 +11,7 @@ import java.util.Map;
 
 @Slf4j
 @Component
-public class GroundRpc {
+public class GroundFeignApi {
 
     @Resource
     private InsightGroundFeignApi insightGroundFeignApi;
@@ -24,7 +24,7 @@ public class GroundRpc {
     public Map<String, Object> getBlogDetail(Long blogId, Byte type) {
         Result<?> result = insightGroundFeignApi.getBlogDetail(blogId, type);
         if (result == null || result.getCode() != 200 || !(result.getData() instanceof Map<?, ?> data)) {
-            log.warn("[GroundRpc] 查询内容详情失败, blogId={}, type={}", blogId, type);
+            log.warn("[GroundFeignApi] 查询内容详情失败, blogId={}, type={}", blogId, type);
             return null;
         }
         return (Map<String, Object>) data;
@@ -38,6 +38,11 @@ public class GroundRpc {
     public List<Map<String, Object>> getBlogListByType(Integer type, Integer pageNum, Integer pageSize) {
         Result<?> result = insightGroundFeignApi.getBlogListByType(type, pageNum, pageSize);
         return extractList(result, "按类型查询公共内容失败, type=" + type);
+    }
+
+    public List<Map<String, Object>> getBlogListByChannelId(Integer channelId, Integer pageNum, Integer pageSize) {
+        Result<?> result = insightGroundFeignApi.getBlogListByChannelId(channelId, pageNum, pageSize);
+        return extractList(result, "按频道查询公共内容失败, channelId=" + channelId);
     }
 
     public List<Map<String, Object>> likeList() {
@@ -57,7 +62,7 @@ public class GroundRpc {
 
     private List<Map<String, Object>> extractList(Result<?> result, String warnMessage) {
         if (result == null || result.getCode() != 200) {
-            log.warn("[GroundRpc] {}", warnMessage);
+            log.warn("[GroundFeignApi] {}", warnMessage);
             return Collections.emptyList();
         }
         if (!(result.getData() instanceof List<?> list)) {

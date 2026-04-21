@@ -21,13 +21,15 @@ public class InsightRecommendController {
 
     @GetMapping("/recommend")
     public Result recommend(@RequestParam("type") Byte type,
+                            @RequestParam(value = "channelId", required = false) Integer channelId,
                             @RequestParam(defaultValue = "1") Integer pageNum,
                             @RequestParam(defaultValue = "10") Integer pageSize) {
         Long userId = UserIdHolder.getUserId();
-        log.info("[InsightRecommend] 收到推荐请求, userId={}, type={}, pageNum={}, pageSize={}", userId, type, pageNum, pageSize);
+        log.info("[InsightRecommend] 收到推荐请求, userId={}, type={}, channelId={}, pageNum={}, pageSize={}", userId, type, channelId, pageNum, pageSize);
 
         RecommendQueryDTO request = new RecommendQueryDTO();
         request.setType(type);
+        request.setChannelId(channelId);
         request.setPageNum(pageNum);
         request.setPageSize(pageSize);
         return Result.ok(recommendationService.recommend(userId, request));

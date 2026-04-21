@@ -7,6 +7,7 @@ import athena.insight.biz.domain.mapper.NoteFeatureMapper;
 import athena.insight.biz.domain.vo.RecommendItemVO;
 import athena.insight.biz.domain.vo.RecommendResultVO;
 import athena.insight.biz.domain.vo.UserFeatureSnapshotVO;
+import athena.insight.biz.rpc.GroundFeignApi;
 import athena.insight.biz.service.RecommendationService;
 import athena.insight.biz.service.TopicService;
 import athena.insight.biz.service.UserFeatureService;
@@ -52,6 +53,9 @@ public class RecommendationServiceImpl implements RecommendationService {
     @Resource
     private UserFeatureService userFeatureService;
 
+    @Resource
+    private GroundFeignApi groundFeignApi;
+
     @Override
     public RecommendResultVO recommend(Long userId, RecommendQueryDTO request) {
         RecommendResultVO resultVO = new RecommendResultVO();
@@ -76,12 +80,8 @@ public class RecommendationServiceImpl implements RecommendationService {
                 .last("limit " + CANDIDATE_LIMIT);
 
         List<NoteFeatureDO> noteFeatureList = noteFeatureMapper.selectList(queryWrapper);
-        if (noteFeatureList == null || noteFeatureList.isEmpty()) {
-            resultVO.setType(request.getType());
-            resultVO.setPageNum(pageNum);
-            resultVO.setPageSize(pageSize);
-            resultVO.setItems(Collections.emptyList());
-            return resultVO;
+        if (noteFeatureList == null) {
+            noteFeatureList = Collections.emptyList();
         }
 
         Map<Long, RecallCandidate> recallMap = new LinkedHashMap<>();
@@ -99,16 +99,12 @@ public class RecommendationServiceImpl implements RecommendationService {
                 .toList();
 
         List<ScoredRecommendItem> diversified = diversify(scoredItems);
-        int fromIndex = Math.min((pageNum - 1) * pageSize, diversified.size());
-        int toIndex = Math.min(fromIndex + pageSize, diversified.size());
-        List<RecommendItemVO> items = diversified.subList(fromIndex, toIndex).stream()
-                .map(ScoredRecommendItem::item)
-                .collect(Collectors.toList());
+        List<RecommendItemVO> mergedItems = mergeWithFallback(diversified, request, userId, pageNum, pageSize, behaviorFeatures);
 
         resultVO.setType(request.getType());
         resultVO.setPageNum(pageNum);
         resultVO.setPageSize(pageSize);
-        resultVO.setItems(items);
+        resultVO.setItems(mergedItems);
         return resultVO;
     }
 
@@ -173,6 +169,144 @@ public class RecommendationServiceImpl implements RecommendationService {
                 .filter(StringUtils::hasText)
                 .distinct()
                 .collect(Collectors.toList());
+    }
+
+    private List<RecommendItemVO> mergeWithFallback(List<ScoredRecommendItem> diversified,
+                                                    RecommendQueryDTO request,
+                                                    Long userId,
+                                                    Integer pageNum,
+                                                    Integer pageSize,
+                                                    BehaviorFeatures behaviorFeatures) {
+        int fromIndex = Math.min((pageNum - 1) * pageSize, diversified.size());
+        int toIndex = Math.min(fromIndex + pageSize, diversified.size());
+        List<RecommendItemVO> items = new ArrayList<>(diversified.subList(fromIndex, toIndex).stream()
+                .map(ScoredRecommendItem::item)
+                .collect(Collectors.toList()));
+        if (items.size() >= pageSize) {
+            return items;
+        }
+
+        LinkedHashMap<Long, RecommendItemVO> merged = new LinkedHashMap<>();
+        items.forEach(item -> merged.put(item.getNoteId(), item));
+        int needCount = pageSize - items.size();
+        List<RecommendItemVO> fallbackItems = loadFallbackItems(request, userId, behaviorFeatures, needCount, merged.keySet());
+        fallbackItems.forEach(item -> merged.putIfAbsent(item.getNoteId(), item));
+
+        return merged.values().stream()
+                .limit(pageSize)
+                .collect(Collectors.toList());
+    }
+
+    private List<RecommendItemVO> loadFallbackItems(RecommendQueryDTO request,
+                                                    Long userId,
+                                                    BehaviorFeatures behaviorFeatures,
+                                                    int needCount,
+                                                    Set<Long> existedNoteIds) {
+        if (needCount <= 0 || request == null || request.getType() == null) {
+            return Collections.emptyList();
+        }
+        List<Map<String, Object>> sourceItems = fetchFallbackSource(request.getType(), request.getChannelId(), needCount * 3);
+        if (sourceItems == null || sourceItems.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Set<Long> excludeIds = new LinkedHashSet<>(existedNoteIds == null ? Collections.emptySet() : existedNoteIds);
+        return sourceItems.stream()
+                .map(item -> toFallbackItem(item, request.getType()))
+                .filter(item -> item != null && item.getNoteId() != null)
+                .filter(item -> !excludeIds.contains(item.getNoteId()))
+                .filter(item -> userId == null || !userId.equals(item.getAuthorId()))
+                .filter(item -> !behaviorFeatures.recentViewedNoteIds.contains(item.getNoteId()))
+                .peek(item -> excludeIds.add(item.getNoteId()))
+                .limit(needCount)
+                .collect(Collectors.toList());
+    }
+
+    private List<Map<String, Object>> fetchFallbackSource(Byte requestType, Integer channelId, int pageSize) {
+        int actualPageSize = Math.max(pageSize, 10);
+        if (requestType != null) {
+            return groundFeignApi.getBlogListByType((int) requestType, 1, actualPageSize);
+        }
+        return groundFeignApi.getBlogListPage(1, actualPageSize);
+    }
+
+    private RecommendItemVO toFallbackItem(Map<String, Object> source, Byte requestType) {
+        if (source == null || source.isEmpty()) {
+            return null;
+        }
+        Long noteId = getLong(source.get("blogId"), getLong(source.get("noteId"), null));
+        if (noteId == null) {
+            return null;
+        }
+        RecommendItemVO itemVO = new RecommendItemVO();
+        itemVO.setNoteId(noteId);
+        itemVO.setType(getByte(source.get("type"), requestType));
+        itemVO.setTitle(getString(source.get("title"), null));
+        itemVO.setCoverUrl(getString(source.get("coverUrl"), null));
+        itemVO.setAuthorId(getLong(source.get("userId"), getNestedUserId(source.get("userDTO"))));
+        itemVO.setTopics(Collections.emptyList());
+        itemVO.setReason(buildFallbackReason(requestType, getString(source.get("channelName"), null)));
+        itemVO.setScore(0D);
+        return itemVO;
+    }
+
+    private String buildFallbackReason(Byte requestType, String channelName) {
+        if (requestType != null && requestType == 0 && StringUtils.hasText(channelName)) {
+            return "为你补充“" + channelName + "”频道内容";
+        }
+        if (requestType == null) {
+            return "为你补充广场内容";
+        }
+        return switch (requestType) {
+            case 0 -> "为你补充频道科普内容";
+            case 1 -> "为你补充广场图文内容";
+            case 2 -> "为你补充广场视频内容";
+            default -> "为你补充广场内容";
+        };
+    }
+
+    private Long getNestedUserId(Object userDTO) {
+        if (!(userDTO instanceof Map<?, ?> map)) {
+            return null;
+        }
+        Long userId = getLong(map.get("userId"), null);
+        if (userId != null) {
+            return userId;
+        }
+        return getLong(map.get("id"), null);
+    }
+
+    private Long getLong(Object primary, Long fallback) {
+        try {
+            if (primary instanceof Number number) {
+                return number.longValue();
+            }
+            if (primary instanceof String value && StringUtils.hasText(value)) {
+                return Long.parseLong(value);
+            }
+        } catch (Exception ignore) {
+        }
+        return fallback;
+    }
+
+    private Byte getByte(Object primary, Byte fallback) {
+        try {
+            if (primary instanceof Number number) {
+                return number.byteValue();
+            }
+            if (primary instanceof String value && StringUtils.hasText(value)) {
+                return Byte.parseByte(value);
+            }
+        } catch (Exception ignore) {
+        }
+        return fallback;
+    }
+
+    private String getString(Object primary, String fallback) {
+        if (primary == null) {
+            return fallback;
+        }
+        String value = String.valueOf(primary);
+        return StringUtils.hasText(value) ? value : fallback;
     }
 
     private BehaviorFeatures parseBehaviorFeatures(String behaviorFeatureJson) {
@@ -272,9 +406,9 @@ public class RecommendationServiceImpl implements RecommendationService {
         }
         double modeScore = 0D;
         if (healthFeatures.currentModeType != null && requestType != null) {
-            if (healthFeatures.currentModeType == 1 && (requestType == 0 || requestType == 1)) {
+            if (healthFeatures.currentModeType == 0 && requestType == 0) {
                 modeScore = 0.3D;
-            } else if ((healthFeatures.currentModeType == 2 || healthFeatures.currentModeType == 3) && requestType == 0) {
+            } else if ((healthFeatures.currentModeType == 1 || healthFeatures.currentModeType == 2) && requestType == 0) {
                 modeScore = 0.2D;
             }
         }

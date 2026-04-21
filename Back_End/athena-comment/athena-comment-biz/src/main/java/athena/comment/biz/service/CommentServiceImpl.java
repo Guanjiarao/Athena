@@ -11,8 +11,8 @@ import athena.comment.biz.domain.mapper.CommentContentDOMapper;
 import athena.comment.biz.domain.mapper.CommentDOMapper;
 import athena.comment.biz.domain.mapper.CommentLikeDOMapper;
 import athena.comment.biz.domain.vo.PublishCommentVO;
-import athena.comment.biz.rpc.UserAuthFeginApi;
-import athena.ground.api.GroundFeignApi;
+import athena.comment.biz.rpc.UserAuthFeignApi;
+import athena.comment.biz.rpc.GroundFeignApi;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -60,7 +60,7 @@ public class CommentServiceImpl implements CommentService {
      * 用于通过用户ID查询用户基础信息
      */
     @Resource
-    private UserAuthFeginApi userAuthFeginApi;
+    private UserAuthFeignApi userAuthFeignApi;
 
     @Resource
     private GroundFeignApi groundFeignApi;
@@ -302,7 +302,7 @@ public class CommentServiceImpl implements CommentService {
             }
 
             // 2. RPC调用用户认证服务，查询用户基础信息
-            UserDTO userDTO = userAuthFeginApi.findByUserId(userId);
+            UserDTO userDTO = userAuthFeignApi.findByUserId(userId);
             log.debug("【RPC调用】调用用户服务查询用户ID={}，结果={}", userId, userDTO);
 
             return userDTO;
@@ -407,7 +407,7 @@ public class CommentServiceImpl implements CommentService {
             // 3. 查询发布者用户信息
             UserDTO userDTO = commentIdToUserBasic(commentId);
             // 4. 查询被回复用户信息（用于展示“回复XXX”）
-            UserDTO replyUser = userAuthFeginApi.findByUserId(commentDO.getReplyUserId());
+            UserDTO replyUser = userAuthFeignApi.findByUserId(commentDO.getReplyUserId());
             // 5. 查询评论内容
             String content = commentIdTotext(commentId);
 

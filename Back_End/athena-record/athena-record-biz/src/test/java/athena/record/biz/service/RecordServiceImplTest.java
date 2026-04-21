@@ -1,8 +1,11 @@
 package athena.record.biz.service;
 
 import athena.record.biz.domain.dataobject.DailyRecord;
+import athena.record.biz.domain.dataobject.DictRecordItem;
 import athena.record.biz.domain.dto.CreateDailyRecordDTO;
 import athena.record.biz.domain.dto.UpdateDailyRecordDTO;
+import athena.record.biz.domain.mapper.DailyRecordMapper;
+import athena.record.biz.domain.mapper.DictRecordItemMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -20,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -30,7 +34,10 @@ class RecordServiceImplTest {
     private static final Long OTHER_USER_ID = 2002L;
 
     @Mock
-    private athena.record.biz.domain.mapper.DailyRecordMapper recordMapper;
+    private DailyRecordMapper recordMapper;
+
+    @Mock
+    private DictRecordItemMapper dictRecordItemMapper;
 
     @InjectMocks
     private RecordServiceImpl recordService;
@@ -39,30 +46,58 @@ class RecordServiceImplTest {
     void createRecord_shouldInsertMultipleEntriesForSameItemOnSameDate() {
         CreateDailyRecordDTO first = buildCreateDto("上午一次");
         CreateDailyRecordDTO second = buildCreateDto("晚上一次");
+        when(dictRecordItemMapper.selectById(101)).thenReturn(buildDictRecordItem(101, 2));
 
         recordService.createRecord(USER_ID, first);
         recordService.createRecord(USER_ID, second);
 
         ArgumentCaptor<DailyRecord> captor = ArgumentCaptor.forClass(DailyRecord.class);
-        verify(recordMapper, org.mockito.Mockito.times(2)).insert(captor.capture());
+        verify(recordMapper, times(2)).insert(captor.capture());
         List<DailyRecord> insertedRecords = captor.getAllValues();
 
         assertEquals(2, insertedRecords.size());
         assertEquals(USER_ID, insertedRecords.get(0).getUserId());
         assertEquals(LocalDate.of(2026, 3, 11), insertedRecords.get(0).getRecordDate());
+        assertEquals(2, insertedRecords.get(0).getModeType());
         assertEquals(101, insertedRecords.get(0).getRecordItemId());
         assertEquals("上午一次", insertedRecords.get(0).getRecordValue());
         assertEquals("晚上一次", insertedRecords.get(1).getRecordValue());
     }
 
     @Test
+    void createRecord_shouldThrowWhenModeTypeIsInvalid() {
+        CreateDailyRecordDTO dto = buildCreateDto("晚上一次");
+        dto.setModeType(3);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> recordService.createRecord(USER_ID, dto));
+
+        assertEquals("模式类型不合法", exception.getMessage());
+        verify(recordMapper, never()).insert(any(DailyRecord.class));
+        verify(dictRecordItemMapper, never()).selectById(any());
+    }
+
+    @Test
+    void createRecord_shouldThrowWhenRecordItemDoesNotMatchModeType() {
+        CreateDailyRecordDTO dto = buildCreateDto("晚上一次");
+        when(dictRecordItemMapper.selectById(101)).thenReturn(buildDictRecordItem(101, 1));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> recordService.createRecord(USER_ID, dto));
+
+        assertEquals("记录类型与模式类型不匹配", exception.getMessage());
+        verify(recordMapper, never()).insert(any(DailyRecord.class));
+    }
+
+    @Test
     void updateRecord_shouldUpdateTargetRecordOnly() {
         DailyRecord existing = buildRecord(11L, USER_ID, LocalDate.of(2026, 3, 11), 2, 101, "上午一次");
         UpdateDailyRecordDTO dto = new UpdateDailyRecordDTO();
-        dto.setModeType(3);
+        dto.setModeType(2);
         dto.setRecordValue("晚上一次");
 
         when(recordMapper.selectById(11L)).thenReturn(existing);
+        when(dictRecordItemMapper.selectById(101)).thenReturn(buildDictRecordItem(101, 2));
 
         recordService.updateRecord(USER_ID, 11L, dto);
 
@@ -71,7 +106,7 @@ class RecordServiceImplTest {
         DailyRecord updated = captor.getValue();
         assertEquals(11L, updated.getId());
         assertEquals(USER_ID, updated.getUserId());
-        assertEquals(3, updated.getModeType());
+        assertEquals(2, updated.getModeType());
         assertEquals("晚上一次", updated.getRecordValue());
         assertEquals(101, updated.getRecordItemId());
     }
@@ -80,7 +115,7 @@ class RecordServiceImplTest {
     void updateRecord_shouldThrowWhenRecordBelongsToAnotherUser() {
         DailyRecord existing = buildRecord(11L, OTHER_USER_ID, LocalDate.of(2026, 3, 11), 2, 101, "上午一次");
         UpdateDailyRecordDTO dto = new UpdateDailyRecordDTO();
-        dto.setModeType(3);
+        dto.setModeType(2);
         dto.setRecordValue("晚上一次");
 
         when(recordMapper.selectById(11L)).thenReturn(existing);
@@ -162,5 +197,12 @@ class RecordServiceImplTest {
         record.setRecordItemId(recordItemId);
         record.setRecordValue(recordValue);
         return record;
+    }
+
+    private DictRecordItem buildDictRecordItem(Integer id, Integer modeType) {
+        DictRecordItem dictRecordItem = new DictRecordItem();
+        dictRecordItem.setId(id);
+        dictRecordItem.setModeType(modeType);
+        return dictRecordItem;
     }
 }

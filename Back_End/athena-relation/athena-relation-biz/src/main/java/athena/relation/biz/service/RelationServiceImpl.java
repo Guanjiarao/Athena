@@ -7,7 +7,7 @@ import athena.relation.biz.domain.dataobject.FansDO;
 import athena.relation.biz.domain.dataobject.FollowDO;
 import athena.relation.biz.mapper.FansDOMapper;
 import athena.relation.biz.mapper.FollowDOMapper;
-import athena.relation.biz.rpc.UserAuthFeginApi;
+import athena.relation.biz.rpc.UserAuthFeignApi;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,7 +27,7 @@ public class RelationServiceImpl implements RelationService {
     private FansDOMapper fansDOMapper;
 
     @Autowired
-    private UserAuthFeginApi userAuthFeginApi;
+    private UserAuthFeignApi userAuthFeginApi;
 
     private Long getCurrentUserId() {
         return UserIdHolder.getUserId();

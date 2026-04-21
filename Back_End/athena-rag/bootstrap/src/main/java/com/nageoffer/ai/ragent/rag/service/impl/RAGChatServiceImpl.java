@@ -143,8 +143,8 @@ public class RAGChatServiceImpl implements RAGChatService {
 
         RetrievalContext ctx = retrievalEngine.retrieve(subIntents, DEFAULT_TOP_K);
         if (ctx.isEmpty()) {
-            String emptyReply = "未检索到与问题相关的文档内容。";
-            callback.onContent(emptyReply);
+
+            callback.onContent(buildEmptyRetrievalReply(rewriteResult.rewrittenQuestion(), question));
             callback.onComplete();
             return;
         }
@@ -224,7 +224,24 @@ public class RAGChatServiceImpl implements RAGChatService {
         String normalized = text.replaceAll("\\s+", " ").trim();
         return normalized.length() <= 120 ? normalized : normalized.substring(0, 120) + "...";
     }
-
+    private String buildEmptyRetrievalReply(String rewrittenQuestion, String originalQuestion) {
+        String normalized = StrUtil.blankToDefault(rewrittenQuestion, originalQuestion);
+        if (isMedicationDoseQuestion(normalized)) {
+            return "根据当前可用资料，还不能判断这个药一次应该吃几片。不同药物、规格和适应症的用法差异很大，不能直接替你确定剂量。建议先确认药名、规格和说明书，必要时咨询医生或药师。";
+        }
+        if (isHighRiskQuestion(normalized)) {
+            return "根据当前可用资料，还不能判断这是不是正常情况。但这类情况不建议仅在家观察，建议尽快就医，建议尽快到医院进一步评估；如果伴有腹痛明显、头晕、出血增多或其他明显不适，请尽快就医，必要时急诊处理。";
+        }
+        return "根据当前可用资料，暂时还不能直接判断这个问题。现有内容里没有足够信息支持更具体的结论。如果你愿意，可以补充更具体的情况，我再帮你一起梳理。";
+    }
+    private boolean isMedicationDoseQuestion(String question) {
+        return StrUtil.containsAny(question,
+                "这个药", "怎么吃", "一次吃几片", "吃几片", "吃多少", "剂量", "用量", "说明书", "药名");
+    }
+    private boolean isHighRiskQuestion(String question) {
+        return StrUtil.containsAny(question,
+                "怀孕", "孕早期", "停经", "出血", "流血", "腹痛", "肚子疼", "头晕", "乳房", "硬块", "肿块", "溢液", "异常出血");
+    }
     private StreamCancellationHandle streamSystemResponse(String question, List<ChatMessage> history,
                                                           String customPrompt, StreamCallback callback) {
         String systemPrompt = StrUtil.isNotBlank(customPrompt)

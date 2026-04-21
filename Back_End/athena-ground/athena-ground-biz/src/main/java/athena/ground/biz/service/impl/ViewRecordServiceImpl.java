@@ -9,7 +9,7 @@ import athena.ground.biz.domain.dto.BlogListDTO;
 import athena.ground.biz.domain.mapper.NoteBasicDOMapper;
 import athena.ground.biz.domain.mapper.NoteCountDOMapper;
 import athena.ground.biz.mq.producer.ViewRecordProducer;
-import athena.ground.biz.rpc.UserAuthFeginApi;
+import athena.ground.biz.rpc.UserAuthFeignApi;
 import athena.ground.biz.service.ViewRecordService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +43,7 @@ public class ViewRecordServiceImpl implements ViewRecordService {
     private NoteCountDOMapper noteCountDOMapper;
 
     @Resource
-    private UserAuthFeginApi userAuthFeginApi;
+    private UserAuthFeignApi userAuthFeginApi;
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 

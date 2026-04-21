@@ -21,7 +21,7 @@ import athena.ground.biz.domain.mapper.NoteTopicRelationMapper;
 import athena.ground.biz.domain.mapper.UserViewRecordMapper;
 import athena.ground.biz.mq.event.NoteTopicBuildEvent;
 import athena.ground.biz.mq.producer.NoteTopicBuildProducer;
-import athena.ground.biz.rpc.UserAuthFeginApi;
+import athena.ground.biz.rpc.UserAuthFeignApi;
 import athena.ground.biz.service.BlogAskService;
 import athena.ground.biz.service.GroundService;
 import athena.ground.biz.service.NoteInteractionService;
@@ -77,7 +77,7 @@ public class GroundServiceImpl implements GroundService {
     private UserViewRecordMapper userViewRecordMapper;
 
     @Resource
-    private UserAuthFeginApi userAuthFeginApi;
+    private UserAuthFeignApi userAuthFeginApi;
 
     @Resource
     private NoteInteractionService noteInteractionService;
@@ -351,16 +351,13 @@ public class GroundServiceImpl implements GroundService {
         if (noteBasicDO == null) {
             return Result.fail("笔记不存在");
         }
-        if (!userId.equals(noteBasicDO.getUserId())) {
-            return Result.fail("无权删除该笔记");
-        }
+
 
         try {
-            athenaInsightNoteFeatureService.deleteByNoteId(noteId, userId);
+            athenaInsightNoteFeatureService.deleteByNoteId(noteId);
             if (shouldSyncRag(noteBasicDO.getType())) {
                 athenaNoteDocumentUploadService.deleteByNoteId(noteId, noteBasicDO.getType(), userId);
             }
-
             noteTopicRelationMapper.deleteByNoteId(noteId);
             noteLikeDOMapper.deleteByNoteId(noteId);
             noteCollectionDOMapper.deleteByNoteId(noteId);
