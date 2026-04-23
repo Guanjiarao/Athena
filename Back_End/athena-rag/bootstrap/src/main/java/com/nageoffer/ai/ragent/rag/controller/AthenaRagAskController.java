@@ -17,6 +17,12 @@
 
 package com.nageoffer.ai.ragent.rag.controller;
 
+
+
+
+
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import com.nageoffer.ai.ragent.framework.convention.Result;
 import com.nageoffer.ai.ragent.framework.web.Results;
 import com.nageoffer.ai.ragent.rag.controller.request.AthenaAskRequest;
@@ -36,11 +42,13 @@ import org.springframework.web.bind.annotation.RestController;
 @Deprecated
 @RestController
 @RequiredArgsConstructor
+@Tag(name = "RAG接口")
 public class AthenaRagAskController {
 
     private final AthenaRagAskService athenaRagAskService;
 
     @PostMapping("/athena/rag/ask")
+    @Operation(summary = "接口操作")
     public Result<AthenaAskVO> ask(@RequestBody AthenaAskRequest request) {
         return Results.success(athenaRagAskService.ask(request));
     }

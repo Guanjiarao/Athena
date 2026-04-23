@@ -25,21 +25,23 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nageoffer.ai.ragent.framework.context.UserContext;
 import com.nageoffer.ai.ragent.triage.dao.entity.TriageSessionRecordDO;
 import com.nageoffer.ai.ragent.triage.dao.mapper.TriageSessionRecordMapper;
+import com.nageoffer.ai.ragent.triage.engine.TriageState;
 import com.nageoffer.ai.ragent.triage.model.RiskLevel;
 import com.nageoffer.ai.ragent.triage.model.TriageAction;
 import com.nageoffer.ai.ragent.triage.model.TriageContext;
-import com.nageoffer.ai.ragent.triage.engine.TriageState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 
 /**
- * triage 终态结果 MySQL 持久化实现。
+ * triage 终态结果 PostgreSQL 持久化实现。
  */
 @Slf4j
 @Repository
+@Primary
 @RequiredArgsConstructor
-public class MysqlTriageRepository implements TriageRepository {
+public class PostgresTriageRepository implements TriageRepository {
 
     private final TriageSessionRecordMapper triageSessionRecordMapper;
     private final ObjectMapper objectMapper;

@@ -17,6 +17,9 @@
 
 package com.nageoffer.ai.ragent.triage.controller.request;
 
+
+
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -33,16 +36,19 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "就医助手分析请求。")
 public class TriageAnalyzeRequest {
 
     /**
      * 会话 ID，可为空。
      */
+@Schema(description = "就医助手分析请求。")
     private String sessionId;
 
     /**
      * 用户原始输入。
      */
     @NotBlank(message = "userInput 不能为空")
+    @Schema(description = "用户原始输入。")
     private String userInput;
 }

@@ -17,6 +17,9 @@
 
 package com.nageoffer.ai.ragent.triage.controller.vo;
 
+
+
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.nageoffer.ai.ragent.triage.model.Symptom;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -33,8 +36,10 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "追问动作对应的数据载荷。")
 public class TriageClarificationData {
 
+@Schema(description = "sessionId")
     private String sessionId;
 
     @Builder.Default
@@ -43,5 +48,6 @@ public class TriageClarificationData {
     @Builder.Default
     private List<String> missingFields = new ArrayList<>();
 
+@Schema(description = "followUpQuestion")
     private String followUpQuestion;
 }

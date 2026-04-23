@@ -18,6 +18,7 @@
 package com.nageoffer.ai.ragent.triage.repository;
 
 import com.nageoffer.ai.ragent.triage.model.TriageContext;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * In-memory mock repository used to simulate persistence for demos and tests.
  */
 @Repository
+@Profile("test")
 public class MockTriageRepository implements TriageRepository {
 
     private final ConcurrentHashMap<String, TriageContext> storage = new ConcurrentHashMap<>();

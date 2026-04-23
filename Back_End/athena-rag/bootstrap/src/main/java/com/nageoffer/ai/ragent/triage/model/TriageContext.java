@@ -48,7 +48,12 @@ public class TriageContext {
     private String userInput;
 
     /**
-     * All historical user turns in the same session.
+     * Rolling summary of earlier turns.
+     */
+    private String conversationSummary;
+
+    /**
+     * All recent user turns kept in the active window.
      */
     @Default
     private List<String> conversationHistory = new ArrayList<>();
@@ -110,7 +115,27 @@ public class TriageContext {
             return;
         }
         conversationHistory.add(turnText.trim());
-        userInput = buildConversationTranscript();
+    }
+
+    public List<String> evictOldestTurnsByCharBudget(int targetRecentWindowChars) {
+        ensureCollections();
+        List<String> evicted = new ArrayList<>();
+        while (conversationHistory.size() > 1 && recentConversationChars() > targetRecentWindowChars) {
+            evicted.add(conversationHistory.remove(0));
+        }
+        return evicted;
+    }
+
+    public int recentConversationChars() {
+        ensureCollections();
+        if (conversationHistory.isEmpty()) {
+            return 0;
+        }
+        return String.join("\n", conversationHistory).length();
+    }
+
+    public int totalTranscriptChars(boolean includeSummary) {
+        return buildConversationTranscript(includeSummary).length();
     }
 
     public void appendState(String state) {
@@ -130,9 +155,20 @@ public class TriageContext {
     }
 
     public String buildConversationTranscript() {
+        return buildConversationTranscript(false);
+    }
+
+    public String buildConversationTranscript(boolean includeSummary) {
         ensureCollections();
+        List<String> sections = new ArrayList<>();
+        if (includeSummary && conversationSummary != null && !conversationSummary.isBlank()) {
+            sections.add("【历史摘要】\n" + conversationSummary.trim());
+        }
         if (!conversationHistory.isEmpty()) {
-            return String.join("\n", conversationHistory);
+            sections.add("【最近对话】\n" + String.join("\n", conversationHistory));
+        }
+        if (!sections.isEmpty()) {
+            return String.join("\n\n", sections);
         }
         return userInput == null ? "" : userInput;
     }

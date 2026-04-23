@@ -17,38 +17,48 @@
 
 package com.nageoffer.ai.ragent.knowledge.controller.request;
 
+
+
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
+@Schema(description = "KnowledgeDocumentCreateRequest请求参数")
 public class KnowledgeDocumentCreateRequest {
 
     /**
      * 所属知识库 ID
      */
+    @Schema(description = "所属知识库 ID")
     private String kbId;
 
     /**
      * 文档名称
      */
+    @Schema(description = "文档名称")
     private String docName;
 
     /**
      * 文件地址
      */
+    @Schema(description = "文件地址")
     private String fileUrl;
 
     /**
      * 文件类型：pdf / markdown / docx 等
      */
+    @Schema(description = "文件类型：pdf / markdown / docx 等")
     private String fileType;
 
     /**
      * 文件大小（字节）
      */
+    @Schema(description = "文件大小（字节）")
     private Long fileSize;
 
     /**
      * 是否启用：1-启用，0-禁用（可选，默认 1）
      */
+    @Schema(description = "是否启用：1-启用，0-禁用（可选，默认 1）")
     private Integer enabled;
 }

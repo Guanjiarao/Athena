@@ -17,6 +17,12 @@
 
 package com.nageoffer.ai.ragent.rag.controller;
 
+
+
+
+
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import com.nageoffer.ai.ragent.framework.convention.Result;
 import com.nageoffer.ai.ragent.framework.idempotent.IdempotentSubmit;
 import com.nageoffer.ai.ragent.framework.web.Results;
@@ -34,6 +40,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  */
 @RestController
 @RequiredArgsConstructor
+@Tag(name = "RAG接口")
 public class RAGChatController {
 
     private final RAGChatService ragChatService;
@@ -59,6 +66,7 @@ public class RAGChatController {
      */
     @IdempotentSubmit
     @PostMapping(value = "/rag/v3/stop")
+    @Operation(summary = "发起 SSE 流式对话")
     public Result<Void> stop(@RequestParam String taskId) {
         ragChatService.stopTask(taskId);
         return Results.success();

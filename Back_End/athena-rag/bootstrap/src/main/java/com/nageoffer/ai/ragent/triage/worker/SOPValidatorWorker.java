@@ -34,10 +34,6 @@ import java.util.regex.Pattern;
 
 /**
  * 医疗 SOP 状态机校验 Worker。
- *
- * <p>它的职责不是“再解释一遍症状”，而是严格检查：
- * 当前这份病历信息是否已经满足最低问诊规范，
- * 如果不满足，就明确告诉编排器还差哪些字段。</p>
  */
 @Component
 public class SOPValidatorWorker extends AbstractStructuredTriageWorker {
@@ -61,13 +57,6 @@ public class SOPValidatorWorker extends AbstractStructuredTriageWorker {
         super(llmService, objectMapper);
     }
 
-    /**
-     * 基于硬编码 SOP 与 LLM 双重判断，得出当前还缺什么关键信息。
-     *
-     * <p>这里采用“LLM 主判 + 规则兜底”的组合方式：
-     * - LLM 负责理解自然语言细节；
-     * - 硬编码规则负责兜住医疗红线，避免漏问。</p>
-     */
     public TriageContext execute(TriageContext context) {
         if (context == null) {
             context = new TriageContext();
@@ -82,12 +71,7 @@ public class SOPValidatorWorker extends AbstractStructuredTriageWorker {
         List<String> matchedChecklist = buildMatchedChecklist(context);
         List<String> llmMissingFields = new ArrayList<>();
         try {
-            String rawResponse = invokeLlm(
-                    buildSystemPrompt(),
-                    buildUserPrompt(context, matchedChecklist),
-                    0.1D,
-                    0.2D
-            );
+            String rawResponse = invokeLlm(buildSystemPrompt(), buildUserPrompt(context, matchedChecklist), 0.1D, 0.2D);
             llmMissingFields = parseMissingFields(rawResponse);
         } catch (Exception ignored) {
             llmMissingFields = new ArrayList<>();
@@ -206,10 +190,10 @@ public class SOPValidatorWorker extends AbstractStructuredTriageWorker {
         }
 
         if (containsSymptom(symptoms, "腹痛")) {
-            if (!containsAny(userInput, List.of("发热", "发烧"))) {
+            if (!hasFeverAnswer(userInput)) {
                 missingFields.add("是否伴随发热");
             }
-            if (!containsAny(userInput, List.of("恶心", "想吐", "呕吐", "吐了"))) {
+            if (!hasNauseaOrVomitingAnswer(userInput)) {
                 missingFields.add("是否伴随恶心或呕吐");
             }
         }
@@ -262,6 +246,18 @@ public class SOPValidatorWorker extends AbstractStructuredTriageWorker {
             }
         }
         return false;
+    }
+
+    private boolean hasFeverAnswer(String text) {
+        return containsAny(text, List.of(
+                "发热", "发烧", "没有发热", "没发热", "无发热", "没有发烧", "没发烧", "无发烧", "没有明显发烧"
+        ));
+    }
+
+    private boolean hasNauseaOrVomitingAnswer(String text) {
+        return containsAny(text, List.of(
+                "恶心", "想吐", "呕吐", "吐了", "没有呕吐", "没呕吐", "无呕吐", "没有吐", "没吐", "不呕吐", "不吐"
+        ));
     }
 
     private String renderChecklist(List<String> checklist) {

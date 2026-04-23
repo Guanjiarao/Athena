@@ -17,6 +17,9 @@
 
 package com.nageoffer.ai.ragent.rag.controller.vo;
 
+
+
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -35,25 +38,30 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Athena 问答响应。")
 public class AthenaAskVO {
 
     /**
      * 回答内容
      */
+@Schema(description = "Athena 问答响应。")
     private String answer;
 
     /**
      * 实际生效年龄
      */
+    @Schema(description = "实际生效年龄")
     private Integer resolvedAge;
 
     /**
      * 命中的知识库编码列表
      */
+    @Schema(description = "命中的知识库编码列表")
     private List<String> kbCodes;
 
     /**
      * 引用笔记列表
      */
+    @Schema(description = "引用笔记列表")
     private List<AthenaNoteReferenceVO> references;
 }

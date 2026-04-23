@@ -17,6 +17,12 @@
 
 package com.nageoffer.ai.ragent.user.controller;
 
+
+
+
+
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import com.nageoffer.ai.ragent.user.controller.request.LoginRequest;
 import com.nageoffer.ai.ragent.user.controller.vo.LoginVO;
 import com.nageoffer.ai.ragent.framework.convention.Result;
@@ -33,6 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequiredArgsConstructor
+@Tag(name = "用户接口")
 public class AuthController {
 
     private final AuthService authService;
@@ -41,6 +48,7 @@ public class AuthController {
      * 用户登录接口
      */
     @PostMapping("/auth/login")
+    @Operation(summary = "用户登录接口")
     public Result<LoginVO> login(@RequestBody LoginRequest requestParam) {
         return Results.success(authService.login(requestParam));
     }
@@ -49,6 +57,7 @@ public class AuthController {
      * 用户登出接口，清除用户的认证信息和会话
      */
     @PostMapping("/auth/logout")
+    @Operation(summary = "用户登出接口，清除用户的认证信息和会话")
     public Result<Void> logout() {
         authService.logout();
         return Results.success();

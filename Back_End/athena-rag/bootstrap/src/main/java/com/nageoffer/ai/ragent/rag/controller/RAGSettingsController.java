@@ -17,6 +17,12 @@
 
 package com.nageoffer.ai.ragent.rag.controller;
 
+
+
+
+
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import com.nageoffer.ai.ragent.framework.convention.Result;
 import com.nageoffer.ai.ragent.framework.web.Results;
 import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
@@ -43,6 +49,7 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequiredArgsConstructor
+@Tag(name = "RAG接口")
 public class RAGSettingsController {
 
     private final RAGDefaultProperties ragDefaultProperties;
@@ -61,6 +68,7 @@ public class RAGSettingsController {
      * 获取系统 RAG、AI 模型等配置信息
      */
     @GetMapping("/rag/settings")
+    @Operation(summary = "获取系统 RAG、AI 模型等配置信息")
     public Result<SystemSettingsVO> settings() {
         SystemSettingsVO response = SystemSettingsVO.builder()
                 .upload(SystemSettingsVO.UploadSettings.builder()

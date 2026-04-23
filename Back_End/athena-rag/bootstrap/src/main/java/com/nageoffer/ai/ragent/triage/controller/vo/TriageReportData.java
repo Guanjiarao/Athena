@@ -17,6 +17,9 @@
 
 package com.nageoffer.ai.ragent.triage.controller.vo;
 
+
+
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.nageoffer.ai.ragent.triage.model.RiskLevel;
 import com.nageoffer.ai.ragent.triage.model.Symptom;
 import lombok.AllArgsConstructor;
@@ -34,12 +37,16 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "病历报告动作对应的数据载荷。")
 public class TriageReportData {
 
+@Schema(description = "sessionId")
     private String sessionId;
 
+@Schema(description = "report")
     private String report;
 
+@Schema(description = "riskAssessment")
     private RiskLevel riskAssessment;
 
     @Builder.Default

@@ -17,6 +17,9 @@
 
 package com.nageoffer.ai.ragent.ingestion.controller.request;
 
+
+
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.nageoffer.ai.ragent.rag.controller.request.DocumentSourceRequest;
 import com.nageoffer.ai.ragent.rag.core.vector.VectorSpaceId;
 import lombok.Data;
@@ -28,27 +31,32 @@ import java.util.Map;
  * 用于接收创建新摄取任务的请求参数，包括管道ID、文档源信息及元数据。
  */
 @Data
+@Schema(description = "摄取任务创建请求对象")
 public class IngestionTaskCreateRequest {
 
     /**
      * 执行本次摄取的管道ID
      */
+@Schema(description = "摄取任务创建请求对象")
     private String pipelineId;
 
     /**
      * 文档源信息
      */
+    @Schema(description = "文档源信息")
     private DocumentSourceRequest source;
 
     /**
      * 摄取任务的元数据信息
      * 自定义的附加属性键值对
      */
+    @Schema(description = "摄取任务的元数据信息")
     private Map<String, Object> metadata;
 
     /**
      * 向量空间ID，指定向量数据写入的目标集合
      * 如果不指定，则使用默认的向量空间
      */
+    @Schema(description = "向量空间ID，指定向量数据写入的目标集合")
     private VectorSpaceId vectorSpaceId;
 }

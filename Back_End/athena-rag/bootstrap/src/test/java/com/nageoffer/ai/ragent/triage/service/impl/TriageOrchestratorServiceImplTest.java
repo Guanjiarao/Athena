@@ -18,6 +18,7 @@
 package com.nageoffer.ai.ragent.triage.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.nageoffer.ai.ragent.triage.config.TriageSessionProperties;
 import com.nageoffer.ai.ragent.triage.controller.request.TriageAnalyzeRequest;
 import com.nageoffer.ai.ragent.triage.controller.vo.TriageAnalyzeResponse;
@@ -90,7 +91,15 @@ class TriageOrchestratorServiceImplTest {
         @SuppressWarnings("unchecked")
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        triageSessionManager = new TriageSessionManager(redisTemplate, new ObjectMapper(), new TriageSessionProperties());
+
+        TriageSessionProperties sessionProperties = new TriageSessionProperties();
+        sessionProperties.setContextWindowMaxChars(40);
+        sessionProperties.setTargetRecentWindowChars(20);
+        sessionProperties.setSummaryMaxChars(120);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        triageSessionManager = new TriageSessionManager(redisTemplate, objectMapper, sessionProperties);
         TriageStateMachine triageStateMachine = new TriageStateMachine(
                 semanticParserWorker,
                 sopValidatorWorker,
@@ -100,7 +109,9 @@ class TriageOrchestratorServiceImplTest {
         orchestratorService = new TriageOrchestratorServiceImpl(
                 triageStateMachine,
                 triageSessionManager,
-                triageRepository
+                triageRepository,
+                triageModelGateway,
+                sessionProperties
         );
     }
 
@@ -213,6 +224,31 @@ class TriageOrchestratorServiceImplTest {
         assertFalse(data.getWarningText().isBlank());
         verifyNoInteractions(triageModelGateway);
         verify(triageRepository).save(any(TriageContext.class));
+    }
+
+    @Test
+    void shouldCompactOldConversationIntoSummaryByCharBudget() {
+        doAnswer(invocation -> invocation.getArgument(0)).when(semanticParserWorker).execute(any(TriageContext.class));
+        doAnswer(invocation -> {
+            TriageContext context = invocation.getArgument(0);
+            context.setMissingFields(Collections.singletonList("持续时间"));
+            return context;
+        }).when(sopValidatorWorker).execute(any(TriageContext.class));
+        when(triageModelGateway.summarizeConversationMemory(anyList(), anyInt())).thenReturn("早期摘要：腹痛伴恶心，待补充持续时间。");
+
+        String sessionId = "session-summary";
+        orchestratorService.analyze(TriageAnalyzeRequest.builder().sessionId(sessionId).userInput("右下腹疼痛明显").build());
+        orchestratorService.analyze(TriageAnalyzeRequest.builder().sessionId(sessionId).userInput("还有一点恶心").build());
+        orchestratorService.analyze(TriageAnalyzeRequest.builder().sessionId(sessionId).userInput("按压时更疼").build());
+        orchestratorService.analyze(TriageAnalyzeRequest.builder().sessionId(sessionId).userInput("今天下午更明显").build());
+
+        TriageContext cachedContext = triageSessionManager.getContext(sessionId);
+        assertNotNull(cachedContext);
+        assertTrue(cachedContext.recentConversationChars() <= 20);
+        assertTrue(cachedContext.getConversationSummary().contains("早期摘要"));
+        assertTrue(cachedContext.getUserInput().contains("【历史摘要】"));
+        assertTrue(cachedContext.getUserInput().contains("【最近对话】"));
+        verify(triageModelGateway).summarizeConversationMemory(anyList(), anyInt());
     }
 
     private Symptom symptom(String name, String bodyPart) {

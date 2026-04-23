@@ -17,6 +17,12 @@
 
 package com.nageoffer.ai.ragent.knowledge.controller;
 
+
+
+
+
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.nageoffer.ai.ragent.knowledge.controller.request.KnowledgeChunkBatchRequest;
 import com.nageoffer.ai.ragent.knowledge.controller.request.KnowledgeChunkCreateRequest;
@@ -42,6 +48,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @Validated
+@Tag(name = "知识库接口")
 public class KnowledgeChunkController {
 
     private final KnowledgeChunkService knowledgeChunkService;
@@ -50,6 +57,7 @@ public class KnowledgeChunkController {
      * 分页查询 Chunk 列表
      */
     @GetMapping("/knowledge-base/docs/{doc-id}/chunks")
+    @Operation(summary = "分页查询 Chunk 列表")
     public Result<IPage<KnowledgeChunkVO>> pageQuery(@PathVariable("doc-id") String docId,
                                                      @Validated KnowledgeChunkPageRequest requestParam) {
         return Results.success(knowledgeChunkService.pageQuery(docId, requestParam));
@@ -59,6 +67,7 @@ public class KnowledgeChunkController {
      * 新增 Chunk
      */
     @PostMapping("/knowledge-base/docs/{doc-id}/chunks")
+    @Operation(summary = "新增 Chunk")
     public Result<KnowledgeChunkVO> create(@PathVariable("doc-id") String docId,
                                            @RequestBody KnowledgeChunkCreateRequest request) {
         return Results.success(knowledgeChunkService.create(docId, request));
@@ -68,6 +77,7 @@ public class KnowledgeChunkController {
      * 更新 Chunk 内容
      */
     @PutMapping("/knowledge-base/docs/{doc-id}/chunks/{chunk-id}")
+    @Operation(summary = "更新 Chunk 内容")
     public Result<Void> update(@PathVariable("doc-id") String docId,
                                @PathVariable("chunk-id") String chunkId,
                                @RequestBody KnowledgeChunkUpdateRequest request) {
@@ -79,6 +89,7 @@ public class KnowledgeChunkController {
      * 删除 Chunk
      */
     @DeleteMapping("/knowledge-base/docs/{doc-id}/chunks/{chunk-id}")
+    @Operation(summary = "删除 Chunk")
     public Result<Void> delete(@PathVariable("doc-id") String docId,
                                @PathVariable("chunk-id") String chunkId) {
         knowledgeChunkService.delete(docId, chunkId);
@@ -89,6 +100,7 @@ public class KnowledgeChunkController {
      * 启用单条 Chunk
      */
     @PostMapping("/knowledge-base/docs/{doc-id}/chunks/{chunk-id}/enable")
+    @Operation(summary = "启用单条 Chunk")
     public Result<Void> enable(@PathVariable("doc-id") String docId,
                                @PathVariable("chunk-id") String chunkId) {
         knowledgeChunkService.enableChunk(docId, chunkId, true);
@@ -99,6 +111,7 @@ public class KnowledgeChunkController {
      * 禁用单条 Chunk
      */
     @PostMapping("/knowledge-base/docs/{doc-id}/chunks/{chunk-id}/disable")
+    @Operation(summary = "禁用单条 Chunk")
     public Result<Void> disable(@PathVariable("doc-id") String docId,
                                 @PathVariable("chunk-id") String chunkId) {
         knowledgeChunkService.enableChunk(docId, chunkId, false);
@@ -109,6 +122,7 @@ public class KnowledgeChunkController {
      * 批量启用 Chunk
      */
     @PostMapping("/knowledge-base/docs/{doc-id}/chunks/batch-enable")
+    @Operation(summary = "批量启用 Chunk")
     public Result<Void> batchEnable(@PathVariable("doc-id") String docId,
                                     @RequestBody(required = false) KnowledgeChunkBatchRequest request) {
         knowledgeChunkService.batchEnable(docId, request);
@@ -119,6 +133,7 @@ public class KnowledgeChunkController {
      * 批量禁用 Chunk
      */
     @PostMapping("/knowledge-base/docs/{doc-id}/chunks/batch-disable")
+    @Operation(summary = "批量禁用 Chunk")
     public Result<Void> batchDisable(@PathVariable("doc-id") String docId,
                                      @RequestBody(required = false) KnowledgeChunkBatchRequest request) {
         knowledgeChunkService.batchDisable(docId, request);
@@ -129,6 +144,7 @@ public class KnowledgeChunkController {
      * 重建文档向量（以数据库 enabled=1 的 chunk 为准）
      */
     @PostMapping("/knowledge-base/docs/{doc-id}/chunks/rebuild")
+    @Operation(summary = "重建文档向量（以数据库 enabled=1 的 chunk 为准）")
     public Result<Void> rebuild(@PathVariable("doc-id") String docId) {
         knowledgeChunkService.rebuildByDocId(docId);
         return Results.success();

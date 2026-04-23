@@ -215,7 +215,10 @@ app:
 triage:
   session:
     ttl-minutes: 120
-    key-prefix: triage:session:
+    key-prefix: "triage:session:"
+    context-window-max-chars: 200
+    target-recent-window-chars: 120
+    summary-max-chars: 200
   ai:
     text-model: qwen-plus
     report-model: qwen3-max

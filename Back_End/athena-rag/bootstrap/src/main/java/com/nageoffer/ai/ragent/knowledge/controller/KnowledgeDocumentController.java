@@ -17,6 +17,12 @@
 
 package com.nageoffer.ai.ragent.knowledge.controller;
 
+
+
+
+
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.nageoffer.ai.ragent.knowledge.controller.request.KnowledgeDocumentPageRequest;
@@ -53,6 +59,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @Validated
+@Tag(name = "知识库接口")
 public class KnowledgeDocumentController {
 
     private final KnowledgeDocumentService documentService;
@@ -61,6 +68,7 @@ public class KnowledgeDocumentController {
      * 上传文档：入库记录 + 文件落盘，返回文档ID
      */
     @PostMapping(value = "/knowledge-base/{kb-id}/docs/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "上传文档：入库记录 + 文件落盘，返回文档ID")
     public Result<KnowledgeDocumentVO> upload(@PathVariable("kb-id") String kbId,
                                               @RequestPart(value = "file", required = false) MultipartFile file,
                                               @ModelAttribute KnowledgeDocumentUploadRequest requestParam) {
@@ -71,6 +79,7 @@ public class KnowledgeDocumentController {
      * 开始分块：抽取文本 -> 分块 -> 嵌入并写入向量库
      */
     @PostMapping("/knowledge-base/docs/{doc-id}/chunk")
+    @Operation(summary = "开始分块：抽取文本 -> 分块 -> 嵌入并写入向量库")
     public Result<Void> startChunk(@PathVariable(value = "doc-id") String docId) {
         documentService.startChunk(docId);
         return Results.success();
@@ -80,6 +89,7 @@ public class KnowledgeDocumentController {
      * 删除文档：逻辑删除。可选同时删除向量库中该文档的所有 chunk
      */
     @DeleteMapping("/knowledge-base/docs/{doc-id}")
+    @Operation(summary = "删除文档：逻辑删除。可选同时删除向量库中该文档的所有 chunk")
     public Result<Void> delete(@PathVariable(value = "doc-id") String docId) {
         documentService.delete(docId);
         return Results.success();
@@ -89,6 +99,7 @@ public class KnowledgeDocumentController {
      * 查询文档详情
      */
     @GetMapping("/knowledge-base/docs/{docId}")
+    @Operation(summary = "查询文档详情")
     public Result<KnowledgeDocumentVO> get(@PathVariable String docId) {
         return Results.success(documentService.get(docId));
     }
@@ -97,6 +108,7 @@ public class KnowledgeDocumentController {
      * 更新文档信息
      */
     @PutMapping("/knowledge-base/docs/{docId}")
+    @Operation(summary = "更新文档信息")
     public Result<Void> update(@PathVariable String docId,
                                @RequestBody KnowledgeDocumentUpdateRequest requestParam) {
         documentService.update(docId, requestParam);
@@ -107,6 +119,7 @@ public class KnowledgeDocumentController {
      * 分页查询文档列表（支持状态/关键字过滤）
      */
     @GetMapping("/knowledge-base/{kb-id}/docs")
+    @Operation(summary = "分页查询文档列表（支持状态/关键字过滤）")
     public Result<IPage<KnowledgeDocumentVO>> page(@PathVariable(value = "kb-id") String kbId,
                                                    KnowledgeDocumentPageRequest requestParam) {
         return Results.success(documentService.page(kbId, requestParam));
@@ -116,6 +129,7 @@ public class KnowledgeDocumentController {
      * 搜索文档（全局检索建议）
      */
     @GetMapping("/knowledge-base/docs/search")
+    @Operation(summary = "搜索文档（全局检索建议）")
     public Result<List<KnowledgeDocumentSearchVO>> search(@RequestParam(value = "keyword", required = false) String keyword,
                                                           @RequestParam(value = "limit", defaultValue = "8") int limit) {
         return Results.success(documentService.search(keyword, limit));
@@ -125,6 +139,7 @@ public class KnowledgeDocumentController {
      * 启用/禁用文档
      */
     @PatchMapping("/knowledge-base/docs/{docId}/enable")
+    @Operation(summary = "启用/禁用文档")
     public Result<Void> enable(@PathVariable String docId,
                                @RequestParam("value") boolean enabled) {
         documentService.enable(docId, enabled);
@@ -135,6 +150,7 @@ public class KnowledgeDocumentController {
      * 查询文档分块日志列表
      */
     @GetMapping("/knowledge-base/docs/{docId}/chunk-logs")
+    @Operation(summary = "查询文档分块日志列表")
     public Result<IPage<KnowledgeDocumentChunkLogVO>> getChunkLogs(@PathVariable String docId,
                                                                    Page<KnowledgeDocumentChunkLogVO> page) {
         return Results.success(documentService.getChunkLogs(docId, page));

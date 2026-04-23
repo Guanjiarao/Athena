@@ -30,30 +30,13 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * 语义解析 Worker。
- *
- * <p>职责非常单一：只把用户自然语言解析为结构化症状实体，
- * 不做追问决策，也不做风险判断。这样后面的 Worker 才能基于同一份结构化事实继续工作。</p>
  */
 @Component
 public class SemanticParserWorker extends AbstractStructuredTriageWorker {
-
-    private static final Pattern DURATION_PATTERN = Pattern.compile(
-            "(\\d+\\s*(分钟|小时|天|周|个月|月|年)|半天|昨晚开始|今天开始|刚刚开始|一整天|好几天)"
-    );
-
-    private static final Map<String, List<String>> SYMPTOM_KEYWORDS = createSymptomKeywords();
-
-    private static final Map<String, List<String>> BODY_PART_KEYWORDS = createBodyPartKeywords();
-
-    private static final List<String> CHARACTERISTIC_KEYWORDS = List.of(
-            "绞痛", "刺痛", "钝痛", "隐痛", "阵痛", "持续性", "间歇性", "撕裂样", "压榨样"
-    );
 
     private static final String OUTPUT_JSON_SCHEMA = """
             {
@@ -91,12 +74,6 @@ public class SemanticParserWorker extends AbstractStructuredTriageWorker {
         super(llmService, objectMapper);
     }
 
-    /**
-     * 执行语义解析，并把结果回填到上下文。
-     *
-     * <p>一旦 LLM 输出异常，系统会自动切换到轻量级规则兜底，
-     * 保证后续流程至少拿到一份可用的结构化数据，而不是整个链路中断。</p>
-     */
     public TriageContext execute(TriageContext context) {
         if (context == null) {
             context = new TriageContext();
@@ -107,18 +84,17 @@ public class SemanticParserWorker extends AbstractStructuredTriageWorker {
             return context;
         }
 
-        String rawResponse = null;
         List<Symptom> llmSymptoms = new ArrayList<>();
         try {
-            rawResponse = invokeLlm(buildSystemPrompt(), buildUserPrompt(context), 0.1D, 0.2D);
+            String rawResponse = invokeLlm(buildSystemPrompt(), buildUserPrompt(context), 0.1D, 0.2D);
             llmSymptoms = parseSemanticResponse(rawResponse);
-        } catch (Exception ex) {
-            // 这里不向上抛异常，而是切到规则兜底，避免把“结构化抽取失败”放大成“整条问诊链路失败”。
+        } catch (Exception ignored) {
             llmSymptoms = new ArrayList<>();
         }
 
         List<Symptom> heuristicSymptoms = heuristicExtract(context.getUserInput());
-        context.setExtractedSymptoms(mergeSymptoms(llmSymptoms, heuristicSymptoms));
+        List<Symptom> mergedSymptoms = mergeSymptoms(llmSymptoms, heuristicSymptoms);
+        context.setExtractedSymptoms(filterNegatedSymptoms(mergedSymptoms, context.getUserInput()));
         return context;
     }
 
@@ -131,7 +107,9 @@ public class SemanticParserWorker extends AbstractStructuredTriageWorker {
                 1. 识别主诉症状，并规范化为常见临床表达，例如“肚子疼”可归一为“腹痛”。
                 2. 抽取症状相关的持续时间、部位、严重程度、症状性质和伴随症状。
                 3. 如果信息缺失，对应字段留空或留空数组，不要编造。
-                4. 只输出符合下列 JSON Schema 的 JSON，不要输出任何解释文字。
+                4. 对被明确否定的症状绝对不要抽取，例如“没有发热”“没吐”“不是拉肚子”。
+                5. accompanyingSymptoms 中也不要包含被否定的症状。
+                6. 只输出符合下列 JSON Schema 的 JSON，不要输出任何解释文字。
 
                 JSON Schema:
                 """ + OUTPUT_JSON_SCHEMA;
@@ -158,8 +136,6 @@ public class SemanticParserWorker extends AbstractStructuredTriageWorker {
                 "语义解析"
         );
         List<Symptom> symptoms = result.getExtractedSymptoms();
-
-        // 有些模型会偷懒直接返回数组，这里做一次兼容性降级。
         if ((symptoms == null || symptoms.isEmpty()) && StrUtil.contains(extractJsonPayload(rawResponse), "[")) {
             symptoms = readTypeSafely(
                     rawResponse,
@@ -174,13 +150,15 @@ public class SemanticParserWorker extends AbstractStructuredTriageWorker {
 
     private List<Symptom> heuristicExtract(String userInput) {
         List<String> detectedSymptomNames = new ArrayList<>();
-        for (Map.Entry<String, List<String>> entry : SYMPTOM_KEYWORDS.entrySet()) {
-            if (containsAny(userInput, entry.getValue())) {
+        for (var entry : SemanticParserSupport.SYMPTOM_KEYWORDS.entrySet()) {
+            if (SemanticParserSupport.containsAny(userInput, entry.getValue())
+                    && !SemanticParserSupport.isSymptomNegated(userInput, entry.getKey())) {
                 detectedSymptomNames.add(entry.getKey());
             }
         }
 
-        if (detectedSymptomNames.isEmpty() && containsAny(userInput, List.of("疼", "痛", "难受", "不舒服"))) {
+        if (detectedSymptomNames.isEmpty()
+                && SemanticParserSupport.containsAny(userInput, List.of("疼", "痛", "难受", "不舒服"))) {
             detectedSymptomNames.add("不适");
         }
 
@@ -193,7 +171,6 @@ public class SemanticParserWorker extends AbstractStructuredTriageWorker {
             List<String> accompanyingSymptoms = detectedSymptomNames.stream()
                     .filter(each -> !each.equals(symptomName))
                     .toList();
-
             symptoms.add(Symptom.builder()
                     .name(symptomName)
                     .bodyPart(extractBodyPart(userInput, symptomName))
@@ -250,6 +227,23 @@ public class SemanticParserWorker extends AbstractStructuredTriageWorker {
         return normalized;
     }
 
+    private List<Symptom> filterNegatedSymptoms(List<Symptom> symptoms, String userInput) {
+        if (symptoms == null || symptoms.isEmpty() || StrUtil.isBlank(userInput)) {
+            return symptoms == null ? new ArrayList<>() : symptoms;
+        }
+        List<Symptom> filtered = new ArrayList<>();
+        for (Symptom symptom : symptoms) {
+            if (symptom == null || SemanticParserSupport.isSymptomNegated(userInput, symptom.getName())) {
+                continue;
+            }
+            symptom.setAccompanyingSymptoms(symptom.getAccompanyingSymptoms().stream()
+                    .filter(each -> !SemanticParserSupport.isSymptomNegated(userInput, each))
+                    .toList());
+            filtered.add(symptom);
+        }
+        return normalizeSymptoms(filtered);
+    }
+
     private void fillBlankFields(Symptom target, Symptom source) {
         if (StrUtil.isBlank(target.getBodyPart())) {
             target.setBodyPart(trimToNull(source.getBodyPart()));
@@ -273,18 +267,18 @@ public class SemanticParserWorker extends AbstractStructuredTriageWorker {
     }
 
     private String extractDuration(String userInput) {
-        Matcher matcher = DURATION_PATTERN.matcher(userInput);
+        Matcher matcher = SemanticParserSupport.DURATION_PATTERN.matcher(userInput);
         return matcher.find() ? matcher.group(1).trim() : null;
     }
 
     private String extractSeverity(String userInput) {
-        if (containsAny(userInput, List.of("剧烈", "难忍", "疼得厉害", "非常严重", "特别痛"))) {
+        if (SemanticParserSupport.containsAny(userInput, List.of("剧烈", "难忍", "疼得厉害", "非常严重", "特别痛"))) {
             return "重度";
         }
-        if (containsAny(userInput, List.of("明显", "挺疼", "比较痛", "反复加重"))) {
+        if (SemanticParserSupport.containsAny(userInput, List.of("明显", "挺疼", "比较痛", "反复加重"))) {
             return "中度";
         }
-        if (containsAny(userInput, List.of("轻微", "有点", "偶尔", "隐隐"))) {
+        if (SemanticParserSupport.containsAny(userInput, List.of("轻微", "有点", "偶尔", "隐隐"))) {
             return "轻度";
         }
         return null;
@@ -292,7 +286,7 @@ public class SemanticParserWorker extends AbstractStructuredTriageWorker {
 
     private List<String> extractCharacteristics(String userInput) {
         List<String> result = new ArrayList<>();
-        for (String keyword : CHARACTERISTIC_KEYWORDS) {
+        for (String keyword : SemanticParserSupport.CHARACTERISTIC_KEYWORDS) {
             if (userInput.contains(keyword)) {
                 result.add(keyword);
             }
@@ -301,8 +295,8 @@ public class SemanticParserWorker extends AbstractStructuredTriageWorker {
     }
 
     private String extractBodyPart(String userInput, String symptomName) {
-        for (Map.Entry<String, List<String>> entry : BODY_PART_KEYWORDS.entrySet()) {
-            if (containsAny(userInput, entry.getValue())) {
+        for (var entry : SemanticParserSupport.BODY_PART_KEYWORDS.entrySet()) {
+            if (SemanticParserSupport.containsAny(userInput, entry.getValue())) {
                 return entry.getKey();
             }
         }
@@ -324,45 +318,5 @@ public class SemanticParserWorker extends AbstractStructuredTriageWorker {
 
     private String buildSymptomKey(Symptom symptom) {
         return symptom.getName() + "|" + StrUtil.blankToDefault(symptom.getBodyPart(), "");
-    }
-
-    private boolean containsAny(String text, List<String> keywords) {
-        if (StrUtil.isBlank(text) || keywords == null || keywords.isEmpty()) {
-            return false;
-        }
-        for (String keyword : keywords) {
-            if (StrUtil.isNotBlank(keyword) && text.contains(keyword)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static Map<String, List<String>> createSymptomKeywords() {
-        Map<String, List<String>> result = new LinkedHashMap<>();
-        result.put("腹痛", List.of("腹痛", "肚子疼", "肚子痛", "胃痛", "胃疼", "小腹痛", "下腹痛"));
-        result.put("发热", List.of("发热", "发烧", "体温高", "烧到"));
-        result.put("头痛", List.of("头痛", "脑袋疼", "头疼"));
-        result.put("胸痛", List.of("胸痛", "胸口痛", "心口痛"));
-        result.put("恶心", List.of("恶心", "想吐"));
-        result.put("呕吐", List.of("呕吐", "吐了", "吐出来"));
-        result.put("腹泻", List.of("腹泻", "拉肚子", "拉稀"));
-        result.put("头晕", List.of("头晕", "眩晕", "晕乎乎"));
-        result.put("呼吸困难", List.of("呼吸困难", "喘不过气", "气短"));
-        result.put("阴道出血", List.of("阴道出血", "流血", "见红", "出血"));
-        return result;
-    }
-
-    private static Map<String, List<String>> createBodyPartKeywords() {
-        Map<String, List<String>> result = new LinkedHashMap<>();
-        result.put("右下腹", List.of("右下腹"));
-        result.put("左下腹", List.of("左下腹"));
-        result.put("下腹部", List.of("下腹", "小腹"));
-        result.put("上腹部", List.of("上腹", "胃部", "胃那里"));
-        result.put("脐周", List.of("肚脐周围", "脐周"));
-        result.put("胸前区", List.of("胸口", "胸前", "心口"));
-        result.put("头顶部", List.of("头顶"));
-        result.put("太阳穴", List.of("太阳穴"));
-        return result;
     }
 }

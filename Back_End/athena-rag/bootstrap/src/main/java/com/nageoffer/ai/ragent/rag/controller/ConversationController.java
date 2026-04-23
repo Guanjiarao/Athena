@@ -17,6 +17,12 @@
 
 package com.nageoffer.ai.ragent.rag.controller;
 
+
+
+
+
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import com.nageoffer.ai.ragent.rag.controller.request.ConversationUpdateRequest;
 import com.nageoffer.ai.ragent.rag.controller.vo.ConversationMessageVO;
 import com.nageoffer.ai.ragent.rag.controller.vo.ConversationVO;
@@ -42,6 +48,7 @@ import java.util.List;
  */
 @RestController
 @RequiredArgsConstructor
+@Tag(name = "RAG接口")
 public class ConversationController {
 
     private final ConversationService conversationService;
@@ -51,6 +58,7 @@ public class ConversationController {
      * 获取会话列表
      */
     @GetMapping("/conversations")
+    @Operation(summary = "获取会话列表")
     public Result<List<ConversationVO>> listConversations() {
         return Results.success(conversationService.listByUserId(UserContext.getUserId()));
     }
@@ -59,6 +67,7 @@ public class ConversationController {
      * 重命名会话
      */
     @PutMapping("/conversations/{conversationId}")
+    @Operation(summary = "重命名会话")
     public Result<Void> rename(@PathVariable String conversationId,
                                @RequestBody ConversationUpdateRequest request) {
         conversationService.rename(conversationId, request);
@@ -69,6 +78,7 @@ public class ConversationController {
      * 删除会话
      */
     @DeleteMapping("/conversations/{conversationId}")
+    @Operation(summary = "删除会话")
     public Result<Void> delete(@PathVariable String conversationId) {
         conversationService.delete(conversationId);
         return Results.success();
@@ -78,6 +88,7 @@ public class ConversationController {
      * 获取会话消息列表
      */
     @GetMapping("/conversations/{conversationId}/messages")
+    @Operation(summary = "获取会话消息列表")
     public Result<List<ConversationMessageVO>> listMessages(@PathVariable String conversationId) {
         return Results.success(conversationMessageService.listMessages(conversationId, UserContext.getUserId(), null, ConversationMessageOrder.ASC));
     }

@@ -17,6 +17,12 @@
 
 package com.nageoffer.ai.ragent.triage.controller;
 
+
+
+
+
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import com.nageoffer.ai.ragent.framework.exception.ClientException;
 import com.nageoffer.ai.ragent.framework.exception.ServiceException;
 import com.nageoffer.ai.ragent.triage.controller.request.ClientChatCompletionRequest;
@@ -44,6 +50,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
+@Tag(name = "分诊助手接口")
 public class TriageController {
 
     private final TriageOrchestratorService triageOrchestratorService;
@@ -56,6 +63,7 @@ public class TriageController {
      * 避免被全局异常处理器包装成其他协议。</p>
      */
     @PostMapping("/triage/analyze")
+    @Operation(summary = "就医助手主入口。")
     public TriageAnalyzeResponse analyze(@Valid @RequestBody TriageAnalyzeRequest request) {
         try {
             return triageOrchestratorService.analyze(request);
@@ -82,6 +90,7 @@ public class TriageController {
      * 文本补全代理入口。
      */
     @PostMapping("/triage/llm/complete")
+    @Operation(summary = "文本补全代理入口。")
     public ClientChatCompletionResponse complete(@Valid @RequestBody ClientChatCompletionRequest request) {
         try {
             return triageAiProxyService.complete(request);
@@ -104,6 +113,7 @@ public class TriageController {
      * 视觉分析代理入口。
      */
     @PostMapping("/triage/vision/analyze")
+    @Operation(summary = "视觉分析代理入口。")
     public VisionAnalyzeResponse analyzeVision(@Valid @RequestBody VisionAnalyzeRequest request) {
         try {
             return triageAiProxyService.analyzeVision(request);

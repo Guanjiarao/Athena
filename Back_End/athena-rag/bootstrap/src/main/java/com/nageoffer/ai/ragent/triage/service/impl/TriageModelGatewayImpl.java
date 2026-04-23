@@ -31,10 +31,6 @@ import java.util.List;
 
 /**
  * triage 场景模型门面实现。
- *
- * <p>当前阶段采用最小侵入方案：
- * 先将 triage 的模型配置与通用 RAG 配置隔离出来，
- * 再通过 system prompt 显式传入场景约束，避免和科普 RAG 的主链路互相影响。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -51,6 +47,11 @@ public class TriageModelGatewayImpl implements TriageModelGateway {
     @Override
     public String chatWithReportModel(List<ChatMessage> messages, Double temperature, Double topP, Integer maxTokens) {
         return llmService.chat(buildRequest(messages, temperature, topP, maxTokens));
+    }
+
+    @Override
+    public String summarizeConversationMemory(List<ChatMessage> messages, Integer maxTokens) {
+        return llmService.chat(buildRequest(messages, 0.2D, 0.3D, maxTokens));
     }
 
     @Override

@@ -17,6 +17,12 @@
 
 package com.nageoffer.ai.ragent.rag.controller;
 
+
+
+
+
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import com.nageoffer.ai.ragent.rag.controller.request.MessageFeedbackRequest;
 import com.nageoffer.ai.ragent.framework.convention.Result;
 import com.nageoffer.ai.ragent.framework.web.Results;
@@ -32,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequiredArgsConstructor
+@Tag(name = "RAG接口")
 public class MessageFeedbackController {
 
     private final MessageFeedbackService feedbackService;
@@ -40,6 +47,7 @@ public class MessageFeedbackController {
      * 提交点赞/踩反馈（异步，通过 MQ 持久化）
      */
     @PostMapping("/conversations/messages/{messageId}/feedback")
+    @Operation(summary = "提交点赞/踩反馈（异步，通过 MQ 持久化）")
     public Result<Void> submitFeedback(@PathVariable String messageId,
                                        @RequestBody MessageFeedbackRequest request) {
         feedbackService.submitFeedbackAsync(messageId, request);

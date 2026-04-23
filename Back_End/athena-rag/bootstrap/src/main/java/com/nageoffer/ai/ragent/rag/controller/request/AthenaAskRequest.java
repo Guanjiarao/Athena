@@ -17,6 +17,9 @@
 
 package com.nageoffer.ai.ragent.rag.controller.request;
 
+
+
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -33,15 +36,18 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Athena 问答请求。")
 public class AthenaAskRequest {
 
     /**
      * 用户问题
      */
+@Schema(description = "Athena 问答请求。")
     private String question;
 
     /**
      * 用户年龄，可为空
      */
+    @Schema(description = "用户年龄，可为空")
     private Integer age;
 }

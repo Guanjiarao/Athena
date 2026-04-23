@@ -17,6 +17,9 @@
 
 package com.nageoffer.ai.ragent.triage.controller.vo;
 
+
+
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.nageoffer.ai.ragent.triage.model.RiskLevel;
 import com.nageoffer.ai.ragent.triage.model.Symptom;
 import lombok.AllArgsConstructor;
@@ -34,16 +37,21 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "高风险阻断动作对应的数据载荷。")
 public class TriageWarningData {
 
+@Schema(description = "sessionId")
     private String sessionId;
 
+@Schema(description = "riskAssessment")
     private RiskLevel riskAssessment;
 
     @Builder.Default
     private List<Symptom> extractedSymptoms = new ArrayList<>();
 
+@Schema(description = "warningText")
     private String warningText;
 
+@Schema(description = "emergencyGuidance")
     private String emergencyGuidance;
 }

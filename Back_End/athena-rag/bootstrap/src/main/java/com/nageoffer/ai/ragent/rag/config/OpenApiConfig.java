@@ -15,25 +15,26 @@
  * limitations under the License.
  */
 
-package com.nageoffer.ai.ragent.knowledge.controller.request;
+package com.nageoffer.ai.ragent.rag.config;
 
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Contact;
+import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.info.License;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
+@Configuration
+public class OpenApiConfig {
 
-import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
-import java.util.List;
-
-/**
- * 知识库 Chunk 批量操作请求
- */
-@Data
-@Schema(description = "知识库 Chunk 批量操作请求")
-public class KnowledgeChunkBatchRequest {
-
-    /**
-     * Chunk ID 列表（可选，不传则操作文档下所有 chunk）
-     */
-@Schema(description = "知识库 Chunk 批量操作请求")
-    private List<String> chunkIds;
+    @Bean
+    public OpenAPI ragentOpenApi() {
+        return new OpenAPI()
+                .info(new Info()
+                        .title("Athena RAG API")
+                        .description("Athena RAG 模块接口文档")
+                        .version("v1.0.0")
+                        .contact(new Contact().name("Athena Team"))
+                        .license(new License().name("Apache 2.0")));
+    }
 }

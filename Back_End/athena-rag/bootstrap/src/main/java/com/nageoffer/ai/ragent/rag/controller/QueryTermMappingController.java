@@ -17,6 +17,12 @@
 
 package com.nageoffer.ai.ragent.rag.controller;
 
+
+
+
+
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.nageoffer.ai.ragent.framework.convention.Result;
 import com.nageoffer.ai.ragent.framework.web.Results;
@@ -39,6 +45,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequiredArgsConstructor
+@Tag(name = "RAG接口")
 public class QueryTermMappingController {
 
     private final QueryTermMappingAdminService queryTermMappingAdminService;
@@ -47,6 +54,7 @@ public class QueryTermMappingController {
      * 分页查询映射规则
      */
     @GetMapping("/mappings")
+    @Operation(summary = "分页查询映射规则")
     public Result<IPage<QueryTermMappingVO>> pageQuery(QueryTermMappingPageRequest requestParam) {
         return Results.success(queryTermMappingAdminService.pageQuery(requestParam));
     }
@@ -55,6 +63,7 @@ public class QueryTermMappingController {
      * 查询映射规则详情
      */
     @GetMapping("/mappings/{id}")
+    @Operation(summary = "查询映射规则详情")
     public Result<QueryTermMappingVO> queryById(@PathVariable String id) {
         return Results.success(queryTermMappingAdminService.queryById(id));
     }
@@ -63,6 +72,7 @@ public class QueryTermMappingController {
      * 创建映射规则
      */
     @PostMapping("/mappings")
+    @Operation(summary = "创建映射规则")
     public Result<String> create(@RequestBody QueryTermMappingCreateRequest requestParam) {
         return Results.success(queryTermMappingAdminService.create(requestParam));
     }
@@ -71,6 +81,7 @@ public class QueryTermMappingController {
      * 更新映射规则
      */
     @PutMapping("/mappings/{id}")
+    @Operation(summary = "更新映射规则")
     public Result<Void> update(@PathVariable String id, @RequestBody QueryTermMappingUpdateRequest requestParam) {
         queryTermMappingAdminService.update(id, requestParam);
         return Results.success();
@@ -80,6 +91,7 @@ public class QueryTermMappingController {
      * 删除映射规则
      */
     @DeleteMapping("/mappings/{id}")
+    @Operation(summary = "删除映射规则")
     public Result<Void> delete(@PathVariable String id) {
         queryTermMappingAdminService.delete(id);
         return Results.success();

@@ -32,3 +32,22 @@ athena:
 logging:
   level:
     athena.insight: info
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+  production: false
+  cors: true
+  basic:
+    enable: false
+    username: admin
+    password: 123456

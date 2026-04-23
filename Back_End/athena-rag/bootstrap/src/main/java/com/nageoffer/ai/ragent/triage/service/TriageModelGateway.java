@@ -37,6 +37,11 @@ public interface TriageModelGateway {
     String chatWithReportModel(List<ChatMessage> messages, Double temperature, Double topP, Integer maxTokens);
 
     /**
+     * triage 对话摘要调用。
+     */
+    String summarizeConversationMemory(List<ChatMessage> messages, Integer maxTokens);
+
+    /**
      * triage 视觉模型名称。
      */
     String resolveVisionModel(String requestModel);

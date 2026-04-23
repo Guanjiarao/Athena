@@ -17,6 +17,12 @@
 
 package com.nageoffer.ai.ragent.ingestion.controller;
 
+
+
+
+
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.nageoffer.ai.ragent.ingestion.controller.request.IngestionTaskCreateRequest;
@@ -47,6 +53,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @Validated
+@Tag(name = "数据摄取接口")
 public class IngestionTaskController {
 
     private final IngestionTaskService taskService;
@@ -55,6 +62,7 @@ public class IngestionTaskController {
      * 创建并执行采集任务
      */
     @PostMapping("/ingestion/tasks")
+    @Operation(summary = "创建并执行采集任务")
     public Result<IngestionResult> create(@RequestBody IngestionTaskCreateRequest request) {
         return Results.success(taskService.execute(request));
     }
@@ -64,6 +72,7 @@ public class IngestionTaskController {
      */
     @SneakyThrows
     @PostMapping(value = "/ingestion/tasks/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "上传文件并触发采集任务")
     public Result<IngestionResult> upload(@RequestParam(value = "pipelineId") String pipelineId,
                                           @RequestPart("file") MultipartFile file) {
         return Results.success(taskService.upload(pipelineId, file));
@@ -73,6 +82,7 @@ public class IngestionTaskController {
      * 根据任务 ID 获取任务详情
      */
     @GetMapping("/ingestion/tasks/{id}")
+    @Operation(summary = "根据任务 ID 获取任务详情")
     public Result<IngestionTaskVO> get(@PathVariable String id) {
         return Results.success(taskService.get(id));
     }
@@ -81,6 +91,7 @@ public class IngestionTaskController {
      * 根据任务 ID 获取任务节点运行记录
      */
     @GetMapping("/ingestion/tasks/{id}/nodes")
+    @Operation(summary = "根据任务 ID 获取任务节点运行记录")
     public Result<List<IngestionTaskNodeVO>> nodes(@PathVariable String id) {
         return Results.success(taskService.listNodes(id));
     }
@@ -89,6 +100,7 @@ public class IngestionTaskController {
      * 分页查询采集任务
      */
     @GetMapping("/ingestion/tasks")
+    @Operation(summary = "分页查询采集任务")
     public Result<IPage<IngestionTaskVO>> page(@RequestParam(value = "pageNo", defaultValue = "1") int pageNo,
                                                @RequestParam(value = "pageSize", defaultValue = "10") int pageSize,
                                                @RequestParam(value = "status", required = false) String status) {

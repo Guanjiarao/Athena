@@ -17,6 +17,9 @@
 
 package com.nageoffer.ai.ragent.knowledge.controller.vo;
 
+
+
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -25,71 +28,85 @@ import java.time.LocalDateTime;
  * 知识库文档视图对象
  */
 @Data
+@Schema(description = "知识库文档视图对象")
 public class KnowledgeDocumentVO {
 
     /**
      * 文档唯一标识
      */
+@Schema(description = "知识库文档视图对象")
     private String id;
 
     /**
      * 知识库ID
      */
+    @Schema(description = "知识库ID")
     private String kbId;
 
     /**
      * 文档名称
      */
+    @Schema(description = "文档名称")
     private String docName;
 
     /**
      * 来源类型
      */
+    @Schema(description = "来源类型")
     private String sourceType;
 
     /**
      * 来源位置
      */
+    @Schema(description = "来源位置")
     private String sourceLocation;
 
     /**
      * 是否开启定时拉取
      */
+    @Schema(description = "是否开启定时拉取")
     private Integer scheduleEnabled;
 
     /**
      * 定时表达式
      */
+    @Schema(description = "定时表达式")
     private String scheduleCron;
 
     /**
      * 是否启用
      */
+    @Schema(description = "是否启用")
     private Boolean enabled;
 
     /**
      * 切片数量
      */
+    @Schema(description = "切片数量")
     private Integer chunkCount;
 
     /**
      * 文件URL
      */
+    @Schema(description = "文件URL")
     private String fileUrl;
 
     /**
      * 文件类型
      */
+    @Schema(description = "文件类型")
     private String fileType;
 
     /**
      * 文件大小（字节）
      */
+    @Schema(description = "文件大小（字节）")
     private Long fileSize;
 
     /**
      * 分块策略
      */
+    @Schema(description = "分块策略")
     private String chunkStrategy;
 
     /**
@@ -97,41 +114,49 @@ public class KnowledgeDocumentVO {
      * - chunk: 使用分块策略直接分块
      * - pipeline: 使用数据通道进行清洗处理
      */
+    @Schema(description = "处理模式：chunk / pipeline")
     private String processMode;
 
     /**
      * 分块参数配置（JSON）
      */
+    @Schema(description = "分块参数配置（JSON）")
     private String chunkConfig;
 
     /**
      * 数据通道（Pipeline）ID
      * 仅在 processMode=pipeline 时有效
      */
+    @Schema(description = "数据通道（Pipeline）ID")
     private String pipelineId;
 
     /**
      * 状态（如：解析中、已解析、解析失败等）
      */
+    @Schema(description = "状态（如：解析中、已解析、解析失败等）")
     private String status;
 
     /**
      * 创建人
      */
+    @Schema(description = "创建人")
     private String createdBy;
 
     /**
      * 更新人
      */
+    @Schema(description = "更新人")
     private String updatedBy;
 
     /**
      * 创建时间
      */
+    @Schema(description = "创建时间")
     private LocalDateTime createTime;
 
     /**
      * 更新时间
      */
+    @Schema(description = "更新时间")
     private LocalDateTime updateTime;
 }

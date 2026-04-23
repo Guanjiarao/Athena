@@ -38,4 +38,19 @@ public class TriageSessionProperties {
      * 会话存活时间（分钟）。
      */
     private Long ttlMinutes = 120L;
+
+    /**
+     * 触发压缩的上下文最大字符数。
+     */
+    private Integer contextWindowMaxChars = 2400;
+
+    /**
+     * 压缩后最近原始对话目标字符数。
+     */
+    private Integer targetRecentWindowChars = 1200;
+
+    /**
+     * 摘要最大字符数。
+     */
+    private Integer summaryMaxChars = 400;
 }

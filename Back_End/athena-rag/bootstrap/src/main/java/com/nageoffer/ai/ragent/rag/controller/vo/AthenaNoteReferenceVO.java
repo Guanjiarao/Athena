@@ -17,6 +17,9 @@
 
 package com.nageoffer.ai.ragent.rag.controller.vo;
 
+
+
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -33,25 +36,30 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Athena 引用笔记。")
 public class AthenaNoteReferenceVO {
 
     /**
      * 笔记 ID
      */
+@Schema(description = "Athena 引用笔记。")
     private Long noteId;
 
     /**
      * 笔记标题
      */
+    @Schema(description = "笔记标题")
     private String title;
 
     /**
      * 片段内容
      */
+    @Schema(description = "片段内容")
     private String snippet;
 
     /**
      * 相关性得分
      */
+    @Schema(description = "相关性得分")
     private Float score;
 }
