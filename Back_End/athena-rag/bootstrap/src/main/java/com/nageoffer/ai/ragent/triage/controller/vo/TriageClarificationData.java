@@ -17,10 +17,10 @@
 
 package com.nageoffer.ai.ragent.triage.controller.vo;
 
-
-
-import io.swagger.v3.oas.annotations.media.Schema;
+import com.nageoffer.ai.ragent.triage.model.QuestionPlan;
+import com.nageoffer.ai.ragent.triage.model.SlotCode;
 import com.nageoffer.ai.ragent.triage.model.Symptom;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -39,7 +39,7 @@ import java.util.List;
 @Schema(description = "追问动作对应的数据载荷。")
 public class TriageClarificationData {
 
-@Schema(description = "sessionId")
+    @Schema(description = "sessionId")
     private String sessionId;
 
     @Builder.Default
@@ -48,6 +48,13 @@ public class TriageClarificationData {
     @Builder.Default
     private List<String> missingFields = new ArrayList<>();
 
-@Schema(description = "followUpQuestion")
+    @Builder.Default
+    @Schema(description = "当前仍待补齐的槽位")
+    private List<SlotCode> pendingSlots = new ArrayList<>();
+
+    @Schema(description = "结构化追问规划")
+    private QuestionPlan questionPlan;
+
+    @Schema(description = "followUpQuestion")
     private String followUpQuestion;
 }

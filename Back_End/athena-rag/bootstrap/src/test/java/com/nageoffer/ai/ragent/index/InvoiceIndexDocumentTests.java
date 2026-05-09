@@ -18,18 +18,15 @@
 package com.nageoffer.ai.ragent.index;
 
 import cn.hutool.core.util.IdUtil;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.nageoffer.ai.ragent.rag.config.RAGDefaultProperties;
+import com.nageoffer.ai.ragent.core.chunk.VectorChunk;
 import com.nageoffer.ai.ragent.framework.convention.ChatMessage;
 import com.nageoffer.ai.ragent.framework.convention.ChatRequest;
 import com.nageoffer.ai.ragent.framework.convention.RetrievedChunk;
 import com.nageoffer.ai.ragent.infra.chat.LLMService;
 import com.nageoffer.ai.ragent.infra.embedding.EmbeddingService;
+import com.nageoffer.ai.ragent.rag.config.RAGDefaultProperties;
 import com.nageoffer.ai.ragent.rag.core.retrieve.RetrieverService;
-import io.milvus.v2.client.MilvusClientV2;
-import io.milvus.v2.service.vector.request.InsertReq;
-import io.milvus.v2.service.vector.response.InsertResp;
+import com.nageoffer.ai.ragent.rag.core.vector.VectorStoreService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
@@ -46,7 +43,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -57,7 +56,7 @@ public class InvoiceIndexDocumentTests {
 
     private final LLMService llmService;
     private final EmbeddingService embeddingService;
-    private final MilvusClientV2 milvusClient;
+    private final VectorStoreService vectorStoreService;
     private final RetrieverService retrieverService;
     private final RAGDefaultProperties ragDefaultProperties;
 
@@ -65,24 +64,20 @@ public class InvoiceIndexDocumentTests {
 
     @Test
     void indexDocument() throws TikaException, IOException {
-        String filePath = "src/main/resources/file/group/group-finance/开票信息.md";
+        String filePath = "resources/docs/knowledge/group/group-finance/开票信息.md";
         String actualDocument = extractText(filePath);
         System.out.println(actualDocument);
         List<String> chunks = splitIntoLineChunks(actualDocument, 5);
 
         String docId = UUID.randomUUID().toString();
-        List<JsonObject> rows = buildRowsForChunks(
+        List<VectorChunk> vectorChunks = buildVectorChunksForChunks(docId, chunks);
+
+        vectorStoreService.indexDocumentChunks(
+                ragDefaultProperties.getCollectionName(),
                 docId,
-                chunks
+                vectorChunks
         );
-
-        InsertReq req = InsertReq.builder()
-                .collectionName(ragDefaultProperties.getCollectionName())
-                .data(rows)
-                .build();
-
-        InsertResp resp = milvusClient.insert(req);
-        log.info("Indexed file document. documentId={},  chunks={}, insertCnt={}", docId, chunks.size(), resp.getInsertCnt());
+        log.info("Indexed file document. documentId={}, chunks={}", docId, vectorChunks.size());
     }
 
     @Test
@@ -138,7 +133,10 @@ public class InvoiceIndexDocumentTests {
     }
 
     private String extractText(String filePath) throws TikaException, IOException {
-        Path path = Paths.get(filePath);
+        Path path = resolveExistingPath(filePath,
+                "../resources/docs/knowledge/group/group-finance/开票信息.md",
+                "resources/docs/knowledge/group/group-finance/开票信息.md",
+                "../../resources/docs/knowledge/group/group-finance/开票信息.md");
         Metadata metaData = new Metadata();
         String fileContent = tika.parseToString(Files.newInputStream(path), metaData);
 
@@ -173,6 +171,16 @@ public class InvoiceIndexDocumentTests {
                 """
                 .formatted(fileContent);
         return llmService.chat(prompt);
+    }
+
+    private Path resolveExistingPath(String... candidates) throws IOException {
+        for (String candidate : candidates) {
+            Path path = Paths.get(candidate).normalize();
+            if (Files.exists(path)) {
+                return path;
+            }
+        }
+        throw new IOException("No existing invoice document path found in candidates: " + Arrays.toString(candidates));
     }
 
     @Test
@@ -272,9 +280,6 @@ public class InvoiceIndexDocumentTests {
         System.out.println(strings);
     }
 
-    /**
-     * 按行拆分
-     */
     private List<String> splitIntoLineChunks(String text, int linesPerChunk) {
         if (!StringUtils.hasText(text)) {
             return List.of();
@@ -287,20 +292,18 @@ public class InvoiceIndexDocumentTests {
             int end = Math.min(i + linesPerChunk, lines.size());
             List<String> sub = lines.subList(i, end);
 
-            // 检查 chunk 是否全是空行（忽略空白字符）
             boolean allEmpty = sub.stream()
                     .map(String::trim)
                     .allMatch(line -> !StringUtils.hasText(line));
 
             if (allEmpty) {
-                continue; // 跳过纯空 chunk
+                continue;
             }
 
-            // 保留原格式，不过滤 chunk 内的非空行
             String chunk = sub.stream()
-                    .map(String::trim) // 去掉每行前后的空格
+                    .map(String::trim)
                     .collect(Collectors.joining("\n"))
-                    .trim(); // 整体裁剪
+                    .trim();
 
             chunks.add(chunk);
         }
@@ -308,43 +311,41 @@ public class InvoiceIndexDocumentTests {
         return chunks;
     }
 
-    /**
-     * 构造一批向量插入行
-     */
-    private List<JsonObject> buildRowsForChunks(String documentId,
-                                                List<String> chunks) {
-        List<JsonObject> rows = new ArrayList<>();
+    private List<VectorChunk> buildVectorChunksForChunks(String documentId,
+                                                         List<String> chunks) {
+        List<VectorChunk> rows = new ArrayList<>();
         long now = System.currentTimeMillis();
 
         for (int i = 0; i < chunks.size(); i++) {
             String chunk = chunks.get(i);
-            if (!StringUtils.hasText(chunk)) continue;
+            if (!StringUtils.hasText(chunk)) {
+                continue;
+            }
 
             List<Float> emb = embeddingService.embed(chunk);
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("documentId", documentId);
+            metadata.put("chunkIndex", i);
+            metadata.put("totalChunks", chunks.size());
+            metadata.put("timestamp", now);
 
-            JsonObject row = new JsonObject();
-            // 每个 chunk 一个独立主键
-            row.addProperty("doc_id", IdUtil.getSnowflakeNextIdStr());
-            row.add("embedding", floatListToJson(emb));
-            row.addProperty("content", chunk);
-
-            JsonObject metadata = new JsonObject();
-            metadata.addProperty("documentId", documentId);
-            metadata.addProperty("chunkIndex", i);
-            metadata.addProperty("totalChunks", chunks.size());
-            metadata.addProperty("timestamp", now);
-            row.add("metadata", metadata);
-
-            rows.add(row);
+            rows.add(VectorChunk.builder()
+                    .chunkId(IdUtil.getSnowflakeNextIdStr())
+                    .index(i)
+                    .content(chunk)
+                    .metadata(metadata)
+                    .embedding(toFloatArray(emb))
+                    .build());
         }
 
         return rows;
     }
 
-
-    private JsonArray floatListToJson(List<Float> list) {
-        JsonArray arr = new JsonArray();
-        list.forEach(arr::add);
+    private float[] toFloatArray(List<Float> list) {
+        float[] arr = new float[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            arr[i] = list.get(i);
+        }
         return arr;
     }
 }

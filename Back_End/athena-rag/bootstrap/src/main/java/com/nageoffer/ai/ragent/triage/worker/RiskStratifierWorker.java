@@ -20,225 +20,82 @@ package com.nageoffer.ai.ragent.triage.worker;
 import cn.hutool.core.util.StrUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nageoffer.ai.ragent.infra.chat.LLMService;
-import com.nageoffer.ai.ragent.triage.model.RiskLevel;
-import com.nageoffer.ai.ragent.triage.model.Symptom;
-import com.nageoffer.ai.ragent.triage.model.TriageContext;
+import com.nageoffer.ai.ragent.triage.model.*;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
-/**
- * 风险分级 Worker。
- *
- * <p>它只在“信息基本齐备”时使用，用于给出 1 到 4 级的风险等级。
- * 若模型返回不稳定，系统会自动切换到规则化保守兜底，优先保障医疗安全。</p>
- */
 @Component
 public class RiskStratifierWorker extends AbstractStructuredTriageWorker {
+    private final RiskHeuristicHelper riskHeuristicHelper;
+    public RiskStratifierWorker(LLMService llmService, ObjectMapper objectMapper, RiskHeuristicHelper riskHeuristicHelper) { super(llmService, objectMapper); this.riskHeuristicHelper = riskHeuristicHelper; }
 
-    private static final String OUTPUT_JSON_SCHEMA = """
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "level": {
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 4
-                },
-                "score": {
-                  "type": "number",
-                  "minimum": 0,
-                  "maximum": 100
-                },
-                "evidence": {
-                  "type": "string"
-                },
-                "rationale": {
-                  "type": "string"
-                }
-              },
-              "required": ["level", "score", "evidence", "rationale"]
-            }
-            """;
-
-    public RiskStratifierWorker(LLMService llmService, ObjectMapper objectMapper) {
-        super(llmService, objectMapper);
-    }
-
-    /**
-     * 执行风险分层。
-     *
-     * <p>这里对外只暴露一个统一入口。即使模型失败，也会产出一个可解释的风险结果，
-     * 避免编排器在医疗红线场景里“拿不到结论”。</p>
-     */
     public TriageContext execute(TriageContext context) {
-        if (context == null) {
-            context = new TriageContext();
-        }
+        if (context == null) context = new TriageContext();
         context.ensureCollections();
-
-        if (context.hasMissingFields()) {
-            return context;
-        }
-
-        RiskLevel riskLevel;
-        try {
-            String rawResponse = invokeLlm(
-                    buildSystemPrompt(),
-                    buildUserPrompt(context),
-                    0.1D,
-                    0.2D
-            );
-            riskLevel = readObjectSafely(
-                    rawResponse,
-                    RiskLevel.class,
-                    heuristicRiskFallback(context),
-                    "风险分层"
-            );
-        } catch (Exception ex) {
-            riskLevel = heuristicRiskFallback(context);
-        }
-
+        RiskLevel hardRedFlag = riskHeuristicHelper.hardRedFlagFallback(context);
+        if (hardRedFlag != null) { context.setRiskAssessment(hardRedFlag.normalize()); context.appendRiskDecision(buildRiskDecision(context, context.getRiskAssessment())); return context; }
+        RiskLevel fallback = riskHeuristicHelper.heuristicRiskFallback(context), riskLevel;
+        try { String rawResponse = invokeLlm(buildSystemPrompt(), buildUserPrompt(context), 0.1D, 0.2D); riskLevel = readObjectSafely(rawResponse, RiskLevel.class, fallback, "风险分层"); } catch (Exception ex) { riskLevel = fallback; }
         context.setRiskAssessment(riskLevel.normalize());
+        context.appendRiskDecision(buildRiskDecision(context, context.getRiskAssessment()));
         return context;
     }
 
-    private String buildSystemPrompt() {
-        return """
-                你是医疗分诊系统中的“风险分级 Worker”，只负责做风险分层，不负责给出诊断。
-                请基于用户描述和结构化症状，输出当前病历的风险等级。
-
-                分级要求：
-                1. level 取值必须为 1-4，数字越大风险越高。
-                2. score 取值范围必须为 0-100。
-                3. evidence 必须写明判级依据，强调触发高风险的关键信号。
-                4. rationale 必须解释判级逻辑，但不得写成诊断结论。
-                5. 只输出合法 JSON，不允许附加说明文字。
-
-                JSON Schema:
-                """ + OUTPUT_JSON_SCHEMA;
+    private RiskDecision buildRiskDecision(TriageContext context, RiskLevel riskLevel) {
+        RiskLevel normalized = riskLevel == null ? null : riskLevel.normalize();
+        if (normalized == null) return null;
+        List<RiskGap> unresolvedRiskGaps = buildUnresolvedRiskGaps(context, normalized);
+        List<RiskGap> confirmedRiskGaps = buildConfirmedRiskGaps(context, normalized);
+        List<RiskGap> suspectedRiskGaps = buildSuspectedRiskGaps(context, normalized, unresolvedRiskGaps, confirmedRiskGaps);
+        RiskDecisionType decisionType = decideRiskAction(normalized, confirmedRiskGaps, suspectedRiskGaps, unresolvedRiskGaps);
+        boolean shouldInterrupt = Boolean.TRUE.equals(normalized.getShouldInterrupt());
+        boolean needsMoreInfo = Boolean.TRUE.equals(normalized.getNeedsMoreInfo()) || !unresolvedRiskGaps.isEmpty();
+        String decisionReason = normalized.getRationale();
+        List<String> evidence = normalized.getEvidence() == null || normalized.getEvidence().isBlank() ? new ArrayList<>() : new ArrayList<>(List.of(normalized.getEvidence()));
+        if (hasRecentUnresolvedHistory(context, 2) && (!unresolvedRiskGaps.isEmpty() || !suspectedRiskGaps.isEmpty()) && !shouldInterrupt) { decisionType = RiskDecisionType.ESCALATE_FROM_HISTORY; needsMoreInfo = true; decisionReason = decisionReason + " 历史上同类风险补问连续未闭合，当前按更保守策略升级。"; evidence.add("同类风险补问连续多轮未闭合。\n"); }
+        else if (hasRecentSuspectedHistory(context, 2) && !suspectedRiskGaps.isEmpty() && unresolvedRiskGaps.isEmpty() && !shouldInterrupt) { decisionType = RiskDecisionType.ESCALATE_FROM_HISTORY; needsMoreInfo = true; decisionReason = decisionReason + " 疑似风险信号连续多轮存在，当前升级为优先补问风险。"; evidence.add("疑似风险信号连续多轮存在。\n"); }
+        else if (hasRecentConfirmedHistory(context, 1) && !confirmedRiskGaps.isEmpty()) { decisionType = RiskDecisionType.TRIGGER_WARNING; shouldInterrupt = true; decisionReason = decisionReason + " 历史上已连续出现高风险确认信号，应维持中断策略。"; evidence.add("高风险确认信号跨轮持续存在。\n"); }
+        return RiskDecision.builder().decisionType(decisionType).finalRiskLevel(normalized).decisionReason(decisionReason).shouldInterrupt(shouldInterrupt).needsMoreInfo(needsMoreInfo).signals(context.getRiskSignalState() == null ? new ArrayList<>() : new ArrayList<>(context.getRiskSignalState())).confirmedRiskGaps(confirmedRiskGaps).suspectedRiskGaps(suspectedRiskGaps).unresolvedRiskGaps(unresolvedRiskGaps).evidence(evidence).build();
     }
 
-    private String buildUserPrompt(TriageContext context) {
-        return """
-                会话ID: %s
-                原始用户输入:
-                %s
-
-                结构化症状:
-                %s
-
-                请输出风险分级 JSON。
-                """.formatted(
-                StrUtil.blankToDefault(context.getSessionId(), "UNKNOWN"),
-                StrUtil.blankToDefault(context.getUserInput(), ""),
-                toJsonSafely(context.getExtractedSymptoms())
-        );
+    private List<RiskGap> buildUnresolvedRiskGaps(TriageContext context, RiskLevel normalized) {
+        Map<RiskSignalType, RiskGap> result = new LinkedHashMap<>();
+        if (normalized.getMissingCriticalSlots() != null) for (SlotCode slotCode : normalized.getMissingCriticalSlots()) if (slotCode != null) result.put(mapSignalType(slotCode), RiskGap.builder().slot(slotCode).relatedSignalType(mapSignalType(slotCode)).signalStatus(RiskSignalStatus.UNRESOLVED).priority(95).reason("风险判断仍需要该关键槽位。").build());
+        if (context.getRiskSignalState() != null) for (RiskSignalUnderstanding signal : context.getRiskSignalState()) {
+            if (signal == null || signal.getType() == null) continue;
+            if (signal.getAssertion() == AssertionStatus.UNKNOWN || signal.getAssertion() == AssertionStatus.SUSPECTED) result.putIfAbsent(signal.getType(), RiskGap.builder().slot(mapSlotCode(signal.getType())).relatedSignalType(signal.getType()).signalStatus(RiskSignalStatus.UNRESOLVED).priority(95).reason("风险信号已出现，但当前回答仍未完成确认。").build());
+        }
+        return new ArrayList<>(result.values());
     }
 
-    private RiskLevel heuristicRiskFallback(TriageContext context) {
-        String combinedText = buildCombinedText(context);
-        List<String> evidence = new ArrayList<>();
-
-        if (containsAny(combinedText, List.of("呼吸困难", "喘不过气", "意识不清", "昏迷", "晕厥", "抽搐", "大出血"))) {
-            evidence.add("存在危及生命的红旗信号，如呼吸困难、意识障碍或大量出血。");
-            return RiskLevel.builder()
-                    .level(4)
-                    .score(95D)
-                    .evidence(String.join("；", evidence))
-                    .rationale("出现急危重红旗症状时，系统应直接归入最高风险等级。")
-                    .build();
-        }
-
-        boolean pregnancyBleeding = containsAny(combinedText, List.of("怀孕", "妊娠")) && containsAny(combinedText, List.of("出血", "见红"));
-        boolean severeAbdominalRisk = containsAny(combinedText, List.of("腹痛", "肚子疼", "肚子痛"))
-                && containsAny(combinedText, List.of("发热", "发烧", "呕吐", "剧烈", "难忍"));
-        boolean chestPainRisk = containsAny(combinedText, List.of("胸痛", "胸口痛", "心口痛"));
-
-        if (pregnancyBleeding) {
-            evidence.add("妊娠相关出血属于高危场景。");
-        }
-        if (severeAbdominalRisk) {
-            evidence.add("腹痛合并发热、呕吐或剧烈疼痛，需警惕急腹症风险。");
-        }
-        if (chestPainRisk) {
-            evidence.add("胸痛属于需要优先排查的高危主诉。");
-        }
-        if (!evidence.isEmpty()) {
-            return RiskLevel.builder()
-                    .level(3)
-                    .score(82D)
-                    .evidence(String.join("；", evidence))
-                    .rationale("存在明显高风险组合症状，按保守策略应引导尽快线下就医。")
-                    .build();
-        }
-
-        boolean moderateRisk = containsAny(combinedText, List.of("发热", "发烧", "呕吐", "腹泻", "头晕"))
-                || hasModerateSymptomLoad(context.getExtractedSymptoms());
-        if (moderateRisk) {
-            return RiskLevel.builder()
-                    .level(2)
-                    .score(55D)
-                    .evidence("存在需要持续观察的中等风险症状，但暂未命中明确急危重红旗信号。")
-                    .rationale("症状已经具有一定复杂度，应继续观察并结合病情变化决定是否就医。")
-                    .build();
-        }
-
-        return RiskLevel.builder()
-                .level(1)
-                .score(20D)
-                .evidence("当前描述未命中高风险红旗信号，且症状负荷较低。")
-                .rationale("在信息齐备前提下，暂可归入低风险观察级。")
-                .build();
+    private List<RiskGap> buildConfirmedRiskGaps(TriageContext context, RiskLevel normalized) {
+        Map<RiskSignalType, RiskGap> result = new LinkedHashMap<>();
+        if (!Boolean.TRUE.equals(normalized.getShouldInterrupt())) return new ArrayList<>();
+        if (context.getRiskSignalState() != null) for (RiskSignalUnderstanding signal : context.getRiskSignalState()) if (signal != null && signal.getType() != null && signal.getAssertion() == AssertionStatus.PRESENT) result.put(signal.getType(), RiskGap.builder().slot(mapSlotCode(signal.getType())).relatedSignalType(signal.getType()).signalStatus(RiskSignalStatus.CONFIRMED).priority(100).reason(StrUtil.blankToDefault(signal.getEvidence(), "已命中高风险信号。")).build());
+        if (result.isEmpty() && normalized.getRiskHints() != null) for (String riskHint : normalized.getRiskHints()) { RiskSignalType signalType = mapSignalHint(riskHint); if (signalType != null) result.put(signalType, RiskGap.builder().slot(mapSlotCode(signalType)).relatedSignalType(signalType).signalStatus(RiskSignalStatus.CONFIRMED).priority(100).reason("风险分层已确认该高危信号。").build()); }
+        return new ArrayList<>(result.values());
     }
 
-    private String buildCombinedText(TriageContext context) {
-        StringBuilder builder = new StringBuilder(StrUtil.blankToDefault(context.getUserInput(), ""));
-        if (context.getExtractedSymptoms() != null) {
-            for (Symptom symptom : context.getExtractedSymptoms()) {
-                if (symptom == null) {
-                    continue;
-                }
-                builder.append(" ").append(StrUtil.blankToDefault(symptom.getName(), ""));
-                builder.append(" ").append(StrUtil.blankToDefault(symptom.getBodyPart(), ""));
-                builder.append(" ").append(StrUtil.blankToDefault(symptom.getDuration(), ""));
-                builder.append(" ").append(StrUtil.blankToDefault(symptom.getSeverity(), ""));
-                if (symptom.getCharacteristics() != null) {
-                    builder.append(" ").append(String.join(" ", symptom.getCharacteristics()));
-                }
-                if (symptom.getAccompanyingSymptoms() != null) {
-                    builder.append(" ").append(String.join(" ", symptom.getAccompanyingSymptoms()));
-                }
-            }
+    private List<RiskGap> buildSuspectedRiskGaps(TriageContext context, RiskLevel normalized, List<RiskGap> unresolvedRiskGaps, List<RiskGap> confirmedRiskGaps) {
+        Map<RiskSignalType, RiskGap> result = new LinkedHashMap<>();
+        if (context.getRiskSignalState() != null) for (RiskSignalUnderstanding signal : context.getRiskSignalState()) {
+            if (signal == null || signal.getType() == null || signal.getAssertion() == AssertionStatus.ABSENT) continue;
+            if (containsSignal(confirmedRiskGaps, signal.getType()) || signal.getAssertion() == AssertionStatus.PRESENT) continue;
+            result.put(signal.getType(), RiskGap.builder().slot(mapSlotCode(signal.getType())).relatedSignalType(signal.getType()).signalStatus(RiskSignalStatus.SUSPECTED).priority(85).reason("已观察到风险信号，建议继续确认。").build());
         }
-        return builder.toString();
+        for (RiskGap unresolvedRiskGap : unresolvedRiskGaps) if (unresolvedRiskGap != null && unresolvedRiskGap.getRelatedSignalType() != null) result.putIfAbsent(unresolvedRiskGap.getRelatedSignalType(), RiskGap.builder().slot(unresolvedRiskGap.getSlot()).relatedSignalType(unresolvedRiskGap.getRelatedSignalType()).signalStatus(RiskSignalStatus.SUSPECTED).priority(90).reason("存在待确认风险问题，当前按疑似风险处理。").build());
+        return new ArrayList<>(result.values());
     }
 
-    private boolean hasModerateSymptomLoad(List<Symptom> symptoms) {
-        if (symptoms == null || symptoms.isEmpty()) {
-            return false;
-        }
-        if (symptoms.size() >= 3) {
-            return true;
-        }
-        return symptoms.stream()
-                .anyMatch(each -> each != null && StrUtil.containsAnyIgnoreCase(
-                        StrUtil.blankToDefault(each.getSeverity(), ""),
-                        "中度", "重度"
-                ));
-    }
-
-    private boolean containsAny(String text, List<String> keywords) {
-        if (StrUtil.isBlank(text) || keywords == null || keywords.isEmpty()) {
-            return false;
-        }
-        for (String keyword : keywords) {
-            if (StrUtil.isNotBlank(keyword) && text.contains(keyword)) {
-                return true;
-            }
-        }
-        return false;
-    }
+    private RiskDecisionType decideRiskAction(RiskLevel normalized, List<RiskGap> confirmedRiskGaps, List<RiskGap> suspectedRiskGaps, List<RiskGap> unresolvedRiskGaps) { if (Boolean.TRUE.equals(normalized.getShouldInterrupt()) && !confirmedRiskGaps.isEmpty()) return RiskDecisionType.TRIGGER_WARNING; if (!unresolvedRiskGaps.isEmpty() || Boolean.TRUE.equals(normalized.getNeedsMoreInfo())) return RiskDecisionType.ASK_RISK_CLARIFICATION; if (Boolean.TRUE.equals(normalized.getShouldInterrupt())) return RiskDecisionType.TRIGGER_WARNING; if (!suspectedRiskGaps.isEmpty() || normalized.getLevel() != null && normalized.getLevel() >= 2) return RiskDecisionType.MONITOR; return RiskDecisionType.NO_RISK_SIGNAL; }
+    private boolean containsSignal(List<RiskGap> riskGaps, RiskSignalType signalType) { return riskGaps != null && signalType != null && riskGaps.stream().anyMatch(gap -> gap != null && gap.getRelatedSignalType() == signalType); }
+    private boolean hasRecentUnresolvedHistory(TriageContext context, int threshold) { return context != null && context.getRiskDecisionHistory() != null && threshold > 0 && context.getRiskDecisionHistory().stream().filter(each -> each != null && each.getUnresolvedRiskGaps() != null && !each.getUnresolvedRiskGaps().isEmpty()).count() >= threshold; }
+    private boolean hasRecentSuspectedHistory(TriageContext context, int threshold) { return context != null && context.getRiskDecisionHistory() != null && threshold > 0 && context.getRiskDecisionHistory().stream().filter(each -> each != null && each.getSuspectedRiskGaps() != null && !each.getSuspectedRiskGaps().isEmpty()).count() >= threshold; }
+    private boolean hasRecentConfirmedHistory(TriageContext context, int threshold) { return context != null && context.getRiskDecisionHistory() != null && threshold > 0 && context.getRiskDecisionHistory().stream().filter(each -> each != null && each.getConfirmedRiskGaps() != null && !each.getConfirmedRiskGaps().isEmpty()).count() >= threshold; }
+    private RiskSignalType mapSignalHint(String riskHint) { if (riskHint == null || riskHint.isBlank()) return null; return switch (riskHint) { case "BLEEDING" -> RiskSignalType.BLEEDING; case "DYSPNEA" -> RiskSignalType.DYSPNEA; case "SEIZURE" -> RiskSignalType.SEIZURE; case "CONSCIOUSNESS" -> RiskSignalType.ALTERED_CONSCIOUSNESS; case "PREGNANCY_BLEEDING" -> RiskSignalType.PREGNANCY_RELATED_BLEEDING; case "CHEST_PAIN", "CHEST_PAIN_WITH_DYSPNEA" -> RiskSignalType.CHEST_PAIN; default -> null; }; }
+    private RiskSignalType mapSignalType(SlotCode slotCode) { if (slotCode == null) return null; return switch (slotCode) { case DYSPNEA_PRESENCE -> RiskSignalType.DYSPNEA; case BLEEDING_PRESENCE -> RiskSignalType.BLEEDING; case PREGNANCY_STATUS -> RiskSignalType.PREGNANCY_RELATED_BLEEDING; case SEIZURE_PRESENCE -> RiskSignalType.SEIZURE; case PRIMARY_SYMPTOM -> RiskSignalType.ALTERED_CONSCIOUSNESS; default -> null; }; }
+    private SlotCode mapSlotCode(RiskSignalType signalType) { if (signalType == null) return null; return switch (signalType) { case DYSPNEA -> SlotCode.DYSPNEA_PRESENCE; case BLEEDING -> SlotCode.BLEEDING_PRESENCE; case PREGNANCY_RELATED_BLEEDING -> SlotCode.PREGNANCY_STATUS; case SEIZURE -> SlotCode.SEIZURE_PRESENCE; case ALTERED_CONSCIOUSNESS, CHEST_PAIN, UNKNOWN -> SlotCode.PRIMARY_SYMPTOM; }; }
+    private String buildSystemPrompt() { return "你是风险分级 Worker，只输出 RiskLevel JSON。"; }
+    private String buildUserPrompt(TriageContext context) { return "用户输入：" + StrUtil.blankToDefault(context.getLatestUserTurn(), "") + "\n已知风险信号：" + toJsonSafely(context.getRiskSignalState()) + "\n槽位状态：" + toJsonSafely(context.getSlotState()); }
 }

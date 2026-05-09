@@ -17,11 +17,15 @@
 
 package com.nageoffer.ai.ragent.rag.core.vector;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nageoffer.ai.ragent.rag.config.RAGDefaultProperties;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -31,50 +35,54 @@ public class PgVectorStoreServiceTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private RAGDefaultProperties ragDefaultProperties;
+
     @Test
-    public void testChineseCharacterInsertion() {
-        // 准备测试数据
+    public void testChineseCharacterInsertion() throws Exception {
         String chunkId = "test_chunk_001";
-        Long kbId = 1L;
+        String collectionName = "test_collection";
         String docId = "test_doc_001";
         Integer chunkIndex = 0;
         String content = "这是一段中文测试内容，包含各种字符：你好世界！";
 
-        // 创建一个简单的向量
-        float[] embedding = new float[4096];
-        for (int i = 0; i < 4096; i++) {
+        int dimension = ragDefaultProperties.getDimension();
+        float[] embedding = new float[dimension];
+        for (int i = 0; i < dimension; i++) {
             embedding[i] = 0.1f;
         }
 
-        // 构建向量字符串
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < embedding.length; i++) {
-            if (i > 0) sb.append(",");
+            if (i > 0) {
+                sb.append(",");
+            }
             sb.append(embedding[i]);
         }
         String vectorLiteral = sb.append("]").toString();
 
-        // 插入数据
-        String sql = "INSERT INTO t_knowledge_vector (chunk_id, kb_id, doc_id, chunk_index, content, embedding) " +
-                     "VALUES (?, ?, ?, ?, ?, ?::vector)";
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("collection_name", collectionName);
+        metadata.put("doc_id", docId);
+        metadata.put("chunk_index", chunkIndex);
+        String metadataJson = objectMapper.writeValueAsString(metadata);
 
-        jdbcTemplate.update(sql, chunkId, kbId, docId, chunkIndex, content, vectorLiteral);
+        String sql = "INSERT INTO t_knowledge_vector (id, content, metadata, embedding) VALUES (?, ?, ?::jsonb, ?::vector)";
 
-        // 查询验证
-        String querySql = "SELECT chunk_id, content FROM t_knowledge_vector WHERE chunk_id = ?";
+        jdbcTemplate.update(sql, chunkId, content, metadataJson, vectorLiteral);
+
+        String querySql = "SELECT id, content, metadata FROM t_knowledge_vector WHERE id = ?";
         List<Map<String, Object>> results = jdbcTemplate.queryForList(querySql, chunkId);
 
-        System.out.println("=== 查询结果 ===");
-        for (Map<String, Object> row : results) {
-            System.out.println("chunk_id: " + row.get("chunk_id"));
-            System.out.println("content: " + row.get("content"));
-            System.out.println("content length: " + ((String) row.get("content")).length());
-            System.out.println("原始内容: " + content);
-            System.out.println("是否相等: " + content.equals(row.get("content")));
-        }
+        Assertions.assertFalse(results.isEmpty());
+        Map<String, Object> row = results.get(0);
+        Assertions.assertEquals(chunkId, row.get("id"));
+        Assertions.assertEquals(content, row.get("content"));
+        Assertions.assertNotNull(row.get("metadata"));
 
-        // 清理测试数据
-        // noinspection SqlDialectInspection,SqlNoDataSourceInspection
-        jdbcTemplate.update("DELETE FROM t_knowledge_vector WHERE chunk_id = ?", chunkId);
+        jdbcTemplate.update("DELETE FROM t_knowledge_vector WHERE id = ?", chunkId);
     }
 }

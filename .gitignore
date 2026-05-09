@@ -1,0 +1,81 @@
+# --- OS files ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# --- IDE / editor ---
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+.factorypath
+.springBeans
+.sts4-cache/
+.apt_generated/
+
+# --- Java / Maven build outputs ---
+**/target/
+!**/src/main/**/target/
+!**/src/test/**/target/
+**/build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+*.class
+.flattened-pom.xml
+
+# Maven wrapper binary can be regenerated; keep wrapper scripts/properties if present.
+**/.mvn/wrapper/maven-wrapper.jar
+
+# --- Logs / runtime files ---
+*.log
+logs/
+**/logs/
+*.pid
+*.seed
+*.hprof
+
+# --- Frontend dependencies / build outputs ---
+**/node_modules/
+**/dist/
+**/dist-ssr/
+**/.vite/
+**/.turbo/
+**/.next/
+**/coverage/
+.npm-cache/
+.pnpm-store/
+
+# --- Environment / local secrets ---
+.env
+.env.*
+*.local
+
+# Keep example env files if they exist.
+!.env.example
+!.env.*.example
+
+# --- Local Spring config that may contain personal secrets ---
+**/src/main/resources/config/application-dev.yml
+**/src/main/resources/config/application-dev.yaml
+**/src/main/resources/config/application-local.yml
+**/src/main/resources/config/application-local.yaml
+**/src/main/resources/config/bootstrap-dev.yml
+**/src/main/resources/config/bootstrap-dev.yaml
+**/src/main/resources/config/bootstrap-local.yml
+**/src/main/resources/config/bootstrap-local.yaml
+
+# --- Local temp files ---
+temp/
+tmp/
+**/temp/
+**/tmp/
+
+# --- Generated evaluation reports ---
+**/resources/eval/outputs/
+
+# --- Cursor local workspace state ---
+**/.cursor/

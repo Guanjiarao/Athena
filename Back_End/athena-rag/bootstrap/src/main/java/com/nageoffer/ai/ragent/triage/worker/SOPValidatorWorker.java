@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nageoffer.ai.ragent.infra.chat.LLMService;
 import com.nageoffer.ai.ragent.triage.model.Symptom;
 import com.nageoffer.ai.ragent.triage.model.TriageContext;
+import com.nageoffer.ai.ragent.triage.prompt.SopValidatorPromptTemplates;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -32,9 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-/**
- * 医疗 SOP 状态机校验 Worker。
- */
 @Component
 public class SOPValidatorWorker extends AbstractStructuredTriageWorker {
 
@@ -43,13 +41,6 @@ public class SOPValidatorWorker extends AbstractStructuredTriageWorker {
     );
 
     private static final Pattern TEMPERATURE_PATTERN = Pattern.compile("(3[7-9](\\.\\d)?|4\\d(\\.\\d)?)\\s*℃?");
-
-    private static final String OUTPUT_JSON_SCHEMA = """
-            {
-              "type": "array",
-              "items": { "type": "string" }
-            }
-            """;
 
     private static final Map<String, List<String>> SOP_RULE_MATRIX = createSopRuleMatrix();
 
@@ -84,50 +75,32 @@ public class SOPValidatorWorker extends AbstractStructuredTriageWorker {
     }
 
     private String buildSystemPrompt() {
-        return """
-                你是医疗分诊系统中的“SOP 校验 Worker”，只负责找出当前病历里缺失的关键信息。
-                你必须依据给定的医疗问诊规则，检查“原始用户输入”和“结构化症状”中是否已经出现这些字段。
-
-                严格要求：
-                1. 只输出缺失字段名的 JSON 数组，例如 ["腹痛位置","是否伴随发热"]。
-                2. 如果信息已经齐全，输出 []。
-                3. 不要输出解释，不要输出 Markdown，不要输出对象。
-                4. 如果同一字段被不同规则重复命中，只保留一次。
-
-                JSON Schema:
-                """ + OUTPUT_JSON_SCHEMA;
+        return SopValidatorPromptTemplates.systemPrompt();
     }
 
     private String buildUserPrompt(TriageContext context, List<String> matchedChecklist) {
-        return """
-                会话ID: %s
-                原始用户输入:
-                %s
-
-                结构化症状:
-                %s
-
-                当前命中的问诊 SOP:
-                %s
-
-                请仅返回仍然缺失的字段名 JSON 数组。
-                """.formatted(
+        return SopValidatorPromptTemplates.userPrompt(
                 StrUtil.blankToDefault(context.getSessionId(), "UNKNOWN"),
                 context.getUserInput(),
                 toJsonSafely(context.getExtractedSymptoms()),
-                renderChecklist(matchedChecklist)
+                matchedChecklist
         );
     }
 
     private List<String> parseMissingFields(String rawResponse) {
-        List<String> result = readTypeSafely(
-                rawResponse,
-                new TypeReference<List<String>>() {
-                },
-                new ArrayList<>(),
-                "SOP校验-数组解析"
-        );
-        if (!result.isEmpty()) {
+        String payload = extractJsonPayload(rawResponse);
+        if (StrUtil.isBlank(payload)) {
+            return new ArrayList<>();
+        }
+        String trimmed = payload.trim();
+        if (trimmed.startsWith("[")) {
+            List<String> result = readTypeSafely(
+                    rawResponse,
+                    new TypeReference<List<String>>() {
+                    },
+                    new ArrayList<>(),
+                    "SOP校验-数组解析"
+            );
             return normalizeStringList(result);
         }
 
@@ -256,47 +229,16 @@ public class SOPValidatorWorker extends AbstractStructuredTriageWorker {
 
     private boolean hasNauseaOrVomitingAnswer(String text) {
         return containsAny(text, List.of(
-                "恶心", "想吐", "呕吐", "吐了", "没有呕吐", "没呕吐", "无呕吐", "没有吐", "没吐", "不呕吐", "不吐"
+                "恶心", "想吐", "呕吐", "吐了", "没有恶心", "没恶心", "无恶心", "没有吐", "没吐", "无呕吐"
         ));
-    }
-
-    private String renderChecklist(List<String> checklist) {
-        if (checklist == null || checklist.isEmpty()) {
-            return "1. 所有主诉至少需要明确：主要症状、持续时间。";
-        }
-        StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < checklist.size(); i++) {
-            builder.append(i + 1).append(". ").append(checklist.get(i)).append("\n");
-        }
-        return builder.toString().trim();
     }
 
     private static Map<String, List<String>> createSopRuleMatrix() {
-        Map<String, List<String>> result = new LinkedHashMap<>();
-        result.put("腹痛", List.of(
-                "若主诉为腹痛，必须明确：腹痛位置、持续时间、疼痛性质、是否伴随发热、是否伴随恶心或呕吐。"
-        ));
-        result.put("肚子", List.of(
-                "若主诉为腹痛，必须明确：腹痛位置、持续时间、疼痛性质、是否伴随发热、是否伴随恶心或呕吐。"
-        ));
-        result.put("胸痛", List.of(
-                "若主诉为胸痛，必须明确：疼痛持续时间、疼痛部位、是否伴随呼吸困难、是否伴随出汗或放射痛。"
-        ));
-        result.put("发热", List.of(
-                "若主诉为发热，必须明确：体温、持续时间、是否伴随寒战、咳嗽或皮疹。"
-        ));
-        result.put("发烧", List.of(
-                "若主诉为发热，必须明确：体温、持续时间、是否伴随寒战、咳嗽或皮疹。"
-        ));
-        result.put("头痛", List.of(
-                "若主诉为头痛，必须明确：疼痛部位、持续时间、是否伴随发热、是否伴随呕吐或视物模糊。"
-        ));
-        result.put("出血", List.of(
-                "若主诉为阴道出血或异常流血，必须明确：出血量、持续时间、是否妊娠、是否伴随腹痛或头晕。"
-        ));
-        result.put("见红", List.of(
-                "若主诉为阴道出血或异常流血，必须明确：出血量、持续时间、是否妊娠、是否伴随腹痛或头晕。"
-        ));
-        return result;
+        Map<String, List<String>> matrix = new LinkedHashMap<>();
+        matrix.put("腹痛", List.of("腹痛需要补充：疼痛部位、是否伴随发热、是否伴随恶心或呕吐。"));
+        matrix.put("胸痛", List.of("胸痛需要补充：疼痛部位、是否伴随呼吸困难。"));
+        matrix.put("发热", List.of("发热需要补充：体温。"));
+        matrix.put("阴道出血", List.of("阴道出血需要补充：是否妊娠。"));
+        return matrix;
     }
 }
