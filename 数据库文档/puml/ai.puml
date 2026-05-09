@@ -1,0 +1,129 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+skinparam defaultFontName Microsoft YaHei
+skinparam defaultFontSize 12
+
+' entities
+
+entity "t_user (系统用户)" as t_user {
+  * id : VARCHAR(20) <<PK>>
+  --
+  * username : VARCHAR(64) <<UK>>
+  * password : VARCHAR(128)
+  * role : VARCHAR(32)
+  avatar : VARCHAR(128)
+  * create_time : TIMESTAMP
+}
+
+entity "t_conversation (会话列表)" as t_conversation {
+  * id : VARCHAR(20) <<PK>>
+  --
+  * conversation_id : VARCHAR(20)
+  * user_id : VARCHAR(20) <<FK>>
+  * title : VARCHAR(128)
+  last_time : TIMESTAMP
+  * create_time : TIMESTAMP
+}
+
+entity "t_message (会话消息)" as t_message {
+  * id : VARCHAR(20) <<PK>>
+  --
+  * conversation_id : VARCHAR(20) <<FK>>
+  * user_id : VARCHAR(20) <<FK>>
+  * role : VARCHAR(16)
+  * content : TEXT
+  * create_time : TIMESTAMP
+}
+
+entity "t_knowledge_base (知识库)" as t_knowledge_base {
+  * id : VARCHAR(20) <<PK>>
+  --
+  * name : VARCHAR(128)
+  * embedding_model : VARCHAR(64)
+  * collection_name : VARCHAR(64) <<UK>>
+  * created_by : VARCHAR(20)
+  * create_time : TIMESTAMP
+}
+
+entity "t_knowledge_document (知识文档)" as t_knowledge_document {
+  * id : VARCHAR(20) <<PK>>
+  --
+  * kb_id : VARCHAR(20) <<FK>>
+  * doc_name : VARCHAR(256)
+  * file_url : VARCHAR(1024)
+  * status : VARCHAR(16)
+  chunk_strategy : VARCHAR(32)
+  * create_time : TIMESTAMP
+}
+
+entity "t_knowledge_chunk (文档分块)" as t_knowledge_chunk {
+  * id : VARCHAR(20) <<PK>>
+  --
+  * kb_id : VARCHAR(20) <<FK>>
+  * doc_id : VARCHAR(20) <<FK>>
+  * chunk_index : INTEGER
+  * content : TEXT
+  token_count : INTEGER
+  * create_time : TIMESTAMP
+}
+
+entity "t_intent_node (意图树节点)" as t_intent_node {
+  * id : VARCHAR(20) <<PK>>
+  --
+  kb_id : VARCHAR(20) <<FK>>
+  * intent_code : VARCHAR(64)
+  * name : VARCHAR(64)
+  * kind : SMALLINT
+  parent_code : VARCHAR(64)
+  prompt_template : TEXT
+  * create_time : TIMESTAMP
+}
+
+entity "t_rag_trace_run (链路运行记录)" as t_rag_trace_run {
+  * id : VARCHAR(20) <<PK>>
+  --
+  * trace_id : VARCHAR(64) <<UK>>
+  conversation_id : VARCHAR(20) <<FK>>
+  user_id : VARCHAR(20) <<FK>>
+  * status : VARCHAR(16)
+  duration_ms : BIGINT
+  * create_time : TIMESTAMP
+}
+
+entity "t_ingestion_pipeline (摄取流水线)" as t_ingestion_pipeline {
+  * id : VARCHAR(20) <<PK>>
+  --
+  * name : VARCHAR(100) <<UK>>
+  description : TEXT
+  * create_time : TIMESTAMP
+}
+
+entity "t_ingestion_task (摄取任务)" as t_ingestion_task {
+  * id : VARCHAR(20) <<PK>>
+  --
+  * pipeline_id : VARCHAR(20) <<FK>>
+  * status : VARCHAR(16)
+  source_type : VARCHAR(20)
+  error_message : TEXT
+  * create_time : TIMESTAMP
+}
+
+' relationships
+
+t_user ||--o{ t_conversation : "user_id"
+t_user ||--o{ t_message : "user_id"
+t_user ||--o{ t_rag_trace_run : "user_id"
+
+t_conversation ||--o{ t_message : "conversation_id"
+t_conversation ||--o{ t_rag_trace_run : "conversation_id"
+
+t_knowledge_base ||--o{ t_knowledge_document : "kb_id"
+t_knowledge_base ||--o{ t_knowledge_chunk : "kb_id"
+t_knowledge_base ||--o{ t_intent_node : "kb_id"
+
+t_knowledge_document ||--o{ t_knowledge_chunk : "doc_id"
+
+t_ingestion_pipeline ||--o{ t_ingestion_task : "pipeline_id"
+
+@enduml
