@@ -38,10 +38,10 @@ class FactHeuristicExtractorCompatibilityFallbackTest {
         FactHeuristicExtractor extractor = new FactHeuristicExtractor(new ComplaintFallbackResolver());
         TriageContext context = TriageContext.builder().sessionId("FACT-HEURISTIC-001").build();
         context.ensureCollections();
-        context.appendConversation("肚子右下腹痛一天了，没有发热");
-        context.setLatestUserTurn("肚子右下腹痛一天了，没有发热");
+        context.appendConversation("右下腹痛一天了，没发热");
+        context.setLatestUserTurn("右下腹痛一天了，没发热");
         context.setLatestTurnUnderstanding(TurnUnderstanding.builder()
-                .primaryComplaint(ComplaintUnderstanding.builder().value("腹痛").evidence("肚子痛").build())
+                .primaryComplaint(ComplaintUnderstanding.builder().value("腹痛").evidence("腹部痛").build())
                 .answeredSlots(List.of(
                         AnsweredSlotUnderstanding.builder().slot(SlotCode.BODY_PART).normalizedValue("右下腹").assertion(AssertionStatus.PRESENT).build(),
                         AnsweredSlotUnderstanding.builder().slot(SlotCode.DURATION).normalizedValue("一天").assertion(AssertionStatus.PRESENT).build(),
@@ -77,8 +77,8 @@ class FactHeuristicExtractorCompatibilityFallbackTest {
         FactHeuristicExtractor extractor = new FactHeuristicExtractor(new ComplaintFallbackResolver());
         TriageContext context = TriageContext.builder().sessionId("FACT-HEURISTIC-003").build();
         context.ensureCollections();
-        context.appendConversation("肚子疼一天了");
-        context.setLatestUserTurn("肚子疼一天了");
+        context.appendConversation("胸口痛一整天");
+        context.setLatestUserTurn("胸口痛一整天");
         context.setLatestTurnUnderstanding(TurnUnderstanding.builder().build());
 
         List<Fact> factsWithoutScope = extractor.extract(context.getLatestUserTurn(), context);
@@ -87,5 +87,21 @@ class FactHeuristicExtractorCompatibilityFallbackTest {
         context.setPendingSlots(List.of(SlotCode.PRIMARY_SYMPTOM));
         List<Fact> factsWithScope = extractor.extract(context.getLatestUserTurn(), context);
         assertTrue(factsWithScope.stream().anyMatch(fact -> fact.getSlot() == SlotCode.PRIMARY_SYMPTOM));
+    }
+
+    @Test
+    void shouldProduceCompatibilityDurationFactForSpannedNaturalExpression() {
+        FactHeuristicExtractor extractor = new FactHeuristicExtractor(new ComplaintFallbackResolver());
+        TriageContext context = TriageContext.builder().sessionId("FACT-HEURISTIC-004").build();
+        context.ensureCollections();
+        context.appendConversation("我从昨天晚上发烧到现在还肚子疼");
+        context.setLatestUserTurn("我从昨天晚上发烧到现在还肚子疼");
+        context.setLastAskedSlots(List.of(SlotCode.DURATION));
+        context.setLatestTurnUnderstanding(TurnUnderstanding.builder().build());
+
+        List<Fact> facts = extractor.extract(context.getLatestUserTurn(), context);
+
+        assertTrue(facts.stream().anyMatch(fact -> fact.getSlot() == SlotCode.DURATION
+                && "昨天晚上到现在".equals(fact.getCanonicalValue())));
     }
 }

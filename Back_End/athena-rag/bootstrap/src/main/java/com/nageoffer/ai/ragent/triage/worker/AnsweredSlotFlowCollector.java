@@ -18,6 +18,7 @@
 package com.nageoffer.ai.ragent.triage.worker;
 
 import com.nageoffer.ai.ragent.triage.model.AnsweredSlotUnderstanding;
+import com.nageoffer.ai.ragent.triage.model.AssertionStatus;
 import com.nageoffer.ai.ragent.triage.model.SlotCode;
 import com.nageoffer.ai.ragent.triage.model.TriageContext;
 import com.nageoffer.ai.ragent.triage.model.TurnUnderstanding;
@@ -38,7 +39,9 @@ public class AnsweredSlotFlowCollector {
         }
         List<SlotCode> candidates = candidateSlots(context);
         for (SlotCode slot : candidates) {
-            AnsweredSlotUnderstanding inferred = slotAnswerInferenceHelper.infer(slot, text);
+            AnsweredSlotUnderstanding inferred = slot == SlotCode.DURATION
+                    ? inferDurationAnswer(text)
+                    : slotAnswerInferenceHelper.infer(slot, text);
             if (inferred == null || hasSlot(understanding.getAnsweredSlots(), slot)) {
                 continue;
             }
@@ -52,11 +55,29 @@ public class AnsweredSlotFlowCollector {
             return false;
         }
         for (SlotCode slot : context.getLastAskedSlots()) {
-            if (slotAnswerInferenceHelper.infer(slot, text) != null) {
+            AnsweredSlotUnderstanding inferred = slot == SlotCode.DURATION
+                    ? inferDurationAnswer(text)
+                    : slotAnswerInferenceHelper.infer(slot, text);
+            if (inferred != null) {
                 return true;
             }
         }
         return false;
+    }
+
+    private AnsweredSlotUnderstanding inferDurationAnswer(String text) {
+        String value = SemanticParserSupport.extractDuration(text);
+        if (blank(value)) {
+            return null;
+        }
+        return AnsweredSlotUnderstanding.builder()
+                .slot(SlotCode.DURATION)
+                .rawValue(value)
+                .normalizedValue(value)
+                .assertion(AssertionStatus.PRESENT)
+                .confidence(0.85D)
+                .evidence(text)
+                .build();
     }
 
     private List<SlotCode> candidateSlots(TriageContext context) {

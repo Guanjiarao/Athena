@@ -58,9 +58,8 @@ public class SlotAnswerInferenceHelper {
     }
 
     private AnsweredSlotUnderstanding durationSlot(SlotCode slot, String text) {
-        var matcher = SemanticParserSupport.DURATION_PATTERN.matcher(text);
-        if (!matcher.find()) return null;
-        String value = trim(matcher.group(1));
+        String value = SemanticParserSupport.extractDuration(text);
+        if (blank(value)) return null;
         return AnsweredSlotUnderstanding.builder().slot(slot).rawValue(value).normalizedValue(value).assertion(AssertionStatus.PRESENT).confidence(0.85D).evidence(text).build();
     }
 

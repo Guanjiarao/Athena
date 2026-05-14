@@ -52,8 +52,7 @@ final class CompatibilityFactPatternMatcher {
     }
 
     String extractDuration(String userInput) {
-        var matcher = SemanticParserSupport.DURATION_PATTERN.matcher(userInput);
-        return matcher.find() ? matcher.group(1).trim() : null;
+        return SemanticParserSupport.extractDuration(userInput);
     }
 
     String extractTemperature(String userInput) {
