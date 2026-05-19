@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 
 package com.nageoffer.ai.ragent.triage.engine;
 
@@ -28,6 +13,7 @@ import com.nageoffer.ai.ragent.triage.model.Symptom;
 import com.nageoffer.ai.ragent.triage.model.TriageContext;
 import com.nageoffer.ai.ragent.triage.service.TriageModelGateway;
 import com.nageoffer.ai.ragent.triage.worker.OptionGenerator;
+import com.nageoffer.ai.ragent.triage.worker.QuestionPlanSupport;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -40,7 +26,8 @@ final class TriageReplyBuilder {
     private TriageReplyBuilder() {
     }
 
-    static String buildClarificationReply(TriageContext context, OptionGenerator optionGenerator) {
+    static String buildClarificationReply(TriageContext context, OptionGenerator optionGenerator,
+                                          QuestionPlanSupport questionPlanSupport, TriageModelGateway triageModelGateway) {
         log.info("[ReplyBuilder] 开始构建澄清回复, sessionId={}", context.getSessionId());
 
         List<String> prompts = new ArrayList<>();
@@ -133,6 +120,51 @@ final class TriageReplyBuilder {
                 questionPlan == null ? "null" : "存在",
                 questionPlan == null || questionPlan.getNextSlotsToAsk() == null ? "null" : questionPlan.getNextSlotsToAsk(),
                 context.getMissingFields());
+
+            // 新增：检测通用兜底问题的连续出现
+            int consecutiveGenericCount = countConsecutiveGenericQuestions(context);
+            log.warn("[ReplyBuilder] 检测到连续 {} 次通用兜底问题", consecutiveGenericCount);
+
+            // 如果连续出现2次或以上，触发LLM智能决策
+            if (consecutiveGenericCount >= 2) {
+                log.warn("[ReplyBuilder] 连续通用问题达到阈值，触发LLM智能兜底决策");
+
+                // 调用LLM智能兜底机制
+                QuestionPlan emergencyPlan = questionPlanSupport.selectEmergencySlotByLLM(context, triageModelGateway);
+
+                if (emergencyPlan.getNextSlotsToAsk().isEmpty()) {
+                    log.info("[ReplyBuilder] LLM 建议生成报告: {}", emergencyPlan.getPriorityReason());
+                    // 返回特殊标记，让上层生成报告
+                    context.setForceGenerateReport(true);
+                    context.setForceGenerateReportReason(emergencyPlan.getPriorityReason());
+                    return "##FORCE_GENERATE_REPORT##";
+                }
+
+                // LLM选择了一个槽位，尝试为该槽位生成问题
+                SlotCode selectedSlot = emergencyPlan.getNextSlotsToAsk().get(0);
+                log.info("[ReplyBuilder] LLM 选择槽位: {}, 理由: {}", selectedSlot, emergencyPlan.getPriorityReason());
+
+                String prompt = TriageReplyPromptSupport.promptForSlot(selectedSlot);
+                if (StrUtil.isNotBlank(prompt)) {
+                    prompts.add(prompt);
+                    log.info("[ReplyBuilder] 为LLM选择的槽位 {} 生成问题: {}", selectedSlot, prompt);
+
+                    // 为该槽位生成选项
+                    if (optionGenerator != null) {
+                        List<TriageClarificationData.QuestionOption> options = optionGenerator.generateOptionsForSlot(selectedSlot);
+                        if (options != null && !options.isEmpty()) {
+                            allOptions.addAll(options);
+                            log.info("[ReplyBuilder] 为槽位 {} 生成了 {} 个选项", selectedSlot, options.size());
+                        }
+                    }
+
+                    context.setGeneratedOptions(allOptions);
+                    String contextualIntro = buildContextualIntro(context);
+                    String finalReply = contextualIntro + String.join("；", prompts) + "。";
+                    log.info("[ReplyBuilder] LLM智能兜底后的最终回复: {}", finalReply);
+                    return finalReply;
+                }
+            }
 
             // 即使没有明确的问题，也尝试为常见槽位生成选项作为兜底
             if (optionGenerator != null && allOptions.isEmpty()) {
@@ -364,5 +396,37 @@ final class TriageReplyBuilder {
         builder.append("建议科室：").append(recommendation.getDepartment()).append("（").append(recommendation.getReason()).append("）\n");
         builder.append("行动建议：本结果仅用于分诊辅助，不能替代线下面诊，如症状持续或加重，请及时就医。");
         return builder.toString();
+    }
+
+    /**
+     * 统计历史对话中连续出现通用兜底问题的次数
+     */
+    private static int countConsecutiveGenericQuestions(TriageContext context) {
+        if (context.getSystemReplyHistory() == null || context.getSystemReplyHistory().isEmpty()) {
+            log.info("[ReplyBuilder] systemReplyHistory 为空，返回计数 0");
+            return 0;
+        }
+
+        String genericQuestion = "为了继续判断，请再补充一些不适细节";
+        int count = 0;
+
+        // 从最近的系统回复往前查找
+        List<String> history = context.getSystemReplyHistory();
+        log.info("[ReplyBuilder] 开始检测连续通用问题，systemReplyHistory 数量: {}", history.size());
+
+        for (int i = history.size() - 1; i >= 0; i--) {
+            String msg = history.get(i);
+            if (msg != null && msg.contains(genericQuestion)) {
+                count++;
+                log.info("[ReplyBuilder] 检测到通用问题 [{}]: {}", i, msg);
+            } else if (msg != null && !msg.trim().isEmpty()) {
+                // 遇到非通用问题的非空消息，停止计数
+                log.info("[ReplyBuilder] 遇到非通用问题 [{}]，停止计数: {}", i, msg);
+                break;
+            }
+        }
+
+        log.info("[ReplyBuilder] 连续通用问题计数结果: {}", count);
+        return count;
     }
 }
