@@ -17,19 +17,28 @@
 
 package com.nageoffer.ai.ragent.triage.worker;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nageoffer.ai.ragent.framework.convention.ChatMessage;
 import com.nageoffer.ai.ragent.triage.model.AssertionStatus;
 import com.nageoffer.ai.ragent.triage.model.QuestionGap;
 import com.nageoffer.ai.ragent.triage.model.QuestionGapReasonType;
 import com.nageoffer.ai.ragent.triage.model.QuestionGapSource;
 import com.nageoffer.ai.ragent.triage.model.QuestionGapType;
 import com.nageoffer.ai.ragent.triage.model.QuestionNeed;
+import com.nageoffer.ai.ragent.triage.model.QuestionPlan;
+import com.nageoffer.ai.ragent.triage.model.RiskLevel;
 import com.nageoffer.ai.ragent.triage.model.RiskSignalType;
 import com.nageoffer.ai.ragent.triage.model.RiskSignalUnderstanding;
 import com.nageoffer.ai.ragent.triage.model.SlotCode;
 import com.nageoffer.ai.ragent.triage.model.SlotState;
 import com.nageoffer.ai.ragent.triage.model.SlotStatus;
 import com.nageoffer.ai.ragent.triage.model.SlotValue;
+import com.nageoffer.ai.ragent.triage.model.Symptom;
 import com.nageoffer.ai.ragent.triage.model.TriageContext;
+import com.nageoffer.ai.ragent.triage.service.TriageModelGateway;
+import lombok.Builder;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -44,6 +53,45 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 public class QuestionPlanSupport {
+    private static final String SLOT_SCORING_SYSTEM_PROMPT = """
+你是医疗分诊系统中的问题优先级评估专家。你的任务是根据当前已收集的症状信息，评估每个候选问题的重要性。
+
+评分标准（0-100分）：
+- 90-100分：对诊断或风险评估至关重要，必须立即询问
+- 70-89分：对诊断有重要帮助，建议询问
+- 50-69分：对诊断有一定帮助，可以询问
+- 30-49分：对诊断帮助有限，可询问可不询问
+- 0-29分：对当前症状诊断意义不大，不建议询问
+
+评分考虑因素：
+1. **诊断价值**：该信息对缩小诊断范围的帮助程度
+2. **风险评估**：该信息对判断风险等级的必要性
+3. **信息完整度**：该信息对形成完整病史的贡献
+4. **临床推理**：该信息在当前症状下的合理性
+5. **上下文相关性**：该信息与已知症状的关联程度
+
+输出格式（严格 JSON）：
+{
+  "scores": [
+    {
+      "slot": "槽位代码",
+      "score": 分数(0-100),
+      "reason": "评分理由（一句话）"
+    }
+  ],
+  "recommendation": "continue" 或 "generate_report",
+  "rationale": "推荐理由"
+}
+
+注意：
+- 如果所有槽位分数都低于30分，recommendation 应为 "generate_report"
+- 评分要基于当前已知症状，避免过度追问
+- 优先考虑对风险评估有帮助的槽位
+""";
+
+    private static final int SLOT_SCORE_THRESHOLD = 30;
+    private static final int MAX_EMERGENCY_SLOTS = 1;
+
     // 临床推理顺序映射：按照临床推理的标准顺序提问
     // 第1阶段：主诉 → 第2阶段：定位/时间 → 第3阶段：量化/性质 → 第4阶段：伴随症状 → 第5阶段：病史 → 第6阶段：其他
     private static final Map<SlotCode, Integer> CLINICAL_REASONING_ORDER = Map.ofEntries(
@@ -590,7 +638,322 @@ public class QuestionPlanSupport {
 
         return resolved;
     }
+
+    /**
+     * 使用 LLM 智能选择紧急槽位（方案6）
+     * 当 candidateGaps 为空时调用，LLM 评估每个候选槽位的重要性
+     * 如果所有槽位分数都低于阈值，返回空计划（触发报告生成）
+     */
+    public QuestionPlan selectEmergencySlotByLLM(TriageContext context, TriageModelGateway modelGateway) {
+        log.warn("[QuestionPlanSupport] 启动 LLM 智能兜底槽位选择（方案6）");
+
+        // 1. 收集候选槽位
+        List<SlotCode> candidateSlots = collectCandidateSlots(context);
+        if (candidateSlots.isEmpty()) {
+            log.warn("[QuestionPlanSupport] 没有可用的候选槽位，返回空计划");
+            return QuestionPlan.builder()
+                .nextSlotsToAsk(List.of())
+                .priorityReason("所有兜底槽位都已填充，建议生成报告")
+                .build();
+        }
+
+        log.info("[QuestionPlanSupport] 收集到  个候选槽位: {}", candidateSlots.size(), candidateSlots);
+
+        // 2. 构建 LLM 评分提示词
+        String userPrompt = buildSlotScoringPrompt(context, candidateSlots);
+
+        // 3. 调用 LLM 进行评分
+        try {
+            List<ChatMessage> messages = new ArrayList<>();
+            messages.add(ChatMessage.system(SLOT_SCORING_SYSTEM_PROMPT));
+            messages.add(ChatMessage.user(userPrompt));
+
+            String response = modelGateway.chatWithReportModel(messages, 0.3D, 0.5D, 800);
+            log.info("[QuestionPlanSupport] LLM 槽位评分响应: {}", response);
+
+            // 4. 解析 LLM 响应
+            SlotScoringResult scoringResult = parseSlotScoringResponse(response);
+
+            if (scoringResult == null) {
+                log.error("[QuestionPlanSupport] LLM 响应解析失败，使用默认兜底");
+                return fallbackToDefaultSlot(context, candidateSlots);
+            }
+
+            log.info("[QuestionPlanSupport] LLM 推荐: {}, 理由: {}",
+                scoringResult.getRecommendation(), scoringResult.getRationale());
+
+            // 5. 根据 LLM 推荐决策
+            if ("generate_report".equals(scoringResult.getRecommendation())) {
+                log.info("[QuestionPlanSupport] LLM 建议生成报告，返回空计划");
+                return QuestionPlan.builder()
+                    .nextSlotsToAsk(List.of())
+                    .priorityReason("LLM 评估：" + scoringResult.getRationale())
+                    .build();
+            }
+
+            // 6. 选择得分最高的槽位
+            SlotScore topScore = scoringResult.getScores().stream()
+                .max(Comparator.comparingInt(SlotScore::getScore))
+                .orElse(null);
+
+            if (topScore == null || topScore.getScore() < SLOT_SCORE_THRESHOLD) {
+                log.info("[QuestionPlanSupport] 最高分槽位 {} 分数 {} 低于阈值 {}，返回空计划",
+                    topScore == null ? "null" : topScore.getSlot(),
+                    topScore == null ? 0 : topScore.getScore(),
+                    SLOT_SCORE_THRESHOLD);
+                return QuestionPlan.builder()
+                    .nextSlotsToAsk(List.of())
+                    .priorityReason("所有候选槽位分数都低于阈值，建议生成报告")
+                    .build();
+            }
+
+            log.info("[QuestionPlanSupport] 选择槽位 {} (分数: {}, 理由: {})",
+                topScore.getSlot(), topScore.getScore(), topScore.getReason());
+
+            return QuestionPlan.builder()
+                .nextSlotsToAsk(List.of(topScore.getSlot()))
+                .priorityReason("LLM 智能选择：" + topScore.getReason() + "（分数：" + topScore.getScore() + "）")
+                .build();
+
+        } catch (Exception e) {
+            log.error("[QuestionPlanSupport] LLM 槽位评分失败", e);
+            return fallbackToDefaultSlot(context, candidateSlots);
+        }
+    }
+
+    /**
+     * 收集候选槽位（16个兜底槽位，排除已填充的）
+     */
+    private List<SlotCode> collectCandidateSlots(TriageContext context) {
+        List<SlotCode> allFallbackSlots = List.of(
+            // 时间维度
+            SlotCode.DURATION, SlotCode.ONSET_TIME,
+
+            // 疼痛维度
+            SlotCode.PAIN_SEVERITY, SlotCode.PAIN_CHARACTER, SlotCode.BODY_PART,
+
+            // 伴随症状
+            SlotCode.FEVER_PRESENCE, SlotCode.NAUSEA_PRESENCE, SlotCode.VOMITING_PRESENCE,
+            SlotCode.DIARRHEA_PRESENCE, SlotCode.COUGH_PRESENCE, SlotCode.DYSPNEA_PRESENCE,
+
+            // 病史
+            SlotCode.DIAGNOSIS_HISTORY, SlotCode.MEDICATION_HISTORY,
+
+            // 其他
+            SlotCode.ASSOCIATED_SYMPTOMS, SlotCode.AGE
+        );
+
+        SlotState slotState = context.getSlotState();
+        if (slotState == null) {
+            return allFallbackSlots;
+        }
+
+        // 过滤掉已填充的槽位
+        return allFallbackSlots.stream()
+            .filter(slot -> {
+                SlotValue slotValue = slotState.get(slot);
+                return slotValue == null
+                    || slotValue.getStatus() == null
+                    || slotValue.getStatus() == SlotStatus.UNKNOWN;
+            })
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * 构建槽位评分提示词
+     */
+    private String buildSlotScoringPrompt(TriageContext context, List<SlotCode> candidateSlots) {
+        StringBuilder prompt = new StringBuilder();
+
+        // 1. 当前症状描述
+        prompt.append("【当前症状描述】\n");
+        prompt.append("用户输入：").append(context.getUserInput() == null ? "无" : context.getUserInput()).append("\n\n");
+
+        // 2. 已提取的结构化症状
+        prompt.append("【已提取的结构化症状】\n");
+        if (context.getExtractedSymptoms() == null || context.getExtractedSymptoms().isEmpty()) {
+            prompt.append("暂无\n");
+        } else {
+            for (Symptom symptom : context.getExtractedSymptoms()) {
+                prompt.append("- 症状：").append(symptom.getName() == null ? "未知" : symptom.getName()).append("\n");
+                if (symptom.getBodyPart() != null) prompt.append("  部位：").append(symptom.getBodyPart()).append("\n");
+                if (symptom.getDuration() != null) prompt.append("  持续时间：").append(symptom.getDuration()).append("\n");
+                if (symptom.getSeverity() != null) prompt.append("  程度：").append(symptom.getSeverity()).append("\n");
+            }
+        }
+        prompt.append("\n");
+
+        // 3. 已填充的槽位
+        prompt.append("【已收集的信息】\n");
+        SlotState slotState = context.getSlotState();
+        if (slotState == null || slotState.getSlots() == null || slotState.getSlots().isEmpty()) {
+            prompt.append("暂无\n");
+        } else {
+            for (Map.Entry<SlotCode, SlotValue> entry : slotState.getSlots().entrySet()) {
+                SlotValue value = entry.getValue();
+                if (value != null && value.getStatus() != null && value.getStatus() != SlotStatus.UNKNOWN) {
+                    prompt.append("- ").append(getSlotDescription(entry.getKey()))
+                        .append("：").append(value.getValue() == null ? "未知" : value.getValue())
+                        .append("（状态：").append(value.getStatus()).append("）\n");
+                }
+            }
+        }
+        prompt.append("\n");
+
+        // 4. 风险评估
+        prompt.append("【当前风险评估】\n");
+        RiskLevel riskLevel = context.getRiskAssessment();
+        if (riskLevel != null) {
+            prompt.append("风险等级：").append(riskLevel.getLevel()).append("\n");
+            prompt.append("风险分数：").append(riskLevel.getScore()).append("\n");
+            if (riskLevel.getEvidence() != null) {
+                prompt.append("依据：").append(riskLevel.getEvidence()).append("\n");
+            }
+        } else {
+            prompt.append("暂未评估\n");
+        }
+        prompt.append("\n");
+
+        // 5. 候选槽位列表
+        prompt.append("【候选问题槽位】\n");
+        for (SlotCode slot : candidateSlots) {
+            prompt.append("- ").append(slot.name()).append("：").append(getSlotDescription(slot)).append("\n");
+        }
+        prompt.append("\n");
+
+        prompt.append("请根据以上信息，评估每个候选槽位的重要性（0-100分），并给出是否继续询问的建议。");
+
+        return prompt.toString();
+    }
+
+    /**
+     * 获取槽位的中文描述
+     */
+    private String getSlotDescription(SlotCode slot) {
+        return switch (slot) {
+            case DURATION -> "持续时间";
+            case ONSET_TIME -> "发作时间";
+            case PAIN_SEVERITY -> "疼痛程度";
+            case PAIN_CHARACTER -> "疼痛性质";
+            case BODY_PART -> "身体部位";
+            case FEVER_PRESENCE -> "是否发热";
+            case NAUSEA_PRESENCE -> "是否恶心";
+            case VOMITING_PRESENCE -> "是否呕吐";
+            case DIARRHEA_PRESENCE -> "是否腹泻";
+            case COUGH_PRESENCE -> "是否咳嗽";
+            case DYSPNEA_PRESENCE -> "是否呼吸困难";
+            case DIAGNOSIS_HISTORY -> "既往病史";
+            case MEDICATION_HISTORY -> "用药史";
+            case ASSOCIATED_SYMPTOMS -> "伴随症状";
+            case AGE -> "年龄";
+            default -> slot.name();
+        };
+    }
+
+    /**
+     * 解析 LLM 槽位评分响应
+     */
+    private SlotScoringResult parseSlotScoringResponse(String response) {
+        if (response == null || response.isBlank()) {
+            log.error("[QuestionPlanSupport] LLM 响应为空");
+            return null;
+        }
+
+        try {
+            // 提取 JSON（处理可能的 ```json``` 包装）
+            String jsonStr = response.trim();
+            if (jsonStr.startsWith("```json")) {
+                jsonStr = jsonStr.substring(7);
+            }
+            if (jsonStr.startsWith("```")) {
+                jsonStr = jsonStr.substring(3);
+            }
+            if (jsonStr.endsWith("```")) {
+                jsonStr = jsonStr.substring(0, jsonStr.length() - 3);
+            }
+            jsonStr = jsonStr.trim();
+
+            // 解析 JSON
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(jsonStr);
+
+            // 解析 scores
+            List<SlotScore> scores = new ArrayList<>();
+            JsonNode scoresNode = root.get("scores");
+            if (scoresNode != null && scoresNode.isArray()) {
+                for (JsonNode scoreNode : scoresNode) {
+                    String slotName = scoreNode.get("slot").asText();
+                    int score = scoreNode.get("score").asInt();
+                    String reason = scoreNode.get("reason").asText();
+
+                    try {
+                        SlotCode slotCode = SlotCode.valueOf(slotName);
+                        scores.add(SlotScore.builder()
+                            .slot(slotCode)
+                            .score(score)
+                            .reason(reason)
+                            .build());
+                    } catch (IllegalArgumentException e) {
+                        log.warn("[QuestionPlanSupport] 无法识别槽位代码: {}", slotName);
+                    }
+                }
+            }
+
+            // 解析 recommendation 和 rationale
+            String recommendation = root.get("recommendation").asText();
+            String rationale = root.get("rationale").asText();
+
+            return SlotScoringResult.builder()
+                .scores(scores)
+                .recommendation(recommendation)
+                .rationale(rationale)
+                .build();
+
+        } catch (Exception e) {
+            log.error("[QuestionPlanSupport] 解析 LLM 响应失败", e);
+            return null;
+        }
+    }
+
+    /**
+     * 默认兜底：选择第一个未填充的槽位
+     */
+    private QuestionPlan fallbackToDefaultSlot(TriageContext context, List<SlotCode> candidateSlots) {
+        log.warn("[QuestionPlanSupport] LLM 评分失败，使用默认兜底策略");
+
+        if (candidateSlots.isEmpty()) {
+            return QuestionPlan.builder()
+                .nextSlotsToAsk(List.of())
+                .priorityReason("没有可用的候选槽位")
+                .build();
+        }
+
+        SlotCode firstSlot = candidateSlots.get(0);
+        log.info("[QuestionPlanSupport] 默认选择第一个槽位: {}", firstSlot);
+
+        return QuestionPlan.builder()
+            .nextSlotsToAsk(List.of(firstSlot))
+            .priorityReason("默认兜底：选择 " + getSlotDescription(firstSlot))
+            .build();
+    }
+
     private static GapSpec gapSpec(SlotCode slot, QuestionGapType gapType, QuestionGapSource source, int priority, String reason) { return new GapSpec(slot, gapType, source, priority, reason); }
     private record GapRule(String semanticSignal, RiskSignalType riskSignalType, List<GapSpec> gapSpecs) { private static GapRule forSemanticSignal(String semanticSignal, List<GapSpec> gapSpecs) { return new GapRule(semanticSignal, null, gapSpecs); } private static GapRule forRiskSignal(RiskSignalType riskSignalType, GapSpec gapSpec) { return new GapRule(null, riskSignalType, gapSpec == null ? List.of() : List.of(gapSpec)); } }
     private record GapSpec(SlotCode slot, QuestionGapType gapType, QuestionGapSource source, int priority, String reason) {}
+
+    @Data
+    @Builder
+    public static class SlotScoringResult {
+        private List<SlotScore> scores;
+        private String recommendation; // "continue" or "generate_report"
+        private String rationale;
+    }
+
+    @Data
+    @Builder
+    public static class SlotScore {
+        private SlotCode slot;
+        private int score;
+        private String reason;
+    }
 }
