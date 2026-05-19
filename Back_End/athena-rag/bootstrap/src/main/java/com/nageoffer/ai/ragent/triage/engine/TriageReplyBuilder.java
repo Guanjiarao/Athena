@@ -123,7 +123,9 @@ final class TriageReplyBuilder {
 
             // 新增：检测通用兜底问题的连续出现
             int consecutiveGenericCount = countConsecutiveGenericQuestions(context);
-            log.warn("[ReplyBuilder] 检测到连续 {} 次通用兜底问题", consecutiveGenericCount);
+            // 关键修复：如果当前也要返回通用问题，计数+1（预判）
+            consecutiveGenericCount++;
+            log.warn("[ReplyBuilder] 检测到连续 {} 次通用兜底问题（含本次）", consecutiveGenericCount);
 
             // 如果连续出现2次或以上，触发LLM智能决策
             if (consecutiveGenericCount >= 2) {
