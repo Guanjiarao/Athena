@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 
 package com.nageoffer.ai.ragent.rag.core.intent;
 
@@ -26,6 +11,7 @@ import com.nageoffer.ai.ragent.rag.enums.IntentKind;
 import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
 import com.nageoffer.ai.ragent.rag.core.rewrite.RewriteResult;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
@@ -40,6 +26,7 @@ import static com.nageoffer.ai.ragent.rag.constant.RAGConstant.INTENT_MIN_SCORE;
 import static com.nageoffer.ai.ragent.rag.constant.RAGConstant.MAX_INTENT_COUNT;
 import static com.nageoffer.ai.ragent.rag.enums.IntentKind.SYSTEM;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class IntentResolver {
@@ -54,6 +41,15 @@ public class IntentResolver {
         List<String> subQuestions = CollUtil.isNotEmpty(rewriteResult.subQuestions())
                 ? rewriteResult.subQuestions()
                 : List.of(rewriteResult.rewrittenQuestion());
+        log.info("[RAG对话链路][意图识别] 开始解析意图，rewrittenQuestion：{}，subQuestionCount：{}，threshold：{}，maxIntentCount：{}",
+                StrUtil.maxLength(rewriteResult.rewrittenQuestion(), 120),
+                subQuestions.size(),
+                INTENT_MIN_SCORE,
+                MAX_INTENT_COUNT);
+        for (int i = 0; i < subQuestions.size(); i++) {
+            log.info("[RAG对话链路][意图识别] 子问题准备分类，index：{}，question：{}",
+                    i, StrUtil.maxLength(subQuestions.get(i), 120));
+        }
         List<CompletableFuture<SubQuestionIntent>> tasks = subQuestions.stream()
                 .map(q -> CompletableFuture.supplyAsync(
                         () -> new SubQuestionIntent(q, classifyIntents(q)),
@@ -63,16 +59,34 @@ public class IntentResolver {
         List<SubQuestionIntent> subIntents = tasks.stream()
                 .map(CompletableFuture::join)
                 .toList();
-        return capTotalIntents(subIntents);
+        log.info("[RAG对话链路][意图识别] 子问题分类全部完成，subIntentCount：{}，totalRetainedBeforeCap：{}",
+                subIntents.size(),
+                subIntents.stream().mapToInt(si -> si.nodeScores() == null ? 0 : si.nodeScores().size()).sum());
+        List<SubQuestionIntent> capped = capTotalIntents(subIntents);
+        log.info("[RAG对话链路][意图识别] 意图数量裁剪完成，totalRetainedAfterCap：{}，summary：{}",
+                capped.stream().mapToInt(si -> si.nodeScores() == null ? 0 : si.nodeScores().size()).sum(),
+                summarizeSubIntents(capped));
+        return capped;
     }
 
     public IntentGroup mergeIntentGroup(List<SubQuestionIntent> subIntents) {
+        log.info("[RAG对话链路][意图识别] 开始合并子问题意图分组，subIntentCount：{}",
+                subIntents == null ? 0 : subIntents.size());
         List<NodeScore> mcpIntents = new ArrayList<>();
         List<NodeScore> kbIntents = new ArrayList<>();
         for (SubQuestionIntent si : subIntents) {
-            mcpIntents.addAll(filterMcpIntents(si.nodeScores()));
-            kbIntents.addAll(filterKbIntents(si.nodeScores()));
+            List<NodeScore> currentMcp = filterMcpIntents(si.nodeScores());
+            List<NodeScore> currentKb = filterKbIntents(si.nodeScores());
+            log.info("[RAG对话链路][意图识别] 子问题分组结果，question：{}，kbCount：{}，mcpCount：{}，rawCount：{}",
+                    StrUtil.maxLength(si.subQuestion(), 120),
+                    currentKb.size(),
+                    currentMcp.size(),
+                    si.nodeScores() == null ? 0 : si.nodeScores().size());
+            mcpIntents.addAll(currentMcp);
+            kbIntents.addAll(currentKb);
         }
+        log.info("[RAG对话链路][意图识别] 意图分组合并完成，kbIntentSummary：{}，mcpIntentSummary：{}",
+                summarizeNodeScores(kbIntents), summarizeNodeScores(mcpIntents));
         return new IntentGroup(mcpIntents, kbIntents);
     }
 
@@ -83,11 +97,20 @@ public class IntentResolver {
     }
 
     private List<NodeScore> classifyIntents(String question) {
+        log.info("[RAG对话链路][意图识别] 调用意图分类器，question：{}",
+                StrUtil.maxLength(question, 120));
         List<NodeScore> scores = intentClassifier.classifyTargets(question);
-        return scores.stream()
+        log.info("[RAG对话链路][意图识别] 分类器返回原始候选，question：{}，rawCount：{}，rawTop：{}",
+                StrUtil.maxLength(question, 120),
+                scores == null ? 0 : scores.size(),
+                summarizeNodeScores(scores));
+        List<NodeScore> retained = scores.stream()
                 .filter(ns -> ns.getScore() >= INTENT_MIN_SCORE)
                 .limit(MAX_INTENT_COUNT)
                 .toList();
+        log.info("[RAG对话链路][意图识别] 阈值过滤后保留候选，question：{}，retainedCount：{}，retained：{}",
+                StrUtil.maxLength(question, 120), retained.size(), summarizeNodeScores(retained));
+        return retained;
     }
 
     private List<NodeScore> filterMcpIntents(List<NodeScore> nodeScores) {
@@ -122,11 +145,15 @@ public class IntentResolver {
                 .mapToInt(si -> si.nodeScores().size())
                 .sum();
 
+        log.info("[RAG对话链路][意图识别] 检查总意图数量，totalIntents：{}，maxIntentCount：{}",
+                totalIntents, MAX_INTENT_COUNT);
         // 未超限，直接返回
         if (totalIntents <= MAX_INTENT_COUNT) {
+            log.info("[RAG对话链路][意图识别] 总意图数量未超限，无需裁剪");
             return subIntents;
         }
 
+        log.info("[RAG对话链路][意图识别] 总意图数量超限，开始裁剪，裁剪策略：每个子问题保留最高分，再按全局分数补齐剩余配额");
         // 步骤1：收集所有意图，按子问题索引分组
         List<IntentCandidate> allCandidates = collectAllCandidates(subIntents);
 
@@ -139,6 +166,8 @@ public class IntentResolver {
         // 步骤4：从剩余候选中按分数选择
         List<IntentCandidate> additionalIntents = selectAdditionalIntents(allCandidates, guaranteedIntents, remaining);
 
+        log.info("[RAG对话链路][意图识别] 裁剪选择完成，allCandidateCount：{}，guaranteedCount：{}，remainingQuota：{}，additionalCount：{}",
+                allCandidates.size(), guaranteedIntents.size(), remaining, additionalIntents.size());
         // 步骤5：合并并重建结果
         return rebuildSubIntents(subIntents, guaranteedIntents, additionalIntents);
     }
@@ -159,6 +188,8 @@ public class IntentResolver {
         }
         // 按分数降序排序
         candidates.sort((a, b) -> Double.compare(b.nodeScore().getScore(), a.nodeScore().getScore()));
+        log.info("[RAG对话链路][意图识别] 已收集并排序全部候选，candidateCount：{}，topCandidates：{}",
+                candidates.size(), summarizeCandidates(candidates));
         return candidates;
     }
 
@@ -231,6 +262,57 @@ public class IntentResolver {
             List<NodeScore> retained = groupedByIndex.getOrDefault(i, List.of());
             result.add(new SubQuestionIntent(original.subQuestion(), retained));
         }
+        log.info("[RAG对话链路][意图识别] 裁剪后重建子问题意图完成，summary：{}", summarizeSubIntents(result));
         return result;
+    }
+
+    private String summarizeSubIntents(List<SubQuestionIntent> subIntents) {
+        if (CollUtil.isEmpty(subIntents)) {
+            return "[]";
+        }
+        return subIntents.stream()
+                .map(si -> "{question=\"" + StrUtil.maxLength(si.subQuestion(), 50)
+                        + "\", intents=" + summarizeNodeScores(si.nodeScores()) + "}")
+                .toList()
+                .toString();
+    }
+
+    private String summarizeNodeScores(List<NodeScore> nodeScores) {
+        if (CollUtil.isEmpty(nodeScores)) {
+            return "[]";
+        }
+        return nodeScores.stream()
+                .limit(8)
+                .map(this::summarizeNodeScore)
+                .toList()
+                .toString();
+    }
+
+    private String summarizeCandidates(List<IntentCandidate> candidates) {
+        if (CollUtil.isEmpty(candidates)) {
+            return "[]";
+        }
+        return candidates.stream()
+                .limit(8)
+                .map(candidate -> "{subQuestionIndex=" + candidate.subQuestionIndex()
+                        + ", intent=" + summarizeNodeScore(candidate.nodeScore()) + "}")
+                .toList()
+                .toString();
+    }
+
+    private String summarizeNodeScore(NodeScore nodeScore) {
+        if (nodeScore == null) {
+            return "null";
+        }
+        IntentNode node = nodeScore.getNode();
+        if (node == null) {
+            return "{node=null, score=" + nodeScore.getScore() + "}";
+        }
+        return "{id=" + node.getId()
+                + ", name=" + node.getName()
+                + ", kind=" + node.getKind()
+                + ", score=" + String.format("%.4f", nodeScore.getScore())
+                + ", path=" + StrUtil.maxLength(node.getFullPath(), 80)
+                + "}";
     }
 }

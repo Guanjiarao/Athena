@@ -49,6 +49,12 @@ public class TriageContext {
     @Default
     private List<String> systemReplyHistory = new ArrayList<>();
 
+    /**
+     * LLM 兜底历史（用于检测连续 LLM 兜底）
+     */
+    @Default
+    private List<Boolean> llmFallbackHistory = new ArrayList<>();
+
     @Default
     private List<Symptom> extractedSymptoms = new ArrayList<>();
 
@@ -99,6 +105,13 @@ public class TriageContext {
     private List<CorrectionUnderstanding> correctionHistory = new ArrayList<>();
 
     private QuestionPlan questionPlan;
+
+    /**
+     * Rule Agent miss 后由 Supervisor 预取的 ColdStart LLM 问题计划。
+     * QuestionPlanner 只有在真正进入 LLM 兜底时才消费它，避免重复等待同一个冷启动选择。
+     */
+    private QuestionPlan prefetchedColdStartQuestionPlan;
+
     private RiskLevel riskAssessment;
     private RiskDecision riskDecision;
 
@@ -139,6 +152,9 @@ public class TriageContext {
         }
         if (systemReplyHistory == null) {
             systemReplyHistory = new ArrayList<>();
+        }
+        if (llmFallbackHistory == null) {
+            llmFallbackHistory = new ArrayList<>();
         }
         if (extractedSymptoms == null) {
             extractedSymptoms = new ArrayList<>();

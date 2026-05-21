@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 
 package com.nageoffer.ai.ragent.knowledge.service.impl;
 
@@ -47,11 +32,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.BucketAlreadyExistsException;
 import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -220,40 +201,13 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
         Page<KnowledgeBaseDO> page = new Page<>(requestParam.getCurrent(), requestParam.getSize());
         IPage<KnowledgeBaseDO> result = knowledgeBaseMapper.selectPage(page, queryWrapper);
-        Map<String, Long> docCountMap = new HashMap<>();
-        if (CollUtil.isNotEmpty(result.getRecords())) {
-            List<String> kbIds = result.getRecords().stream()
-                    .map(KnowledgeBaseDO::getId)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
-            if (!kbIds.isEmpty()) {
-                List<Map<String, Object>> rows = knowledgeDocumentMapper.selectMaps(
-                        Wrappers.query(KnowledgeDocumentDO.class)
-                                .select("kb_id AS kbId", "COUNT(1) AS docCount")
-                                .in("kb_id", kbIds)
-                                .eq("deleted", 0)
-                                .groupBy("kb_id")
-                );
-                for (Map<String, Object> row : rows) {
-                    Object kbIdValue = row.get("kbId");
-                    Object countValue = row.get("docCount");
-                    if (kbIdValue == null) {
-                        continue;
-                    }
-
-                    String kbId = kbIdValue instanceof Number
-                            ? String.valueOf(((Number) kbIdValue).longValue())
-                            : kbIdValue.toString();
-                    Long count = countValue instanceof Number
-                            ? ((Number) countValue).longValue()
-                            : countValue != null ? Long.parseLong(countValue.toString()) : 0L;
-                    docCountMap.put(kbId, count);
-                }
-            }
-        }
         return result.convert(each -> {
             KnowledgeBaseVO vo = BeanUtil.toBean(each, KnowledgeBaseVO.class);
-            Long docCount = docCountMap.get(each.getId());
+            Long docCount = knowledgeDocumentMapper.selectCount(
+                    Wrappers.lambdaQuery(KnowledgeDocumentDO.class)
+                            .eq(KnowledgeDocumentDO::getKbId, each.getId())
+                            .eq(KnowledgeDocumentDO::getDeleted, 0)
+            );
             vo.setDocumentCount(docCount != null ? docCount : 0L);
             return vo;
         });

@@ -76,6 +76,14 @@ tmp/
 
 # --- Generated evaluation reports ---
 **/resources/eval/outputs/
+**/eval-reports/
+
+# --- Local agent/tooling workspace state ---
+.claude/
+.agents/
+**/.claude/
+**/.agents/
+skills-lock.json
 
 # --- Cursor local workspace state ---
 **/.cursor/

@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 
 package com.nageoffer.ai.ragent.rag.service.impl;
 
@@ -111,17 +96,31 @@ public class RAGChatServiceImpl implements RAGChatService {
                             String taskId,
                             StreamCallback callback,
                             List<ChatReferencePayload> references) {
-        log.info("开始流式对话，会话ID：{}，任务ID：{}", actualConversationId, taskId);
+        log.info("[RAG对话链路][开始] 开始流式对话，会话ID：{}，任务ID：{}，deepThinking：{}，questionLength：{}",
+                actualConversationId, taskId, deepThinking, question == null ? 0 : question.length());
         boolean thinkingEnabled = Boolean.TRUE.equals(deepThinking);
 
         String userId = UserContext.getUserId();
         List<ChatMessage> history = memoryService.loadAndAppend(actualConversationId, userId, ChatMessage.user(question));
+        log.info("[RAG对话链路][记忆] 会话历史加载并追加用户问题完成，会话ID：{}，用户ID：{}，historySize：{}",
+                actualConversationId, userId, history == null ? 0 : history.size());
 
         RewriteResult rewriteResult = queryRewriteService.rewriteWithSplit(question, history);
+        log.info("[RAG对话链路][改写] 问题改写完成，会话ID：{}，原问题：{}，改写后：{}，子问题数：{}",
+                actualConversationId,
+                StrUtil.maxLength(question, 120),
+                rewriteResult == null ? null : StrUtil.maxLength(rewriteResult.rewrittenQuestion(), 120),
+                rewriteResult == null || rewriteResult.subQuestions() == null ? 0 : rewriteResult.subQuestions().size());
         List<SubQuestionIntent> subIntents = intentResolver.resolve(rewriteResult);
+        log.info("[RAG对话链路][意图] 意图解析完成，会话ID：{}，子问题意图数：{}",
+                actualConversationId, subIntents == null ? 0 : subIntents.size());
 
         GuidanceDecision guidanceDecision = guidanceService.detectAmbiguity(rewriteResult.rewrittenQuestion(), subIntents);
+        log.info("[RAG对话链路][引导] 歧义引导判断完成，会话ID：{}，需要引导：{}",
+                actualConversationId, guidanceDecision != null && guidanceDecision.isPrompt());
         if (guidanceDecision.isPrompt()) {
+            log.info("[RAG对话链路][结束] 命中歧义引导，直接返回澄清提示，会话ID：{}，任务ID：{}",
+                    actualConversationId, taskId);
             callback.onContent(guidanceDecision.getPrompt());
             callback.onComplete();
             return;
@@ -136,21 +135,42 @@ public class RAGChatServiceImpl implements RAGChatService {
                     .filter(StrUtil::isNotBlank)
                     .findFirst()
                     .orElse(null);
+            log.info("[RAG对话链路][系统回答] 全部命中系统型意图，跳过检索，准备直接调用大模型，会话ID：{}，任务ID：{}，hasCustomPrompt：{}",
+                    actualConversationId, taskId, StrUtil.isNotBlank(customPrompt));
             StreamCancellationHandle handle = streamSystemResponse(rewriteResult.rewrittenQuestion(), history, customPrompt, callback);
             taskManager.bindHandle(taskId, handle);
+            log.info("[RAG对话链路][任务绑定] 系统回答流式任务已绑定取消句柄，会话ID：{}，任务ID：{}",
+                    actualConversationId, taskId);
             return;
         }
 
+        log.info("[RAG对话链路][检索] 开始检索上下文，会话ID：{}，任务ID：{}，topK：{}",
+                actualConversationId, taskId, DEFAULT_TOP_K);
         RetrievalContext ctx = retrievalEngine.retrieve(subIntents, DEFAULT_TOP_K);
+        log.info("[RAG对话链路][检索] 检索完成，会话ID：{}，任务ID：{}，hasKb：{}，hasMcp：{}，intentChunkGroups：{}",
+                actualConversationId,
+                taskId,
+                ctx != null && StrUtil.isNotBlank(ctx.getKbContext()),
+                ctx != null && ctx.hasMcp(),
+                ctx == null || ctx.getIntentChunks() == null ? 0 : ctx.getIntentChunks().size());
         if (ctx.isEmpty()) {
 
+            log.info("[RAG对话链路][结束] 检索结果为空，返回兜底回答，会话ID：{}，任务ID：{}",
+                    actualConversationId, taskId);
             callback.onContent(buildEmptyRetrievalReply(rewriteResult.rewrittenQuestion(), question));
             callback.onComplete();
             return;
         }
         references.addAll(buildReferences(ctx));
+        log.info("[RAG对话链路][引用] 构建前端引用完成，会话ID：{}，任务ID：{}，referenceCount：{}",
+                actualConversationId, taskId, references.size());
 
         IntentGroup mergedGroup = intentResolver.mergeIntentGroup(subIntents);
+        log.info("[RAG对话链路][意图合并] 意图分组合并完成，会话ID：{}，任务ID：{}，kbIntentCount：{}，mcpIntentCount：{}",
+                actualConversationId,
+                taskId,
+                mergedGroup == null || mergedGroup.kbIntents() == null ? 0 : mergedGroup.kbIntents().size(),
+                mergedGroup == null || mergedGroup.mcpIntents() == null ? 0 : mergedGroup.mcpIntents().size());
 
         StreamCancellationHandle handle = streamLLMResponse(
                 rewriteResult,
@@ -161,6 +181,8 @@ public class RAGChatServiceImpl implements RAGChatService {
                 callback
         );
         taskManager.bindHandle(taskId, handle);
+        log.info("[RAG对话链路][任务绑定] RAG回答流式任务已绑定取消句柄，会话ID：{}，任务ID：{}",
+                actualConversationId, taskId);
     }
 
     @Override
@@ -260,6 +282,8 @@ public class RAGChatServiceImpl implements RAGChatService {
                 .temperature(0.7D)
                 .thinking(false)
                 .build();
+        log.info("[RAG对话链路][LLM请求] 系统回答消息组装完成，messageCount：{}，temperature：{}，thinking：{}",
+                messages.size(), 0.7D, false);
         return llmService.streamChat(req, callback);
     }
 
@@ -288,6 +312,13 @@ public class RAGChatServiceImpl implements RAGChatService {
                 .topP(ctx.hasMcp() ? 0.8D : 1D)
                 .build();
 
+        log.info("[RAG对话链路][LLM请求] RAG回答消息组装完成，messageCount：{}，kbContextLength：{}，mcpContextLength：{}，thinking：{}，temperature：{}，topP：{}",
+                messages.size(),
+                ctx.getKbContext() == null ? 0 : ctx.getKbContext().length(),
+                ctx.getMcpContext() == null ? 0 : ctx.getMcpContext().length(),
+                deepThinking,
+                chatRequest.getTemperature(),
+                chatRequest.getTopP());
         return llmService.streamChat(chatRequest, callback);
     }
 }

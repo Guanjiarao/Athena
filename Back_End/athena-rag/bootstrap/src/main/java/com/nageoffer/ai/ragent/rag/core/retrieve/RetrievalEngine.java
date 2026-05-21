@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 
 package com.nageoffer.ai.ragent.rag.core.retrieve;
 
@@ -81,6 +66,7 @@ public class RetrievalEngine {
     @RagTraceNode(name = "retrieval-engine", type = "RETRIEVE")
     public RetrievalContext retrieve(List<SubQuestionIntent> subIntents, int topK) {
         if (CollUtil.isEmpty(subIntents)) {
+            log.info("[RAG对话链路][检索引擎] 子问题意图为空，跳过检索");
             return RetrievalContext.builder()
                     .mcpContext("")
                     .kbContext("")
@@ -89,6 +75,8 @@ public class RetrievalEngine {
         }
 
         int finalTopK = topK > 0 ? topK : DEFAULT_TOP_K;
+        log.info("[RAG对话链路][检索引擎] 开始并发构建子问题上下文，subIntentCount：{}，topK：{}",
+                subIntents.size(), finalTopK);
         List<CompletableFuture<SubQuestionContext>> tasks = subIntents.stream()
                 .map(si -> CompletableFuture.supplyAsync(
                         () -> buildSubQuestionContext(
@@ -118,6 +106,8 @@ public class RetrievalEngine {
             }
         }
 
+        log.info("[RAG对话链路][检索引擎] 子问题上下文合并完成，kbContextLength：{}，mcpContextLength：{}，intentChunkGroups：{}",
+                kbBuilder.length(), mcpBuilder.length(), mergedIntentChunks.size());
         return RetrievalContext.builder()
                 .mcpContext(mcpBuilder.toString().trim())
                 .kbContext(kbBuilder.toString().trim())
@@ -128,12 +118,20 @@ public class RetrievalEngine {
     private SubQuestionContext buildSubQuestionContext(SubQuestionIntent intent, int topK) {
         List<NodeScore> kbIntents = filterKbIntents(intent.nodeScores());
         List<NodeScore> mcpIntents = filterMCPIntents(intent.nodeScores());
+        log.info("[RAG对话链路][检索引擎] 开始处理子问题，question：{}，kbIntentCount：{}，mcpIntentCount：{}，topK：{}",
+                StrUtil.maxLength(intent.subQuestion(), 120), kbIntents.size(), mcpIntents.size(), topK);
 
         KbResult kbResult = retrieveAndRerank(intent, kbIntents, topK);
+        log.info("[RAG对话链路][检索引擎] KB检索完成，question：{}，chunkGroups：{}，kbContextLength：{}",
+                StrUtil.maxLength(intent.subQuestion(), 120),
+                kbResult.intentChunks() == null ? 0 : kbResult.intentChunks().size(),
+                kbResult.groupedContext() == null ? 0 : kbResult.groupedContext().length());
 
         String mcpContext = CollUtil.isNotEmpty(mcpIntents)
                 ? executeMcpAndMerge(intent.subQuestion(), mcpIntents)
                 : "";
+        log.info("[RAG对话链路][检索引擎] MCP上下文构建完成，question：{}，mcpContextLength：{}",
+                StrUtil.maxLength(intent.subQuestion(), 120), mcpContext == null ? 0 : mcpContext.length());
 
         return new SubQuestionContext(intent.subQuestion(), kbResult.groupedContext(), mcpContext, kbResult.intentChunks());
     }

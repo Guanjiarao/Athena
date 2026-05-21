@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 
 package com.nageoffer.ai.ragent.infra.chat;
 
@@ -82,7 +67,7 @@ public class RoutingLLMService implements LLMService {
     public String chat(ChatRequest request) {
         return executor.executeWithFallback(
                 ModelCapability.CHAT,
-                selector.selectChatCandidates(request.getThinking()),
+                selector.selectChatCandidates(request.getModelId(), request.getThinking()),
                 target -> clientsByProvider.get(target.candidate().getProvider()),
                 (client, target) -> client.chat(request, target)
         );
@@ -91,12 +76,17 @@ public class RoutingLLMService implements LLMService {
     @Override
     @RagTraceNode(name = "llm-stream-routing", type = "LLM_ROUTING")
     public StreamCancellationHandle streamChat(ChatRequest request, StreamCallback callback) {
-        List<ModelTarget> targets = selector.selectChatCandidates(request.getThinking());
+        List<ModelTarget> targets = selector.selectChatCandidates(request.getModelId(), request.getThinking());
         if (CollUtil.isEmpty(targets)) {
             throw new RemoteException(STREAM_NO_PROVIDER_MESSAGE);
         }
 
         String label = ModelCapability.CHAT.getDisplayName();
+        log.info("[RAG对话链路][模型路由] 流式大模型候选选择完成，candidateCount：{}，thinking：{}，messageCount：{}，modelIds：{}",
+                targets.size(),
+                request == null ? null : request.getThinking(),
+                request == null || request.getMessages() == null ? 0 : request.getMessages().size(),
+                targets.stream().map(ModelTarget::id).toList());
         Throwable lastError = null;
 
         for (ModelTarget target : targets) {
@@ -110,6 +100,8 @@ public class RoutingLLMService implements LLMService {
 
             StreamCancellationHandle handle;
             try {
+                log.info("[RAG对话链路][模型路由] 尝试发起流式大模型请求，modelId：{}，provider：{}",
+                        target.id(), target.candidate().getProvider());
                 handle = client.streamChat(request, wrapper, target);
             } catch (Exception e) {
                 healthStore.markFailure(target.id());
@@ -132,6 +124,8 @@ public class RoutingLLMService implements LLMService {
             if (result.isSuccess()) {
                 wrapper.commit();
                 healthStore.markSuccess(target.id());
+                log.info("[RAG对话链路][模型路由] 流式大模型首包成功，选定模型，modelId：{}，provider：{}",
+                        target.id(), target.candidate().getProvider());
                 return handle;
             }
 

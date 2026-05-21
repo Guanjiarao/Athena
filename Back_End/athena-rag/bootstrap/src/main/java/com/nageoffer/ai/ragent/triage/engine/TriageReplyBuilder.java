@@ -12,23 +12,31 @@ import com.nageoffer.ai.ragent.triage.model.SlotCode;
 import com.nageoffer.ai.ragent.triage.model.Symptom;
 import com.nageoffer.ai.ragent.triage.model.TriageContext;
 import com.nageoffer.ai.ragent.triage.service.TriageModelGateway;
-import com.nageoffer.ai.ragent.triage.worker.OptionGenerator;
-import com.nageoffer.ai.ragent.triage.worker.QuestionPlanSupport;
+import com.nageoffer.ai.ragent.triage.question.QuestionOptionProvider;
+import com.nageoffer.ai.ragent.triage.question.QuestionPlanningSupport;
+import com.nageoffer.ai.ragent.triage.response.TriageReplyPromptSupport;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
-final class TriageReplyBuilder {
+public final class TriageReplyBuilder {
 
     private TriageReplyBuilder() {
     }
 
-    static String buildClarificationReply(TriageContext context, OptionGenerator optionGenerator,
-                                          QuestionPlanSupport questionPlanSupport, TriageModelGateway triageModelGateway) {
-        log.info("[ReplyBuilder] 开始构建澄清回复, sessionId={}", context.getSessionId());
+    public static String buildClarificationReply(TriageContext context, QuestionOptionProvider optionGenerator,
+                                                 QuestionPlanningSupport questionPlanSupport, TriageModelGateway triageModelGateway) {
+        log.info("[ReplyBuilder] 开始构建澄清回复, sessionId={}, nextAction={}, missingFields={}, pendingSlots={}, generatedOptions={}",
+                context.getSessionId(),
+                context.getNextAction(),
+                context.getMissingFields(),
+                context.getPendingSlots(),
+                context.getGeneratedOptions() == null ? "null" : context.getGeneratedOptions().size());
 
         List<String> prompts = new ArrayList<>();
         List<TriageClarificationData.QuestionOption> allOptions = new ArrayList<>();
@@ -37,7 +45,9 @@ final class TriageReplyBuilder {
         log.info("[ReplyBuilder] questionPlan 是否为空: {}", questionPlan == null);
         if (questionPlan != null) {
             log.info("[ReplyBuilder] questionPlan.nextSlotsToAsk: {}", questionPlan.getNextSlotsToAsk());
+            log.info("[ReplyBuilder] questionPlan.pendingSlots: {}", questionPlan.getPendingSlots());
             log.info("[ReplyBuilder] questionPlan.priorityReason: {}", questionPlan.getPriorityReason());
+            log.info("[ReplyBuilder] questionPlan.policyReason: {}", questionPlan.getPolicyReason());
         }
 
         // 限制单次追问数量：最多 2 个问题
@@ -115,99 +125,61 @@ final class TriageReplyBuilder {
         }
 
         if (prompts.isEmpty()) {
-            log.warn("[ReplyBuilder] 所有问题列表都为空，退化到通用话术, sessionId={}", context.getSessionId());
+            log.warn("[ReplyBuilder] 所有问题列表都为空，启动 LLM 兜底生成问题, sessionId={}", context.getSessionId());
             log.warn("[ReplyBuilder] 退化原因分析: questionPlan={}, nextSlotsToAsk={}, missingFields={}",
                 questionPlan == null ? "null" : "存在",
                 questionPlan == null || questionPlan.getNextSlotsToAsk() == null ? "null" : questionPlan.getNextSlotsToAsk(),
                 context.getMissingFields());
 
-            // 新增：检测通用兜底问题的连续出现
-            int consecutiveGenericCount = countConsecutiveGenericQuestions(context);
-            // 关键修复：如果当前也要返回通用问题，计数+1（预判）
-            consecutiveGenericCount++;
-            log.warn("[ReplyBuilder] 检测到连续 {} 次通用兜底问题（含本次）", consecutiveGenericCount);
+            // 使用 LLM 生成具体问题
+            String llmGeneratedQuestion = generateQuestionByLLM(context, triageModelGateway);
+            if (StrUtil.isNotBlank(llmGeneratedQuestion)) {
+                log.info("[ReplyBuilder] LLM 生成的问题: {}", llmGeneratedQuestion);
 
-            // 如果连续出现2次或以上，触发LLM智能决策
-            if (consecutiveGenericCount >= 2) {
-                log.warn("[ReplyBuilder] 连续通用问题达到阈值，触发LLM智能兜底决策");
-
-                // 调用LLM智能兜底机制
-                QuestionPlan emergencyPlan = questionPlanSupport.selectEmergencySlotByLLM(context, triageModelGateway);
-
-                if (emergencyPlan.getNextSlotsToAsk().isEmpty()) {
-                    log.info("[ReplyBuilder] LLM 建议生成报告: {}", emergencyPlan.getPriorityReason());
-                    // 返回特殊标记，让上层生成报告
-                    context.setForceGenerateReport(true);
-                    context.setForceGenerateReportReason(emergencyPlan.getPriorityReason());
-                    return "##FORCE_GENERATE_REPORT##";
-                }
-
-                // LLM选择了一个槽位，尝试为该槽位生成问题
-                SlotCode selectedSlot = emergencyPlan.getNextSlotsToAsk().get(0);
-                log.info("[ReplyBuilder] LLM 选择槽位: {}, 理由: {}", selectedSlot, emergencyPlan.getPriorityReason());
-
-                String prompt = TriageReplyPromptSupport.promptForSlot(selectedSlot);
-                if (StrUtil.isNotBlank(prompt)) {
-                    prompts.add(prompt);
-                    log.info("[ReplyBuilder] 为LLM选择的槽位 {} 生成问题: {}", selectedSlot, prompt);
-
-                    // 为该槽位生成选项
-                    if (optionGenerator != null) {
-                        List<TriageClarificationData.QuestionOption> options = optionGenerator.generateOptionsForSlot(selectedSlot);
+                // 尝试为常见槽位生成选项作为兜底
+                if (optionGenerator != null && allOptions.isEmpty()) {
+                    List<SlotCode> fallbackSlots = List.of(
+                        SlotCode.DURATION, SlotCode.ONSET_TIME,
+                        SlotCode.PAIN_SEVERITY, SlotCode.PAIN_CHARACTER, SlotCode.BODY_PART,
+                        SlotCode.FEVER_PRESENCE, SlotCode.NAUSEA_PRESENCE, SlotCode.VOMITING_PRESENCE,
+                        SlotCode.DIARRHEA_PRESENCE, SlotCode.COUGH_PRESENCE, SlotCode.DYSPNEA_PRESENCE,
+                        SlotCode.DIAGNOSIS_HISTORY, SlotCode.MEDICATION_HISTORY,
+                        SlotCode.ASSOCIATED_SYMPTOMS, SlotCode.AGE
+                    );
+                    for (SlotCode slot : fallbackSlots) {
+                        List<TriageClarificationData.QuestionOption> options = optionGenerator.generateOptionsForSlot(slot);
                         if (options != null && !options.isEmpty()) {
                             allOptions.addAll(options);
-                            log.info("[ReplyBuilder] 为槽位 {} 生成了 {} 个选项", selectedSlot, options.size());
+                            log.info("[ReplyBuilder] 兜底：为槽位 {} 生成了  个选项", slot, options.size());
+                            break;
                         }
                     }
-
-                    context.setGeneratedOptions(allOptions);
-                    String contextualIntro = buildContextualIntro(context);
-                    String finalReply = contextualIntro + String.join("；", prompts) + "。";
-                    log.info("[ReplyBuilder] LLM智能兜底后的最终回复: {}", finalReply);
-                    return finalReply;
                 }
+
+                context.setGeneratedOptions(allOptions);
+                return llmGeneratedQuestion;
             }
 
-            // 即使没有明确的问题，也尝试为常见槽位生成选项作为兜底
-            if (optionGenerator != null && allOptions.isEmpty()) {
-                // 尝试为一些常见的槽位生成选项
-                List<SlotCode> fallbackSlots = List.of(
-                    // 时间维度
-                    SlotCode.DURATION, SlotCode.ONSET_TIME,
-
-                    // 疼痛维度
-                    SlotCode.PAIN_SEVERITY, SlotCode.PAIN_CHARACTER, SlotCode.BODY_PART,
-
-                    // 伴随症状
-                    SlotCode.FEVER_PRESENCE, SlotCode.NAUSEA_PRESENCE, SlotCode.VOMITING_PRESENCE,
-                    SlotCode.DIARRHEA_PRESENCE, SlotCode.COUGH_PRESENCE, SlotCode.DYSPNEA_PRESENCE,
-
-                    // 病史
-                    SlotCode.DIAGNOSIS_HISTORY, SlotCode.MEDICATION_HISTORY,
-
-                    // 其他
-                    SlotCode.ASSOCIATED_SYMPTOMS, SlotCode.AGE
-                );
-                for (SlotCode slot : fallbackSlots) {
-                    List<TriageClarificationData.QuestionOption> options = optionGenerator.generateOptionsForSlot(slot);
-                    if (options != null && !options.isEmpty()) {
-                        allOptions.addAll(options);
-                        log.info("[ReplyBuilder] 兜底：为槽位 {} 生成了 {} 个选项", slot, options.size());
-                        break; // 只生成一组选项即可
-                    }
-                }
-            }
-
+            // 如果 LLM 也失败了，才使用通用话术
+            log.warn("[ReplyBuilder] LLM 生成问题失败，使用通用话术");
             context.setGeneratedOptions(allOptions);
-            log.info("[ReplyBuilder] 通用话术模式，总共生成了 {} 个选项", allOptions.size());
             return "为了继续判断，请再补充一些不适细节。";
         }
 
         log.info("[ReplyBuilder] 成功生成 {} 个问题", prompts.size());
 
-        // 将生成的选项存储到 context 的临时字段中（用于后续响应构建）
-        context.setGeneratedOptions(allOptions);
-        log.info("[ReplyBuilder] 总共生成了 {} 个选项", allOptions.size());
+        // 只保留当前轮要问槽位的选项，避免把 DB/Redis 命中的整组规则选项泄露到响应中。
+        Set<SlotCode> currentSlots = new HashSet<>(collectCurrentQuestionSlots(context));
+        if (context.getGeneratedOptions() != null && !context.getGeneratedOptions().isEmpty()) {
+            context.getGeneratedOptions().stream()
+                    .filter(option -> option != null && currentSlots.contains(option.getTargetSlot()))
+                    .forEach(allOptions::add);
+        }
+        List<TriageClarificationData.QuestionOption> currentRoundOptions = deduplicateOptions(allOptions).stream()
+                .filter(option -> option != null && currentSlots.contains(option.getTargetSlot()))
+                .toList();
+        context.setGeneratedOptions(currentRoundOptions);
+        log.info("[ReplyBuilder] 当前轮生成了 {} 个选项", context.getGeneratedOptions().size());
 
         // 添加上下文引导：根据已知症状生成个性化引导语
         String contextualIntro = buildContextualIntro(context);
@@ -216,6 +188,84 @@ final class TriageReplyBuilder {
         log.info("[ReplyBuilder] 最终回复: {}", finalReply);
 
         return finalReply;
+    }
+
+    public static List<TriageClarificationData.ClarificationQuestion> buildClarificationQuestions(TriageContext context,
+                                                                                                  QuestionOptionProvider optionGenerator) {
+        if (context == null) {
+            return List.of();
+        }
+        List<SlotCode> slots = collectCurrentQuestionSlots(context);
+        if (slots.isEmpty()) {
+            log.info("[ReplyBuilder] 当前轮无 pending/nextSlots，questions 为空");
+            return List.of();
+        }
+        List<TriageClarificationData.QuestionOption> availableOptions = context.getGeneratedOptions() == null
+                ? List.of()
+                : context.getGeneratedOptions();
+        List<TriageClarificationData.ClarificationQuestion> questions = new ArrayList<>();
+        for (SlotCode slot : slots) {
+            String questionText = TriageReplyPromptSupport.promptForSlot(slot);
+            List<TriageClarificationData.QuestionOption> slotOptions = availableOptions.stream()
+                    .filter(option -> option != null && option.getTargetSlot() == slot)
+                    .toList();
+            if (slotOptions.isEmpty() && optionGenerator != null) {
+                slotOptions = optionGenerator.generateOptionsForSlot(slot);
+            }
+            questions.add(TriageClarificationData.ClarificationQuestion.builder()
+                    .slot(slot)
+                    .question(questionText)
+                    .inputType(resolveInputType(slot, slotOptions))
+                    .required(Boolean.TRUE)
+                    .multiple(isMultiChoiceSlot(slot))
+                    .options(slotOptions)
+                    .build());
+        }
+        log.info("[ReplyBuilder] 构建结构化 questions, count={}, slots={}", questions.size(), slots);
+        return questions;
+    }
+
+    private static List<SlotCode> collectCurrentQuestionSlots(TriageContext context) {
+        List<SlotCode> rawSlots = new ArrayList<>();
+        if (context.getQuestionPlan() != null && context.getQuestionPlan().getNextSlotsToAsk() != null) {
+            rawSlots.addAll(context.getQuestionPlan().getNextSlotsToAsk());
+        }
+        if (rawSlots.isEmpty() && context.getPendingSlots() != null) {
+            rawSlots.addAll(context.getPendingSlots());
+        }
+        if (rawSlots.isEmpty() && context.getMissingFields() != null) {
+            for (String field : context.getMissingFields()) {
+                SlotCode slot = TriageReplyPromptSupport.mapFieldToSlot(field == null ? null : field.trim());
+                if (slot != null) {
+                    rawSlots.add(slot);
+                }
+            }
+        }
+        List<SlotCode> result = new ArrayList<>();
+        Set<SlotCode> seen = new HashSet<>();
+        for (SlotCode slot : rawSlots) {
+            if (slot != null && seen.add(slot)) {
+                result.add(slot);
+            }
+            if (result.size() >= 2) {
+                break;
+            }
+        }
+        return result;
+    }
+
+    private static String resolveInputType(SlotCode slot, List<TriageClarificationData.QuestionOption> options) {
+        if (isMultiChoiceSlot(slot)) {
+            return "MULTI_CHOICE";
+        }
+        if (options == null || options.isEmpty() || (options.size() == 1 && "other".equals(options.get(0).getValue()))) {
+            return "TEXT";
+        }
+        return "SINGLE_CHOICE";
+    }
+
+    private static boolean isMultiChoiceSlot(SlotCode slot) {
+        return slot == SlotCode.ASSOCIATED_SYMPTOMS;
     }
 
     private static String buildContextualIntro(TriageContext context) {
@@ -228,7 +278,25 @@ final class TriageReplyBuilder {
         return "为了更准确判断，请再补充一下：";
     }
 
-    static String buildWarningReply(TriageContext context) {
+    private static List<TriageClarificationData.QuestionOption> deduplicateOptions(List<TriageClarificationData.QuestionOption> options) {
+        if (options == null || options.isEmpty()) {
+            return List.of();
+        }
+        List<TriageClarificationData.QuestionOption> result = new ArrayList<>();
+        for (TriageClarificationData.QuestionOption option : options) {
+            if (option == null || option.getTargetSlot() == null || StrUtil.isBlank(option.getValue())) {
+                continue;
+            }
+            boolean exists = result.stream().anyMatch(existing -> existing.getTargetSlot() == option.getTargetSlot()
+                    && StrUtil.equals(existing.getValue(), option.getValue()));
+            if (!exists) {
+                result.add(option);
+            }
+        }
+        return result;
+    }
+
+    public static String buildWarningReply(TriageContext context) {
         RiskLevel riskLevel = context.getRiskAssessment();
         String evidence = riskLevel == null ? "" : sanitizeSentence(StrUtil.blankToDefault(riskLevel.getEvidence(), ""));
         List<String> riskHints = riskLevel == null || riskLevel.getRiskHints() == null ? List.of() : riskLevel.getRiskHints();
@@ -244,7 +312,7 @@ final class TriageReplyBuilder {
         return builder.toString().trim();
     }
 
-    static String generatePreTriageReport(TriageContext context, TriageModelGateway triageModelGateway) {
+    public static String generatePreTriageReport(TriageContext context, TriageModelGateway triageModelGateway) {
         // 使用科室推荐引擎获取推荐科室
         DepartmentRecommender recommender = new DepartmentRecommender();
         DepartmentRecommender.DepartmentRecommendation recommendation = recommender.recommend(context);
@@ -401,34 +469,77 @@ final class TriageReplyBuilder {
     }
 
     /**
-     * 统计历史对话中连续出现通用兜底问题的次数
+     * 使用 LLM 生成具体问题（当没有匹配的问题模板时）
      */
-    private static int countConsecutiveGenericQuestions(TriageContext context) {
-        if (context.getSystemReplyHistory() == null || context.getSystemReplyHistory().isEmpty()) {
-            log.info("[ReplyBuilder] systemReplyHistory 为空，返回计数 0");
-            return 0;
+    private static String generateQuestionByLLM(TriageContext context, TriageModelGateway triageModelGateway) {
+        try {
+            List<ChatMessage> messages = new ArrayList<>();
+            String systemPrompt = """
+                    你是医疗分诊系统的问题生成助手。当前对话中缺少关键信息，你需要生成一个具体、有针对性的问题来收集信息。
+
+                    要求：
+                    1. 问题必须具体、明确，不能是"请再补充一些细节"这样的通用话术
+                    2. 根据已收集的症状信息，询问最关键的缺失信息
+                    3. 优先询问：持续时间、疼痛程度、伴随症状、发作时间等
+                    4. 问题要简洁，一次只问一个方面
+                    5. 使用口语化、易懂的表达方式
+
+                    示例：
+                    - 如果已知腹痛，但不知道持续时间 → "这种腹痛是从什么时候开始的呢？"
+                    - 如果已知咳嗽，但不知道是否有痰 → "咳嗽的时候有痰吗？"
+                    - 如果已知发热，但不知道温度 → "量过体温吗？大概多少度？"
+
+                    只返回问题本身，不要添加任何解释或前缀。
+                    """;
+
+            messages.add(ChatMessage.system(systemPrompt));
+            messages.add(ChatMessage.user(buildLLMQuestionPrompt(context)));
+
+            String question = triageModelGateway.chatWithTextModel(messages, 0.3D, 0.5D, 100);
+            if (StrUtil.isNotBlank(question)) {
+                return question.trim();
+            }
+        } catch (Exception ex) {
+            log.error("[ReplyBuilder] LLM 生成问题失败", ex);
         }
+        return null;
+    }
 
-        String genericQuestion = "为了继续判断，请再补充一些不适细节";
-        int count = 0;
+    /**
+     * 构建 LLM 问题生成的 prompt
+     */
+    private static String buildLLMQuestionPrompt(TriageContext context) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("会话ID：").append(context.getSessionId()).append("\n");
+        builder.append("用户初始输入：").append(StrUtil.blankToDefault(context.getUserInput(), "暂无")).append("\n");
 
-        // 从最近的系统回复往前查找
-        List<String> history = context.getSystemReplyHistory();
-        log.info("[ReplyBuilder] 开始检测连续通用问题，systemReplyHistory 数量: {}", history.size());
-
-        for (int i = history.size() - 1; i >= 0; i--) {
-            String msg = history.get(i);
-            if (msg != null && msg.contains(genericQuestion)) {
-                count++;
-                log.info("[ReplyBuilder] 检测到通用问题 [{}]: {}", i, msg);
-            } else if (msg != null && !msg.trim().isEmpty()) {
-                // 遇到非通用问题的非空消息，停止计数
-                log.info("[ReplyBuilder] 遇到非通用问题 [{}]，停止计数: {}", i, msg);
-                break;
+        builder.append("\n已收集的症状信息：\n");
+        if (CollUtil.isEmpty(context.getExtractedSymptoms())) {
+            builder.append("- 暂无结构化症状\n");
+        } else {
+            for (Symptom symptom : context.getExtractedSymptoms()) {
+                builder.append("- 症状：").append(StrUtil.blankToDefault(symptom.getName(), "未知")).append("\n");
+                if (StrUtil.isNotBlank(symptom.getBodyPart())) builder.append("  部位：").append(symptom.getBodyPart()).append("\n");
+                if (StrUtil.isNotBlank(symptom.getDuration())) builder.append("  持续时间：").append(symptom.getDuration()).append("\n");
+                if (StrUtil.isNotBlank(symptom.getSeverity())) builder.append("  程度：").append(symptom.getSeverity()).append("\n");
             }
         }
 
-        log.info("[ReplyBuilder] 连续通用问题计数结果: {}", count);
-        return count;
+        builder.append("\n槽位状态：\n");
+        if (context.getSlotState() == null || context.getSlotState().getSlots() == null || context.getSlotState().getSlots().isEmpty()) {
+            builder.append("- 暂无槽位信息\n");
+        } else {
+            context.getSlotState().getSlots().forEach((slot, value) -> {
+                if (value != null && value.getValue() != null && !value.getValue().isBlank()) {
+                    builder.append("- ").append(slot).append(": ").append(value.getValue()).append("\n");
+                }
+            });
+        }
+
+        builder.append("\n对话历史（最近3轮）：\n");
+        builder.append(context.buildConversationTranscript(true));
+
+        builder.append("\n请根据以上信息，生成一个具体的问题来收集最关键的缺失信息。");
+        return builder.toString();
     }
 }

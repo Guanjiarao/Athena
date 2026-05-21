@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 
 package com.nageoffer.ai.ragent.framework.convention;
 
@@ -61,6 +46,15 @@ public class ChatRequest {
     private List<ChatMessage> messages = new ArrayList<>();
 
     // ================== 模型控制参数 ==================
+
+    /**
+     * 可选：指定本次请求使用的模型标识。
+     * <p>
+     * 为空时使用模型组默认路由；不为空时优先将该模型提升为首选候选，
+     * 用于 triage 等独立业务模块在复用统一路由层的同时指定专属模型。
+     * </p>
+     */
+    private String modelId;
 
     /**
      * 采样温度参数，取值通常为 0～2
