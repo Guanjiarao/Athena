@@ -28,6 +28,8 @@ import java.util.stream.Collectors;
 @ConditionalOnProperty(name = "rag.vector.type", havingValue = "milvus", matchIfMissing = true)
 public class MilvusRetrieverService implements RetrieverService {
 
+    private static final float MIN_SCORE_THRESHOLD = 0.6f;
+
     private final EmbeddingService embeddingService;
     private final MilvusClientV2 milvusClient;
     private final RAGDefaultProperties ragDefaultProperties;
@@ -68,9 +70,8 @@ public class MilvusRetrieverService implements RetrieverService {
             return List.of();
         }
 
-        // TODO 需确认后续是否对分数较低数据进行限制，限制多少合适？0.65？
-        // TODO 如果本次查询分数都较高，是否应该扩大查询范围？1.5倍？
         return results.get(0).stream()
+                .filter(r -> r.getScore() >= MIN_SCORE_THRESHOLD)
                 .map(r -> {
                     Object metadataObj = r.getEntity().get("metadata");
                     Map<String, Object> metadata = null;
