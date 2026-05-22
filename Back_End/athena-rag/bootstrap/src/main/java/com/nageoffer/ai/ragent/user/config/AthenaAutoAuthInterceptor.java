@@ -20,7 +20,14 @@ import org.springframework.web.servlet.HandlerInterceptor;
  * Athena 自动认证拦截器
  * <p>
  * 当 Athena 前端调用 RAG 接口时，自动注册并登录用户
- * 通过 Authorization header 中的 token 识别 Athena 用户
+ * <p>
+ * 认证方式：
+ * 1. 优先使用 userId header（Athena Gateway 会从 Redis 查询 token 对应的用户 ID 并设置到 header）
+ * 2. 降级使用 Authorization header 中的 token（用于直接调用，不经过 Gateway）
+ * <p>
+ * Username 格式：
+ * - 通过 userId header：athena_{userId}
+ * - 通过 token：athena_token_{token前16位}
  */
 @Slf4j
 @Component
@@ -41,7 +48,39 @@ public class AthenaAutoAuthInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // 获取 Authorization header
+        // 优先从 userId header 获取用户 ID（Athena Gateway 会设置）
+        String userIdHeader = request.getHeader("userId");
+        if (StrUtil.isNotBlank(userIdHeader)) {
+            try {
+                Long userId = Long.parseLong(userIdHeader);
+                String username = "athena_" + userId;
+
+                // 查询用户是否存在
+                LambdaQueryWrapper<UserDO> queryWrapper = Wrappers.lambdaQuery(UserDO.class)
+                        .eq(UserDO::getUsername, username);
+                UserDO user = userMapper.selectOne(queryWrapper);
+
+                if (user == null) {
+                    // 用户不存在，自动注册
+                    user = new UserDO();
+                    user.setUsername(username);
+                    user.setPassword("athena" + userId);
+                    user.setRole(UserRole.USER.name());
+                    userMapper.insert(user);
+                    log.info("[AthenaAutoAuth] 用户自动注册: username={}, athenaUserId={}", username, userId);
+                }
+
+                // 自动登录
+                StpUtil.login(user.getId());
+                log.info("[AthenaAutoAuth] 用户自动登录: username={}, userId={}, athenaUserId={}", username, user.getId(), userId);
+                return true;
+
+            } catch (Exception e) {
+                log.error("[AthenaAutoAuth] 通过 userId header 自动认证失败: userId={}", userIdHeader, e);
+            }
+        }
+
+        // 降级方案：从 Authorization header 获取 token（用于直接调用，不经过 Gateway）
         String authorization = request.getHeader("Authorization");
         if (StrUtil.isBlank(authorization) || !authorization.startsWith("Bearer ")) {
             return true;
@@ -52,8 +91,8 @@ public class AthenaAutoAuthInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // 从 token 中提取用户标识（Athena 使用 token 作为用户唯一标识）
-        String username = "athena_" + token.substring(0, Math.min(16, token.length()));
+        // 使用 token 前16位作为用户标识
+        String username = "athena_token_" + token.substring(0, Math.min(16, token.length()));
 
         try {
             // 查询用户是否存在
@@ -68,15 +107,15 @@ public class AthenaAutoAuthInterceptor implements HandlerInterceptor {
                 user.setPassword("athena" + token.substring(0, Math.min(16, token.length())));
                 user.setRole(UserRole.USER.name());
                 userMapper.insert(user);
-                log.info("[AthenaAutoAuth] 用户自动注册: username={}", username);
+                log.info("[AthenaAutoAuth] 用户自动注册(token): username={}", username);
             }
 
             // 自动登录
             StpUtil.login(user.getId());
-            log.info("[AthenaAutoAuth] 用户自动登录: username={}, userId={}", username, user.getId());
+            log.info("[AthenaAutoAuth] 用户自动登录(token): username={}, userId={}", username, user.getId());
 
         } catch (Exception e) {
-            log.error("[AthenaAutoAuth] 自动认证失败: username={}", username, e);
+            log.error("[AthenaAutoAuth] 通过 token 自动认证失败: username={}", username, e);
         }
 
         return true;
