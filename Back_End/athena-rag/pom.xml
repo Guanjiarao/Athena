@@ -35,7 +35,7 @@
         <module>bootstrap</module>
         <module>framework</module>
         <module>infra-ai</module>
-        <module>mcp-server</module>
+        <!-- <module>mcp-server</module> --> <!-- 暂时注释，等待 MCP SDK 依赖解决 -->
     </modules>
 
     <dependencyManagement>
