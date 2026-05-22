@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 @ConditionalOnProperty(name = "rag.vector.type", havingValue = "milvus", matchIfMissing = true)
 public class MilvusRetrieverService implements RetrieverService {
 
-    private static final float MIN_SCORE_THRESHOLD = 0.6f;
+    private static final float MIN_SCORE_THRESHOLD = 0.25f;
 
     private final EmbeddingService embeddingService;
     private final MilvusClientV2 milvusClient;
