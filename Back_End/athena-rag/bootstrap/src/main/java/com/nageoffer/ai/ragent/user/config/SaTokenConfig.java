@@ -33,12 +33,23 @@ public class SaTokenConfig implements WebMvcConfigurer {
     private final UserContextInterceptor userContextInterceptor;
 
     /**
+     * Athena 自动认证拦截器
+     */
+    private final AthenaAutoAuthInterceptor athenaAutoAuthInterceptor;
+
+    /**
      * 添加拦截器配置
      *
      * @param registry 拦截器注册器
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        // 注册 Athena 自动认证拦截器（必须在 SaToken 登录检查之前）
+        registry.addInterceptor(athenaAutoAuthInterceptor)
+                // 只拦截 triage 相关路径
+                .addPathPatterns("/triage/**", "/api/ragent/triage/**")
+                .order(0); // 最高优先级
+
         // 注册 SaToken 登录拦截器
         registry.addInterceptor(new SaInterceptor(handler -> {
                     // 异步调度请求跳过登录检查（SSE 完成回调会触发 asyncDispatch，此时 SaToken 上下文已丢失）
