@@ -58,7 +58,7 @@ public abstract class AbstractStructuredTriageWorker {
      */
     protected String invokeLlm(String modelId, String systemPrompt, String userPrompt, double temperature, double topP) {
         ChatRequest request = ChatRequest.builder()
-                .modelId(StrUtil.isBlank(modelId) ? null : modelId)
+                // .modelId(StrUtil.isBlank(modelId) ? null : modelId)  // modelId 字段已从 ChatRequest 中移除
                 .messages(List.of(
                         ChatMessage.system(systemPrompt),
                         ChatMessage.user(userPrompt)

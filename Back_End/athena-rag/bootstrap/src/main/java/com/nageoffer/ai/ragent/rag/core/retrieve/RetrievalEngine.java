@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 
 package com.nageoffer.ai.ragent.rag.core.retrieve;
 
@@ -25,17 +10,17 @@ import com.nageoffer.ai.ragent.rag.config.SearchChannelProperties;
 import com.nageoffer.ai.ragent.rag.core.intent.IntentNode;
 import com.nageoffer.ai.ragent.rag.core.intent.NodeScore;
 import com.nageoffer.ai.ragent.rag.core.intent.NodeScoreFilters;
-import com.nageoffer.ai.ragent.rag.core.mcp.McpParameterExtractor;
-import com.nageoffer.ai.ragent.rag.core.mcp.McpToolExecutor;
-import com.nageoffer.ai.ragent.rag.core.mcp.McpToolRegistry;
+// import com.nageoffer.ai.ragent.rag.core.mcp.McpParameterExtractor;
+// import com.nageoffer.ai.ragent.rag.core.mcp.McpToolExecutor;
+// import com.nageoffer.ai.ragent.rag.core.mcp.McpToolRegistry;
 import com.nageoffer.ai.ragent.rag.core.prompt.ContextFormatter;
 import com.nageoffer.ai.ragent.rag.core.prompt.PromptTemplateLoader;
 import com.nageoffer.ai.ragent.rag.dto.KbResult;
 import com.nageoffer.ai.ragent.rag.dto.RetrievalContext;
 import com.nageoffer.ai.ragent.rag.dto.SubQuestionIntent;
-import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-import io.modelcontextprotocol.spec.McpSchema.TextContent;
-import io.modelcontextprotocol.spec.McpSchema.Tool;
+// import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
+// import io.modelcontextprotocol.spec.McpSchema.TextContent;
+// import io.modelcontextprotocol.spec.McpSchema.Tool;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -64,8 +49,8 @@ public class RetrievalEngine {
     private final SearchChannelProperties searchProperties;
     private final ContextFormatter contextFormatter;
     private final PromptTemplateLoader templateLoader;
-    private final McpParameterExtractor mcpParameterExtractor;
-    private final McpToolRegistry mcpToolRegistry;
+    // private final McpParameterExtractor mcpParameterExtractor;
+    // private final McpToolRegistry mcpToolRegistry;
     private final MultiChannelRetrievalEngine multiChannelRetrievalEngine;
     private final Executor ragContextExecutor;
     private final Executor mcpBatchExecutor;
@@ -184,6 +169,9 @@ public class RetrievalEngine {
     }
 
     private String executeMcpAndMerge(String question, List<NodeScore> mcpIntents) {
+        // MCP 功能暂时禁用
+        return "";
+        /*
         if (CollUtil.isEmpty(mcpIntents)) {
             return "";
         }
@@ -194,6 +182,7 @@ public class RetrievalEngine {
         }
 
         return contextFormatter.formatMcpContext(toolResults, mcpIntents);
+        */
     }
 
     private KbResult retrieveAndRerank(SubQuestionIntent intent, List<NodeScore> kbIntents, int topK) {
@@ -227,7 +216,9 @@ public class RetrievalEngine {
 
     /**
      * 执行 MCP 工具调用，返回按 toolId 分组的结果
+     * MCP 功能暂时禁用
      */
+    /*
     private Map<String, List<CallToolResult>> executeMcpTools(String question,
                                                               List<NodeScore> mcpIntentScores) {
         if (CollUtil.isEmpty(mcpIntentScores)) {
@@ -281,6 +272,7 @@ public class RetrievalEngine {
 
     private record ToolOutput(String toolId, CallToolResult result) {
     }
+    */
 
     private record SubQuestionContext(String question,
                                       String kbContext,

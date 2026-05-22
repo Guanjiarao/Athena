@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 
 package com.nageoffer.ai.ragent.rag.core.prompt;
 
@@ -22,8 +7,8 @@ import cn.hutool.core.util.StrUtil;
 import com.nageoffer.ai.ragent.framework.convention.RetrievedChunk;
 import com.nageoffer.ai.ragent.rag.core.intent.IntentNode;
 import com.nageoffer.ai.ragent.rag.core.intent.NodeScore;
-import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-import io.modelcontextprotocol.spec.McpSchema.TextContent;
+// import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
+// import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -134,8 +119,11 @@ public class DefaultContextFormatter implements ContextFormatter {
     }
 
     @Override
-    public String formatMcpContext(Map<String, List<CallToolResult>> toolResults,
+    public String formatMcpContext(Map<String, Object> toolResults,
                                    List<NodeScore> mcpIntents) {
+        // MCP 功能暂时禁用
+        return "";
+        /*
         if (CollUtil.isEmpty(toolResults)) {
             return "";
         }
@@ -174,6 +162,7 @@ public class DefaultContextFormatter implements ContextFormatter {
                 })
                 .filter(StrUtil::isNotBlank)
                 .collect(Collectors.joining("\n\n"));
+        */
     }
 
     // ==================== 工具方法 ====================
@@ -199,6 +188,7 @@ public class DefaultContextFormatter implements ContextFormatter {
                 .collect(Collectors.joining("\n"));
     }
 
+    /*
     private String mergeAllResultsToText(Map<String, List<CallToolResult>> toolResults) {
         List<CallToolResult> allResults = toolResults.values().stream()
                 .flatMap(List::stream)
@@ -208,7 +198,7 @@ public class DefaultContextFormatter implements ContextFormatter {
 
     /**
      * 将多个 CallToolResult 合并为文本
-     */
+     *//*
     private String mergeResultsToText(List<CallToolResult> results) {
         if (CollUtil.isEmpty(results)) {
             return "";
@@ -250,4 +240,5 @@ public class DefaultContextFormatter implements ContextFormatter {
                 .toList();
         return texts.isEmpty() ? null : String.join("\n", texts);
     }
+    */
 }

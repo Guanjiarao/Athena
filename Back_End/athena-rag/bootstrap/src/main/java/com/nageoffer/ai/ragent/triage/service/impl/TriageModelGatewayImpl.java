@@ -52,7 +52,7 @@ public class TriageModelGatewayImpl implements TriageModelGateway {
 
     private ChatRequest buildRequest(String modelId, List<ChatMessage> messages, Double temperature, Double topP, Integer maxTokens) {
         return ChatRequest.builder()
-                .modelId(StrUtil.isBlank(modelId) ? null : modelId)
+                // .modelId(StrUtil.isBlank(modelId) ? null : modelId)  // modelId 字段已从 ChatRequest 中移除
                 .messages(CollUtil.isEmpty(messages) ? List.of() : messages)
                 .temperature(temperature)
                 .topP(topP)

@@ -3,9 +3,9 @@
 package com.nageoffer.ai.ragent.core.parser;
 
 import com.nageoffer.ai.ragent.framework.exception.ServiceException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
-import org.apache.tika.parser.pdf.PDFParserConfig;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayInputStream;
@@ -13,26 +13,21 @@ import java.io.InputStream;
 import java.util.Map;
 
 /**
- * Apache Tika 文档解析器
+ * HTML 文档解析器
  * <p>
- * 支持多种文档格式：PDF、Word、Excel、PPT、HTML、XML 等
- * 使用 Apache Tika 库进行文档解析和文本提取
+ * 专门用于解析 HTML 格式的文档，特别是 Athena 笔记
+ * 内部使用 Apache Tika 进行 HTML 解析和文本提取
  */
 @Slf4j
 @Component
-public class TikaDocumentParser implements DocumentParser {
+@RequiredArgsConstructor
+public class HtmlDocumentParser implements DocumentParser {
 
     private static final Tika TIKA = new Tika();
 
-    static {
-        PDFParserConfig pdfConfig = new PDFParserConfig();
-        pdfConfig.setExtractInlineImages(false);
-        pdfConfig.setExtractUniqueInlineImagesOnly(true);
-    }
-
     @Override
     public String getParserType() {
-        return ParserType.TIKA.getType();
+        return ParserType.HTML.getType();
     }
 
     @Override
@@ -46,8 +41,8 @@ public class TikaDocumentParser implements DocumentParser {
             String cleaned = TextCleanupUtil.cleanup(text);
             return ParseResult.ofText(cleaned);
         } catch (Exception e) {
-            log.error("Tika 解析失败，MIME 类型: {}", mimeType, e);
-            throw new ServiceException("文档解析失败: " + e.getMessage());
+            log.error("HTML 解析失败，MIME 类型: {}", mimeType, e);
+            throw new ServiceException("HTML 文档解析失败: " + e.getMessage());
         }
     }
 
@@ -57,14 +52,18 @@ public class TikaDocumentParser implements DocumentParser {
             String text = TIKA.parseToString(stream);
             return TextCleanupUtil.cleanup(text);
         } catch (Exception e) {
-            log.error("从文件中提取文本内容失败: {}", fileName, e);
-            throw new ServiceException("解析文件失败: " + fileName);
+            log.error("从 HTML 文件中提取文本内容失败: {}", fileName, e);
+            throw new ServiceException("解析 HTML 文件失败: " + fileName);
         }
     }
 
     @Override
     public boolean supports(String mimeType) {
-        // Tika 支持大部分常见文档格式
-        return mimeType != null && !mimeType.startsWith("text/markdown");
+        // 支持 HTML 和相关的 MIME 类型
+        return mimeType != null && (
+                mimeType.equalsIgnoreCase("text/html") ||
+                mimeType.equalsIgnoreCase("application/xhtml+xml") ||
+                mimeType.equalsIgnoreCase("HTML")
+        );
     }
 }

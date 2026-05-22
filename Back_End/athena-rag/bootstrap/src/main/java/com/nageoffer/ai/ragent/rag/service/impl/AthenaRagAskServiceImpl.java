@@ -197,6 +197,12 @@ public class AthenaRagAskServiceImpl implements AthenaRagAskService {
             return List.of();
         }
 
+        // RetrievedChunk 不再包含 metadata 字段，无法提取 noteId 和 title
+        // 暂时返回空列表，后续需要重新设计引用提取逻辑
+        log.warn("RetrievedChunk 不再包含 metadata 字段，无法构建 Athena 笔记引用");
+        return List.of();
+
+        /*
         LinkedHashSet<Long> addedIds = new LinkedHashSet<>();
         List<AthenaNoteReferenceVO> references = new ArrayList<>();
         for (RetrievedChunk chunk : chunks) {
@@ -213,6 +219,7 @@ public class AthenaRagAskServiceImpl implements AthenaRagAskService {
                     .build());
         }
         return references;
+        */
     }
 
     private Long extractNoteId(Map<String, Object> metadata) {
