@@ -77,6 +77,9 @@ public class StreamChatPipeline {
             return;
         }
 
+        // 保存检索到的 chunks 到 context，用于 finish 事件返回
+        ctx.setRetrievedChunks(retrievalCtx.getAllChunks());
+
         streamRagResponse(ctx, retrievalCtx);
     }
 
@@ -155,6 +158,11 @@ public class StreamChatPipeline {
     private void streamRagResponse(StreamChatContext ctx, RetrievalContext retrievalCtx) {
         // 聚合所有意图用于 prompt 规划
         IntentGroup mergedGroup = intentResolver.mergeIntentGroup(ctx.getSubIntents());
+
+        // 设置检索到的 chunks 到 callback（用于 finish 事件返回）
+        if (ctx.getCallback() instanceof com.nageoffer.ai.ragent.rag.service.handler.StreamChatEventHandler handler) {
+            handler.setRetrievedChunks(ctx.getRetrievedChunks());
+        }
 
         StreamCancellationHandle handle = streamLLMResponse(
                 ctx.getRewriteResult(),

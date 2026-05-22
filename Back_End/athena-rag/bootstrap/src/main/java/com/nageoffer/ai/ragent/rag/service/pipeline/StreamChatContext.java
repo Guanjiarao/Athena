@@ -3,6 +3,7 @@
 package com.nageoffer.ai.ragent.rag.service.pipeline;
 
 import com.nageoffer.ai.ragent.framework.convention.ChatMessage;
+import com.nageoffer.ai.ragent.framework.convention.RetrievedChunk;
 import com.nageoffer.ai.ragent.infra.chat.StreamCallback;
 import com.nageoffer.ai.ragent.rag.core.rewrite.RewriteResult;
 import com.nageoffer.ai.ragent.rag.dto.SubQuestionIntent;
@@ -38,4 +39,7 @@ public class StreamChatContext {
 
     @Setter
     private List<SubQuestionIntent> subIntents;
+
+    @Setter
+    private List<RetrievedChunk> retrievedChunks;
 }

@@ -3,6 +3,7 @@
 package com.nageoffer.ai.ragent.rag.service.handler;
 
 import cn.hutool.core.util.StrUtil;
+import com.nageoffer.ai.ragent.framework.convention.RetrievedChunk;
 import com.nageoffer.ai.ragent.rag.dao.entity.ConversationDO;
 import com.nageoffer.ai.ragent.rag.dto.CompletionPayload;
 import com.nageoffer.ai.ragent.rag.dto.MessageDelta;
@@ -17,6 +18,7 @@ import com.nageoffer.ai.ragent.rag.core.memory.ConversationMemoryService;
 import lombok.extern.slf4j.Slf4j;
 import com.nageoffer.ai.ragent.rag.service.ConversationGroupService;
 
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
@@ -38,6 +40,7 @@ public class StreamChatEventHandler implements StreamCallback {
     private final StringBuilder thinking = new StringBuilder();
     private long thinkingStartMs;
     private int thinkingDurationSeconds;
+    private List<RetrievedChunk> retrievedChunks;
 
     /**
      * 使用参数对象构造（推荐）
@@ -90,6 +93,13 @@ public class StreamChatEventHandler implements StreamCallback {
     }
 
     /**
+     * 设置检索到的 chunks（用于 finish 事件返回）
+     */
+    public void setRetrievedChunks(List<RetrievedChunk> chunks) {
+        this.retrievedChunks = chunks;
+    }
+
+    /**
      * 构造取消时的完成载荷（如果有内容则先落库）
      */
     private CompletionPayload buildCompletionPayloadOnCancel() {
@@ -105,7 +115,8 @@ public class StreamChatEventHandler implements StreamCallback {
             }
         }
         String title = resolveTitleForEvent();
-        return new CompletionPayload(String.valueOf(messageId), title);
+        List<CompletionPayload.NoteReference> references = buildNoteReferences();
+        return new CompletionPayload(String.valueOf(messageId), title, references);
     }
 
     @Override
@@ -153,7 +164,8 @@ public class StreamChatEventHandler implements StreamCallback {
         }
         String title = resolveTitleForEvent();
         String messageIdText = StrUtil.isBlank(messageId) ? null : messageId;
-        sender.sendEvent(SSEEventType.FINISH.value(), new CompletionPayload(messageIdText, title));
+        List<CompletionPayload.NoteReference> references = buildNoteReferences();
+        sender.sendEvent(SSEEventType.FINISH.value(), new CompletionPayload(messageIdText, title, references));
         sender.sendEvent(SSEEventType.DONE.value(), "[DONE]");
         taskManager.unregister(taskId);
         sender.complete();
@@ -202,5 +214,59 @@ public class StreamChatEventHandler implements StreamCallback {
             return conversation.getTitle();
         }
         return "新对话";
+    }
+
+    private List<CompletionPayload.NoteReference> buildNoteReferences() {
+        if (retrievedChunks == null || retrievedChunks.isEmpty()) {
+            return null;
+        }
+
+        return retrievedChunks.stream()
+                .filter(chunk -> chunk.getMetadata() != null)
+                .map(chunk -> {
+                    Long noteId = extractNoteId(chunk.getMetadata());
+                    if (noteId == null) {
+                        return null;
+                    }
+                    String title = extractTitle(chunk.getMetadata(), noteId);
+                    String snippet = buildSnippet(chunk.getText());
+                    return new CompletionPayload.NoteReference(noteId, title, snippet, chunk.getScore());
+                })
+                .filter(ref -> ref != null)
+                .distinct()
+                .limit(5)
+                .toList();
+    }
+
+    private Long extractNoteId(java.util.Map<String, Object> metadata) {
+        if (metadata == null || metadata.isEmpty()) {
+            return null;
+        }
+        Object noteId = metadata.get("noteId");
+        if (noteId instanceof Number number) {
+            return number.longValue();
+        }
+        if (noteId instanceof String text && text.chars().allMatch(Character::isDigit)) {
+            return Long.valueOf(text);
+        }
+        return null;
+    }
+
+    private String extractTitle(java.util.Map<String, Object> metadata, Long noteId) {
+        if (metadata != null) {
+            Object title = metadata.get("title");
+            if (title != null && StrUtil.isNotBlank(String.valueOf(title))) {
+                return String.valueOf(title);
+            }
+        }
+        return "Athena 笔记 #" + noteId;
+    }
+
+    private String buildSnippet(String text) {
+        if (StrUtil.isBlank(text)) {
+            return "";
+        }
+        String normalized = text.replaceAll("\\s+", " ").trim();
+        return normalized.length() <= 120 ? normalized : normalized.substring(0, 120) + "...";
     }
 }

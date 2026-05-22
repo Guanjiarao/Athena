@@ -52,4 +52,17 @@ public class RetrievalContext {
     public boolean isEmpty() {
         return !hasMcp() && !hasKb();
     }
+
+    /**
+     * 获取所有检索到的 chunks（用于返回笔记引用）
+     */
+    public List<RetrievedChunk> getAllChunks() {
+        if (intentChunks == null || intentChunks.isEmpty()) {
+            return List.of();
+        }
+        return intentChunks.values().stream()
+                .flatMap(List::stream)
+                .distinct()
+                .toList();
+    }
 }

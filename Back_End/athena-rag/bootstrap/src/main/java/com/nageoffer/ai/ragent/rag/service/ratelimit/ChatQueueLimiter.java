@@ -129,7 +129,7 @@ public class ChatQueueLimiter {
             sender.sendEvent(SSEEventType.META.value(), new MetaPayload(rejectedContext.conversationId, rejectedContext.taskId));
             sender.sendEvent(SSEEventType.REJECT.value(), new MessageDelta(RESPONSE_TYPE, REJECT_MESSAGE));
             sender.sendEvent(SSEEventType.FINISH.value(),
-                    new CompletionPayload(String.valueOf(rejectedContext.messageId), rejectedContext.title));
+                    new CompletionPayload(String.valueOf(rejectedContext.messageId), rejectedContext.title, null));
         }
         sender.sendEvent(SSEEventType.DONE.value(), "[DONE]");
         sender.complete();

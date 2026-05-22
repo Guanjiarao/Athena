@@ -149,7 +149,7 @@ public class StreamTaskManager {
     }
 
     private void sendCancelAndDone(SseEmitterSender sender, CompletionPayload payload) {
-        CompletionPayload actualPayload = payload == null ? new CompletionPayload(null, null) : payload;
+        CompletionPayload actualPayload = payload == null ? new CompletionPayload(null, null, null) : payload;
         sender.sendEvent(SSEEventType.CANCEL.value(), actualPayload);
         sender.sendEvent(SSEEventType.DONE.value(), "[DONE]");
     }
