@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Map;
+
 /**
  * RAG 检索命中结果
  * <p>
@@ -36,4 +38,10 @@ public class RetrievedChunk {
      * 数值越大表示与查询的相关性越高
      */
     private Float score;
+
+    /**
+     * 元数据
+     * 存储文档的额外信息，如 noteId、title、authorId 等
+     */
+    private Map<String, Object> metadata;
 }
