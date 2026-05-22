@@ -1,16 +1,28 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.user.config;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.nageoffer.ai.ragent.framework.context.LoginUser;
-import com.nageoffer.ai.ragent.framework.context.UserContext;
-import com.nageoffer.ai.ragent.framework.exception.ClientException;
 import com.nageoffer.ai.ragent.user.dao.entity.UserDO;
 import com.nageoffer.ai.ragent.user.dao.mapper.UserMapper;
-import com.nageoffer.ai.ragent.user.enums.UserRole;
+import com.nageoffer.ai.ragent.framework.context.LoginUser;
+import com.nageoffer.ai.ragent.framework.context.UserContext;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -22,15 +34,26 @@ import org.springframework.web.servlet.HandlerInterceptor;
 /**
  * 用户上下文拦截器
  *
- * <p>优先使用 gateway 透传的 userId 构建普通用户上下文，未透传时回退到 ragent 本地登录态。</p>
+ * <p>该拦截器用于在请求处理前从 SaToken 中获取登录用户信息，并设置到 UserContext 中，
+ * 方便后续业务逻辑使用。在请求完成后清理 UserContext，避免内存泄漏。
+ *
+ * <p>主要功能：
+ * <ul>
+ *   <li>在请求前置处理时，从 SaToken 获取登录用户 ID</li>
+ *   <li>根据用户 ID 查询数据库获取完整用户信息</li>
+ *   <li>将用户信息封装成 LoginUser 对象并设置到 UserContext 线程上下文中</li>
+ *   <li>在请求完成后清理 UserContext，防止线程复用时的数据污染</li>
+ *   <li>跳过异步调度请求（如 SSE 完成回调），避免 SaToken 上下文丢失问题</li>
+ * </ul>
+ *
+ * @author nageoffer
+ * @see UserContext
+ * @see LoginUser
  */
 @Component
 @RequiredArgsConstructor
 public class UserContextInterceptor implements HandlerInterceptor {
 
-    private static final String USER_ID_HEADER = "userId";
-    private static final String ATHENA_USER_PREFIX = "athena_";
-    private static final String DEFAULT_GATEWAY_USER_PASSWORD = "ATHENA_GATEWAY_USER";
     private static final String DEFAULT_AVATAR_URL = "https://avatars.githubusercontent.com/u/583231?v=4";
 
     private final UserMapper userMapper;
@@ -46,62 +69,22 @@ public class UserContextInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        String gatewayUserId = StrUtil.trimToNull(request.getHeader(USER_ID_HEADER));
-        if (gatewayUserId != null) {
-            UserContext.set(toLoginUser(findOrCreateGatewayUser(gatewayUserId)));
-            return true;
-        }
-
         String loginId = StpUtil.getLoginIdAsString();
-        UserContext.set(toLoginUser(loadById(loginId)));
+        UserDO user = userMapper.selectById(loginId);
+
+        UserContext.set(
+                LoginUser.builder()
+                        .userId(user.getId().toString())
+                        .username(user.getUsername())
+                        .role(user.getRole())
+                        .avatar(StrUtil.isBlank(user.getAvatar()) ? DEFAULT_AVATAR_URL : user.getAvatar())
+                        .build()
+        );
         return true;
     }
 
     @Override
     public void afterCompletion(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler, Exception ex) {
         UserContext.clear();
-    }
-
-    private UserDO findOrCreateGatewayUser(String gatewayUserId) {
-        String username = ATHENA_USER_PREFIX + gatewayUserId;
-        UserDO existing = userMapper.selectOne(
-                Wrappers.lambdaQuery(UserDO.class)
-                        .eq(UserDO::getUsername, username)
-                        .eq(UserDO::getDeleted, 0)
-                        .last("limit 1")
-        );
-        if (existing != null) {
-            return existing;
-        }
-        UserDO created = UserDO.builder()
-                .username(username)
-                .password(DEFAULT_GATEWAY_USER_PASSWORD)
-                .role(UserRole.USER.getCode())
-                .avatar(DEFAULT_AVATAR_URL)
-                .build();
-        userMapper.insert(created);
-        return created;
-    }
-
-    private UserDO loadById(String id) {
-        UserDO record = userMapper.selectOne(
-                Wrappers.lambdaQuery(UserDO.class)
-                        .eq(UserDO::getId, id)
-                        .eq(UserDO::getDeleted, 0)
-                        .last("limit 1")
-        );
-        if (record == null) {
-            throw new ClientException("用户不存在");
-        }
-        return record;
-    }
-
-    private LoginUser toLoginUser(UserDO user) {
-        return LoginUser.builder()
-                .userId(String.valueOf(user.getId()))
-                .username(user.getUsername())
-                .role(user.getRole())
-                .avatar(StrUtil.blankToDefault(user.getAvatar(), DEFAULT_AVATAR_URL))
-                .build();
     }
 }

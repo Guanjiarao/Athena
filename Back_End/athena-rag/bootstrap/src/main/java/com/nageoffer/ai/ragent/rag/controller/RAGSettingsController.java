@@ -1,13 +1,22 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.rag.controller;
 
-
-
-
-
-import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.Operation;
 import com.nageoffer.ai.ragent.framework.convention.Result;
 import com.nageoffer.ai.ragent.framework.web.Results;
 import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
@@ -21,6 +30,7 @@ import com.nageoffer.ai.ragent.rag.controller.vo.SystemSettingsVO.DefaultSetting
 import com.nageoffer.ai.ragent.rag.controller.vo.SystemSettingsVO.MemorySettings;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.util.StringUtils;
 import org.springframework.util.unit.DataSize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,7 +44,6 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "RAG接口")
 public class RAGSettingsController {
 
     private final RAGDefaultProperties ragDefaultProperties;
@@ -53,7 +62,6 @@ public class RAGSettingsController {
      * 获取系统 RAG、AI 模型等配置信息
      */
     @GetMapping("/rag/settings")
-    @Operation(summary = "获取系统 RAG、AI 模型等配置信息")
     public Result<SystemSettingsVO> settings() {
         SystemSettingsVO response = SystemSettingsVO.builder()
                 .upload(SystemSettingsVO.UploadSettings.builder()
@@ -64,8 +72,6 @@ public class RAGSettingsController {
                         .defaultConfig(toDefaultSettings(ragDefaultProperties))
                         .queryRewrite(SystemSettingsVO.QueryRewriteSettings.builder()
                                 .enabled(ragConfigProperties.getQueryRewriteEnabled())
-                                .maxHistoryMessages(ragConfigProperties.getQueryRewriteMaxHistoryMessages())
-                                .maxHistoryChars(ragConfigProperties.getQueryRewriteMaxHistoryChars())
                                 .build())
                         .rateLimit(SystemSettingsVO.RateLimitSettings.builder()
                                 .global(SystemSettingsVO.GlobalRateLimit.builder()
@@ -94,7 +100,6 @@ public class RAGSettingsController {
     private MemorySettings toMemorySettings(MemoryProperties props) {
         return MemorySettings.builder()
                 .historyKeepTurns(props.getHistoryKeepTurns())
-                .ttlMinutes(props.getTtlMinutes())
                 .summaryEnabled(props.getSummaryEnabled())
                 .summaryStartTurns(props.getSummaryStartTurns())
                 .summaryMaxChars(props.getSummaryMaxChars())
@@ -107,7 +112,7 @@ public class RAGSettingsController {
         if (props.getProviders() != null) {
             props.getProviders().forEach((k, v) -> providers.put(k, AISettings.ProviderConfig.builder()
                     .url(v.getUrl())
-                    .apiKey(v.getApiKey())
+                    .apiKey(maskApiKey(v.getApiKey()))
                     .endpoints(v.getEndpoints())
                     .build()));
         }
@@ -117,13 +122,17 @@ public class RAGSettingsController {
                 .chat(toModelGroup(props.getChat()))
                 .embedding(toModelGroup(props.getEmbedding()))
                 .rerank(toModelGroup(props.getRerank()))
-                .selection(props.getSelection() == null ? null : AISettings.Selection.builder()
-                        .failureThreshold(props.getSelection().getFailureThreshold())
-                        .openDurationMs(props.getSelection().getOpenDurationMs())
-                        .build())
-                .stream(props.getStream() == null ? null : AISettings.Stream.builder()
-                        .messageChunkSize(props.getStream().getMessageChunkSize())
-                        .build())
+                .selection(props.getSelection() == null
+                        ? null
+                        : AISettings.Selection.builder()
+                          .failureThreshold(props.getSelection().getFailureThreshold())
+                          .openDurationMs(props.getSelection().getOpenDurationMs())
+                          .build())
+                .stream(props.getStream() == null
+                        ? null
+                        : AISettings.Stream.builder()
+                          .messageChunkSize(props.getStream().getMessageChunkSize())
+                          .build())
                 .build();
     }
 
@@ -134,18 +143,31 @@ public class RAGSettingsController {
         return AISettings.ModelGroup.builder()
                 .defaultModel(group.getDefaultModel())
                 .deepThinkingModel(group.getDeepThinkingModel())
-                .candidates(group.getCandidates() == null ? null : group.getCandidates().stream()
-                        .map(c -> AISettings.ModelCandidate.builder()
-                                .id(c.getId())
-                                .provider(c.getProvider())
-                                .model(c.getModel())
-                                .url(c.getUrl())
-                                .dimension(c.getDimension())
-                                .priority(c.getPriority())
-                                .enabled(c.getEnabled())
-                                .supportsThinking(c.getSupportsThinking())
-                                .build())
-                        .collect(Collectors.toList()))
+                .candidates(group.getCandidates() == null
+                        ? null
+                        : group.getCandidates().stream()
+                          .map(c -> AISettings.ModelCandidate.builder()
+                                    .id(c.getId())
+                                    .provider(c.getProvider())
+                                    .model(c.getModel())
+                                    .url(c.getUrl())
+                                    .dimension(c.getDimension())
+                                    .priority(c.getPriority())
+                                    .enabled(c.getEnabled())
+                                    .supportsThinking(c.getSupportsThinking())
+                                    .build())
+                          .collect(Collectors.toList()))
                 .build();
+    }
+
+    private String maskApiKey(String apiKey) {
+        if (!StringUtils.hasText(apiKey)) {
+            return null;
+        }
+        String trimmed = apiKey.trim();
+        if (trimmed.length() <= 10) {
+            return "******";
+        }
+        return trimmed.substring(0, 6) + "***" + trimmed.substring(trimmed.length() - 4);
     }
 }

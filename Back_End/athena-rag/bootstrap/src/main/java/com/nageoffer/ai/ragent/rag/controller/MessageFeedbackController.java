@@ -1,13 +1,22 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.rag.controller;
 
-
-
-
-
-import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.Operation;
 import com.nageoffer.ai.ragent.rag.controller.request.MessageFeedbackRequest;
 import com.nageoffer.ai.ragent.framework.convention.Result;
 import com.nageoffer.ai.ragent.framework.web.Results;
@@ -23,7 +32,6 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "RAG接口")
 public class MessageFeedbackController {
 
     private final MessageFeedbackService feedbackService;
@@ -32,7 +40,6 @@ public class MessageFeedbackController {
      * 提交点赞/踩反馈（异步，通过 MQ 持久化）
      */
     @PostMapping("/conversations/messages/{messageId}/feedback")
-    @Operation(summary = "提交点赞/踩反馈（异步，通过 MQ 持久化）")
     public Result<Void> submitFeedback(@PathVariable String messageId,
                                        @RequestBody MessageFeedbackRequest request) {
         feedbackService.submitFeedbackAsync(messageId, request);

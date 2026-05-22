@@ -1,13 +1,22 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.knowledge.controller;
 
-
-
-
-
-import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.Operation;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.nageoffer.ai.ragent.core.chunk.ChunkingMode;
 import com.nageoffer.ai.ragent.knowledge.controller.request.KnowledgeBaseCreateRequest;
@@ -36,7 +45,6 @@ import java.util.List;
  */
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "知识库接口")
 public class KnowledgeBaseController {
 
     private final KnowledgeBaseService knowledgeBaseService;
@@ -45,7 +53,6 @@ public class KnowledgeBaseController {
      * 创建知识库
      */
     @PostMapping("/knowledge-base")
-    @Operation(summary = "创建知识库")
     public Result<String> createKnowledgeBase(@RequestBody KnowledgeBaseCreateRequest requestParam) {
         return Results.success(knowledgeBaseService.create(requestParam));
     }
@@ -54,7 +61,6 @@ public class KnowledgeBaseController {
      * 重命名知识库
      */
     @PutMapping("/knowledge-base/{kb-id}")
-    @Operation(summary = "重命名知识库")
     public Result<Void> renameKnowledgeBase(@PathVariable("kb-id") String kbId,
                                             @RequestBody KnowledgeBaseUpdateRequest requestParam) {
         knowledgeBaseService.rename(kbId, requestParam);
@@ -65,7 +71,6 @@ public class KnowledgeBaseController {
      * 删除知识库
      */
     @DeleteMapping("/knowledge-base/{kb-id}")
-    @Operation(summary = "删除知识库")
     public Result<Void> deleteKnowledgeBase(@PathVariable("kb-id") String kbId) {
         knowledgeBaseService.delete(kbId);
         return Results.success();
@@ -75,7 +80,6 @@ public class KnowledgeBaseController {
      * 查询知识库详情
      */
     @GetMapping("/knowledge-base/{kb-id}")
-    @Operation(summary = "查询知识库详情")
     public Result<KnowledgeBaseVO> queryKnowledgeBase(@PathVariable("kb-id") String kbId) {
         return Results.success(knowledgeBaseService.queryById(kbId));
     }
@@ -84,7 +88,6 @@ public class KnowledgeBaseController {
      * 分页查询知识库列表
      */
     @GetMapping("/knowledge-base")
-    @Operation(summary = "分页查询知识库列表")
     public Result<IPage<KnowledgeBaseVO>> pageQuery(KnowledgeBasePageRequest requestParam) {
         return Results.success(knowledgeBaseService.pageQuery(requestParam));
     }
@@ -93,7 +96,6 @@ public class KnowledgeBaseController {
      * 查询支持的分块策略列表
      */
     @GetMapping("/knowledge-base/chunk-strategies")
-    @Operation(summary = "查询支持的分块策略列表")
     public Result<List<ChunkStrategyVO>> listChunkStrategies() {
         List<ChunkStrategyVO> list = Arrays.stream(ChunkingMode.values())
                 .filter(ChunkingMode::isVisible)

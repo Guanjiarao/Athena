@@ -1,4 +1,19 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.rag.core.intent;
 
@@ -83,15 +98,11 @@ public class IntentTreeCacheManager {
      * 在意图节点发生增删改时调用
      */
     public void clearIntentTreeCache() {
-        try {
-            Boolean deleted = stringRedisTemplate.delete(INTENT_TREE_CACHE_KEY);
-            if (deleted) {
-                log.info("意图树缓存已清除，Key: {}", INTENT_TREE_CACHE_KEY);
-            } else {
-                log.warn("意图树缓存清除失败或缓存不存在");
-            }
-        } catch (Exception e) {
-            log.error("清除意图树缓存失败", e);
+        Boolean deleted = stringRedisTemplate.delete(INTENT_TREE_CACHE_KEY);
+        if (deleted) {
+            log.info("意图树缓存已清除，Key: {}", INTENT_TREE_CACHE_KEY);
+        } else {
+            log.info("意图树缓存不存在，无需清除");
         }
     }
 
@@ -102,8 +113,7 @@ public class IntentTreeCacheManager {
      */
     public boolean isCacheExists() {
         try {
-            Boolean exists = stringRedisTemplate.hasKey(INTENT_TREE_CACHE_KEY);
-            return Boolean.TRUE.equals(exists);
+            return stringRedisTemplate.hasKey(INTENT_TREE_CACHE_KEY);
         } catch (Exception e) {
             log.error("检查意图树缓存是否存在失败", e);
             return false;

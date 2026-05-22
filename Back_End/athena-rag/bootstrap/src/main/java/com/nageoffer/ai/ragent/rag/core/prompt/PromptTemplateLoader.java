@@ -1,4 +1,19 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.rag.core.prompt;
 
@@ -26,6 +41,7 @@ public class PromptTemplateLoader {
 
     private final ResourceLoader resourceLoader;
     private final Map<String, String> cache = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, String>> sectionCache = new ConcurrentHashMap<>();
 
     /**
      * 加载指定路径的提示模板
@@ -51,6 +67,40 @@ public class PromptTemplateLoader {
      */
     public String render(String path, Map<String, String> slots) {
         String template = load(path);
+        String filled = PromptTemplateUtils.fillSlots(template, slots);
+        return PromptTemplateUtils.cleanupPrompt(filled);
+    }
+
+    /**
+     * 加载模板文件中指定 section 的原始内容
+     *
+     * @param path    模板文件路径
+     * @param section section 名称（对应 {@code --- section: name ---} 中的 name）
+     * @return section 的原始模板内容
+     * @throws IllegalStateException 当 section 不存在时抛出
+     */
+    public String loadSection(String path, String section) {
+        Map<String, String> sections = sectionCache.computeIfAbsent(path, p -> {
+            String content = load(p);
+            return PromptTemplateUtils.parseSections(content);
+        });
+        String template = sections.get(section);
+        if (template == null) {
+            throw new IllegalStateException("模板 section 不存在：" + path + " -> " + section);
+        }
+        return template;
+    }
+
+    /**
+     * 渲染模板文件中指定 section，并填充占位符
+     *
+     * @param path    模板文件路径
+     * @param section section 名称
+     * @param slots   占位符映射表
+     * @return 渲染后的文本
+     */
+    public String renderSection(String path, String section, Map<String, String> slots) {
+        String template = loadSection(path, section);
         String filled = PromptTemplateUtils.fillSlots(template, slots);
         return PromptTemplateUtils.cleanupPrompt(filled);
     }

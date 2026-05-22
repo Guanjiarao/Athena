@@ -1,4 +1,19 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.rag.constant;
 
@@ -38,31 +53,6 @@ public class RAGConstant {
     public static final int MAX_INTENT_COUNT = 3;
 
     /**
-     * Rerank 分数过滤的边际比率（相对于最高分）
-     */
-    public static final double SCORE_MARGIN_RATIO = 0.75;
-
-    /**
-     * 默认返回的 TopK
-     */
-    public static final int DEFAULT_TOP_K = 10;
-
-    /**
-     * 检索时的 TopK 扩展倍数
-     */
-    public static final int SEARCH_TOP_K_MULTIPLIER = 3;
-
-    /**
-     * 检索时的最小 TopK
-     */
-    public static final int MIN_SEARCH_TOP_K = 20;
-
-    /**
-     * Rerank 限制倍数
-     */
-    public static final int RERANK_LIMIT_MULTIPLIER = 2;
-
-    /**
      * 多通道检索占位符键
      * <p>
      * 当没有意图识别结果时，使用此键作为 intentChunks Map 的占位符
@@ -84,16 +74,22 @@ public class RAGConstant {
     public static final String GUIDANCE_PROMPT_PATH = "prompt/guidance-prompt.st";
 
     /**
+     * 歧义确认提示词模板路径
+     * 用于边界 case 时调 LLM 二次确认是否存在品类歧义
+     */
+    public static final String GUIDANCE_AMBIGUITY_CHECK_PROMPT_PATH = "prompt/guidance-ambiguity-check.st";
+
+    /**
      * 系统对话提示词模板路径
      * 定义企业知识助手「小码」的角色设定和对话规则，包括打招呼、自我介绍、问题分类处理等场景。模板通过 {@code {question}} 占位符接收用户问题。
      */
-    public static final String CHAT_SYSTEM_PROMPT_PATH = "prompt/athena-answer-chat-system.st";
+    public static final String CHAT_SYSTEM_PROMPT_PATH = "prompt/answer-chat-system.st";
 
     /**
      * 查询改写 + 多问句拆分提示词模板路径
      * 要求同时返回改写后的单条查询和子问题列表
      */
-    public static final String QUERY_REWRITE_AND_SPLIT_PROMPT_PATH = "prompt/athena-user-question-rewrite.st";
+    public static final String QUERY_REWRITE_AND_SPLIT_PROMPT_PATH = "prompt/user-question-rewrite.st";
 
     /**
      * 对话记忆压缩提示词模板路径
@@ -111,13 +107,19 @@ public class RAGConstant {
      * 默认 RAG 问答提示词模板路径
      * 用于指导大模型基于检索到的文档内容进行准确回答，包含严格的事实性约束和链接处理规则
      */
-    public static final String RAG_ENTERPRISE_PROMPT_PATH = "prompt/athena-answer-chat-kb.st";
+    public static final String RAG_ENTERPRISE_PROMPT_PATH = "prompt/answer-chat-kb.st";
 
     /**
      * MCP 工具参数提取提示词模板路径
      * 用于从用户问题中提取工具调用参数
      */
     public static final String MCP_PARAMETER_EXTRACT_PROMPT_PATH = "prompt/mcp-parameter-extract.st";
+
+    /**
+     * MCP 工具参数提取用户消息提示词模板路径
+     * 用于构建包含工具定义和用户问题的用户消息，通过 {@code {tool_definition}} 和 {@code {user_question}} 占位符注入内容
+     */
+    public static final String MCP_PARAMETER_EXTRACT_USER_PROMPT_PATH = "prompt/mcp-parameter-extract-user.st";
 
     /**
      * MCP-only 场景提示词模板路径
@@ -130,4 +132,14 @@ public class RAGConstant {
      * 兼顾动态数据片段与知识库内容的综合回答
      */
     public static final String MCP_KB_MIXED_PROMPT_PATH = "prompt/answer-chat-mcp-kb-mixed.st";
+
+    // ==================== 上下文格式化模板（单文件多 section） ====================
+
+    /**
+     * 上下文格式化模板文件路径
+     * <p>
+     * 包含所有上下文格式化所需的 section，通过 {@code --- section: name ---} 分隔，
+     * 使用 {@code PromptTemplateLoader.renderSection(path, section, slots)} 渲染
+     */
+    public static final String CONTEXT_FORMAT_PATH = "prompt/context-format.st";
 }

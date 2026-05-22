@@ -1,13 +1,22 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.rag.controller;
 
-
-
-
-
-import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.Operation;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.nageoffer.ai.ragent.framework.convention.Result;
 import com.nageoffer.ai.ragent.framework.web.Results;
@@ -32,7 +41,6 @@ import java.util.List;
  */
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "RAG接口")
 public class SampleQuestionController {
 
     private final SampleQuestionService sampleQuestionService;
@@ -41,7 +49,6 @@ public class SampleQuestionController {
      * 随机获取示例问题列表
      */
     @GetMapping("/rag/sample-questions")
-    @Operation(summary = "随机获取示例问题列表")
     public Result<List<SampleQuestionVO>> listSampleQuestions() {
         return Results.success(sampleQuestionService.listRandomQuestions());
     }
@@ -50,7 +57,6 @@ public class SampleQuestionController {
      * 分页查询示例问题列表
      */
     @GetMapping("/sample-questions")
-    @Operation(summary = "分页查询示例问题列表")
     public Result<IPage<SampleQuestionVO>> pageQuery(SampleQuestionPageRequest requestParam) {
         return Results.success(sampleQuestionService.pageQuery(requestParam));
     }
@@ -59,7 +65,6 @@ public class SampleQuestionController {
      * 查询示例问题详情
      */
     @GetMapping("/sample-questions/{id}")
-    @Operation(summary = "查询示例问题详情")
     public Result<SampleQuestionVO> queryById(@PathVariable String id) {
         return Results.success(sampleQuestionService.queryById(id));
     }
@@ -68,7 +73,6 @@ public class SampleQuestionController {
      * 创建示例问题
      */
     @PostMapping("/sample-questions")
-    @Operation(summary = "创建示例问题")
     public Result<String> create(@RequestBody SampleQuestionCreateRequest requestParam) {
         return Results.success(sampleQuestionService.create(requestParam));
     }
@@ -77,7 +81,6 @@ public class SampleQuestionController {
      * 更新示例问题
      */
     @PutMapping("/sample-questions/{id}")
-    @Operation(summary = "更新示例问题")
     public Result<Void> update(@PathVariable String id, @RequestBody SampleQuestionUpdateRequest requestParam) {
         sampleQuestionService.update(id, requestParam);
         return Results.success();
@@ -87,7 +90,6 @@ public class SampleQuestionController {
      * 删除示例问题
      */
     @DeleteMapping("/sample-questions/{id}")
-    @Operation(summary = "删除示例问题")
     public Result<Void> delete(@PathVariable String id) {
         sampleQuestionService.delete(id);
         return Results.success();

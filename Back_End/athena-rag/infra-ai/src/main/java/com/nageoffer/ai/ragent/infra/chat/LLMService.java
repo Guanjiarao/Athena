@@ -1,4 +1,19 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.infra.chat;
 
@@ -69,6 +84,21 @@ public interface LLMService {
      * @return 模型返回的完整回答
      */
     String chat(ChatRequest request);
+
+    /**
+     * 同步调用（指定模型）
+     * <p>
+     * 说明：
+     * - modelId 为空时等同于 chat(request)，走默认路由
+     * - modelId 不为空时只使用指定模型，仍走路由层的健康检查与 fallback
+     *
+     * @param request ChatRequest 完整配置的请求
+     * @param modelId 指定的模型ID，为空时走默认路由
+     * @return 模型返回的完整回答
+     */
+    default String chat(ChatRequest request, String modelId) {
+        return chat(request);
+    }
 
     /**
      * 流式调用（简化模式）

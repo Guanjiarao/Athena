@@ -1,4 +1,19 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.rag.core.intent;
 
@@ -75,8 +90,7 @@ public class DefaultIntentClassifier implements IntentClassifier, IntentNodeRegi
         Map<String, IntentNode> id2Node = allNodes.stream()
                 .collect(Collectors.toMap(IntentNode::getId, n -> n));
 
-        log.info("[RAG对话链路][意图分类器] 意图树数据加载完成，总节点数：{}，叶子节点数：{}，根节点数：{}",
-                allNodes.size(), leafNodes.size(), roots.size());
+        log.debug("意图树数据加载完成, 总节点数: {}, 叶子节点数: {}", allNodes.size(), leafNodes.size());
 
         return new IntentTreeData(allNodes, leafNodes, id2Node);
     }
@@ -121,16 +135,10 @@ public class DefaultIntentClassifier implements IntentClassifier, IntentNodeRegi
      */
     @Override
     public List<NodeScore> classifyTargets(String question) {
-        log.info("[RAG对话链路][意图分类器] 开始 LLM 意图分类，question：{}，questionLength：{}",
-                question, question == null ? 0 : question.length());
         // 每次都从Redis读取最新数据
         IntentTreeData data = loadIntentTreeData();
-        log.info("[RAG对话链路][意图分类器] 本次用于分类的叶子节点数：{}，leafPreview：{}",
-                data.leafNodes.size(), summarizeIntentNodes(data.leafNodes));
 
         String systemPrompt = buildPrompt(data.leafNodes);
-        log.info("[RAG对话链路][意图分类器] 分类 Prompt 构建完成，promptLength：{}",
-                systemPrompt == null ? 0 : systemPrompt.length());
         ChatRequest request = ChatRequest.builder()
                 .messages(List.of(
                         ChatMessage.system(systemPrompt),
@@ -141,17 +149,11 @@ public class DefaultIntentClassifier implements IntentClassifier, IntentNodeRegi
                 .thinking(false)
                 .build();
 
-        log.info("[RAG对话链路][意图分类器] 发起 LLM 分类请求，messageCount：{}，temperature：{}，topP：{}",
-                request.getMessages().size(), request.getTemperature(), request.getTopP());
         String raw = llmService.chat(request);
-        log.info("[RAG对话链路][意图分类器] LLM 分类响应返回，rawLength：{}，rawPreview：{}",
-                raw == null ? 0 : raw.length(), raw == null ? null : raw.substring(0, Math.min(raw.length(), 500)));
 
         try {
             // 移除可能的 markdown 代码块标记
             String cleanedRaw = LLMResponseCleaner.stripMarkdownCodeFence(raw);
-            log.info("[RAG对话链路][意图分类器] 清理 LLM 响应完成，cleanedLength：{}",
-                    cleanedRaw == null ? 0 : cleanedRaw.length());
 
             JsonElement root = JsonParser.parseString(cleanedRaw);
 
@@ -166,37 +168,27 @@ public class DefaultIntentClassifier implements IntentClassifier, IntentNodeRegi
                 return List.of();
             }
 
-            log.info("[RAG对话链路][意图分类器] LLM 响应 JSON 数组解析完成，resultCount：{}", arr.size());
             List<NodeScore> scores = new ArrayList<>();
             for (JsonElement el : arr) {
-                if (!el.isJsonObject()) {
-                    log.info("[RAG对话链路][意图分类器] 跳过非对象结果项：{}", el);
-                    continue;
-                }
+                if (!el.isJsonObject()) continue;
                 JsonObject obj = el.getAsJsonObject();
 
-                if (!obj.has("id") || !obj.has("score")) {
-                    log.info("[RAG对话链路][意图分类器] 跳过缺少 id/score 的结果项：{}", obj);
-                    continue;
-                }
+                if (!obj.has("id") || !obj.has("score")) continue;
 
                 String id = obj.get("id").getAsString();
                 double score = obj.get("score").getAsDouble();
 
                 IntentNode node = data.id2Node.get(id);
                 if (node == null) {
-                    log.warn("[RAG对话链路][意图分类器] LLM 返回了未知的意图节点 ID：{}，已跳过", id);
+                    log.warn("LLM 返回了未知的意图节点 ID: {}, 已跳过", id);
                     continue;
                 }
 
-                log.info("[RAG对话链路][意图分类器] 接收候选意图，id：{}，name：{}，kind：{}，score：{}，path：{}",
-                        node.getId(), node.getName(), node.getKind(), score, node.getFullPath());
                 scores.add(new NodeScore(node, score));
             }
 
             // 降序排序
             scores.sort(Comparator.comparingDouble(NodeScore::getScore).reversed());
-            log.info("[RAG对话链路][意图分类器] 候选意图排序完成，scoreSummary：{}", summarizeNodeScores(scores));
 
             log.info("当前问题：{}\n意图识别树如下所示：{}\n",
                     question,
@@ -262,56 +254,18 @@ public class DefaultIntentClassifier implements IntentClassifier, IntentNodeRegi
             sb.append("\n");
         }
 
-        log.info("[RAG对话链路][意图分类器] 意图列表文本构建完成，leafNodeCount：{}，intentListLength：{}",
-                leafNodes == null ? 0 : leafNodes.size(), sb.length());
         return promptTemplateLoader.render(
                 INTENT_CLASSIFIER_PROMPT_PATH,
                 Map.of("intent_list", sb.toString())
         );
     }
 
-    private String summarizeIntentNodes(List<IntentNode> nodes) {
-        if (CollUtil.isEmpty(nodes)) {
-            return "[]";
-        }
-        return nodes.stream()
-                .limit(8)
-                .map(node -> "{id=" + node.getId()
-                        + ", name=" + node.getName()
-                        + ", kind=" + node.getKind()
-                        + ", path=" + cn.hutool.core.util.StrUtil.maxLength(node.getFullPath(), 80)
-                        + "}")
-                .toList()
-                .toString();
-    }
-
-    private String summarizeNodeScores(List<NodeScore> scores) {
-        if (CollUtil.isEmpty(scores)) {
-            return "[]";
-        }
-        return scores.stream()
-                .limit(8)
-                .map(score -> {
-                    IntentNode node = score.getNode();
-                    if (node == null) {
-                        return "{node=null, score=" + score.getScore() + "}";
-                    }
-                    return "{id=" + node.getId()
-                            + ", name=" + node.getName()
-                            + ", kind=" + node.getKind()
-                            + ", score=" + String.format("%.4f", score.getScore())
-                            + ", path=" + cn.hutool.core.util.StrUtil.maxLength(node.getFullPath(), 80)
-                            + "}";
-                })
-                .toList()
-                .toString();
-    }
-
     private List<IntentNode> loadIntentTreeFromDB() {
-        // 1. 查出所有未删除节点（扁平结构）
+        // 1. 查出所有未删除且已启用的节点（扁平结构）
         List<IntentNodeDO> intentNodeDOList = intentNodeMapper.selectList(
                 Wrappers.lambdaQuery(IntentNodeDO.class)
                         .eq(IntentNodeDO::getDeleted, 0)
+                        .eq(IntentNodeDO::getEnabled, 1)
         );
 
         if (intentNodeDOList.isEmpty()) {

@@ -1,9 +1,22 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.rag.core.retrieve;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nageoffer.ai.ragent.framework.convention.RetrievedChunk;
 import com.nageoffer.ai.ragent.infra.embedding.EmbeddingService;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +26,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Service
@@ -23,7 +35,6 @@ public class PgRetrieverService implements RetrieverService {
 
     private final JdbcTemplate jdbcTemplate;
     private final EmbeddingService embeddingService;
-    private final ObjectMapper objectMapper;
 
     @Override
     public List<RetrievedChunk> retrieve(RetrieveRequest request) {
@@ -40,25 +51,14 @@ public class PgRetrieverService implements RetrieverService {
 
         String vectorLiteral = toVectorLiteral(vector);
         // noinspection SqlDialectInspection,SqlNoDataSourceInspection
-        return jdbcTemplate.query("SELECT id, content, metadata, 1 - (embedding <=> ?::vector) AS score FROM t_knowledge_vector WHERE metadata->>'collection_name' = ? ORDER BY embedding <=> ?::vector LIMIT ?",
+        return jdbcTemplate.query("SELECT id, content, 1 - (embedding <=> ?::vector) AS score FROM t_knowledge_vector WHERE metadata->>'collection_name' = ? ORDER BY embedding <=> ?::vector LIMIT ?",
                 (rs, rowNum) -> RetrievedChunk.builder()
                         .id(rs.getString("id"))
                         .text(rs.getString("content"))
                         .score(rs.getFloat("score"))
-                        .metadata(parseMetadata(rs.getString("metadata")))
                         .build(),
                 vectorLiteral, request.getCollectionName(), vectorLiteral, request.getTopK()
         );
-    }
-
-    private Map<String, Object> parseMetadata(String metadataJson) {
-        try {
-            return objectMapper.readValue(metadataJson, new TypeReference<>() {
-            });
-        } catch (Exception e) {
-            log.warn("解析检索元数据失败，metadata={}", metadataJson, e);
-            return Map.of();
-        }
     }
 
     private float[] normalize(float[] vector) {

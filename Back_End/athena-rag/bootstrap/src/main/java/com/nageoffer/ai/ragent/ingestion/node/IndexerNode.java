@@ -1,4 +1,19 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.ingestion.node;
 
@@ -9,7 +24,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.reflect.TypeToken;
 import com.nageoffer.ai.ragent.rag.config.RAGDefaultProperties;
 import com.nageoffer.ai.ragent.core.chunk.VectorChunk;
 import com.nageoffer.ai.ragent.framework.exception.ClientException;
@@ -89,6 +103,7 @@ public class IndexerNode implements IngestionNode {
         List<JsonObject> rows = buildRows(context, chunks, vectorArray, settings.getMetadataFields());
 
         if (context.isSkipIndexerWrite()) {
+            // 调用方会在事务中统一写向量，此处只做校验和 chunkId/embedding 的填充（buildRows 已完成）
             return NodeResult.ok("已准备 " + rows.size() + " 个分块（向量写入由调用方统一完成）");
         }
 
@@ -132,6 +147,7 @@ public class IndexerNode implements IngestionNode {
             return;
         }
 
+        // 将 JsonObject 转换为 VectorChunk 列表
         List<VectorChunk> chunks = rows.stream().map(row -> {
             String chunkId = row.get("id").getAsString();
             String content = row.get("content").getAsString();
@@ -142,20 +158,17 @@ public class IndexerNode implements IngestionNode {
             }
 
             Integer chunkIndex = null;
-            Map<String, Object> metadataMap = new HashMap<>();
             if (row.has("metadata") && row.get("metadata").isJsonObject()) {
                 JsonObject metadata = row.getAsJsonObject("metadata");
                 if (metadata.has("chunk_index")) {
                     chunkIndex = metadata.get("chunk_index").getAsInt();
                 }
-                metadataMap.putAll(gsonJsonObjectToMap(metadata));
             }
 
             return VectorChunk.builder()
                     .chunkId(chunkId)
                     .content(content)
                     .index(chunkIndex)
-                    .metadata(metadataMap)
                     .embedding(embedding)
                     .build();
         }).toList();
@@ -163,11 +176,6 @@ public class IndexerNode implements IngestionNode {
         vectorStoreService.indexDocumentChunks(collectionName, docId, chunks);
 
         log.info("向量写入成功，集合={}，行数={}", collectionName, chunks.size());
-    }
-
-    private Map<String, Object> gsonJsonObjectToMap(JsonObject jsonObject) {
-        return GSON.fromJson(jsonObject, new TypeToken<Map<String, Object>>() {
-        }.getType());
     }
 
     private int resolveDimension(List<VectorChunk> chunks) {
@@ -210,6 +218,7 @@ public class IndexerNode implements IngestionNode {
             chunk.setChunkId(chunkId);
             chunk.setEmbedding(vectors[i]);
 
+            // 使用原始内容作为存储内容，而不是用于embedding的文本
             String content = chunk.getContent() == null ? "" : chunk.getContent();
             if (content.length() > 65535) {
                 content = content.substring(0, 65535);

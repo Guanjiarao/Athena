@@ -1,4 +1,19 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.rag.core.retrieve;
 
@@ -71,21 +86,11 @@ public class MilvusRetrieverService implements RetrieverService {
         // TODO 需确认后续是否对分数较低数据进行限制，限制多少合适？0.65？
         // TODO 如果本次查询分数都较高，是否应该扩大查询范围？1.5倍？
         return results.get(0).stream()
-                .map(r -> RetrievedChunk.builder()
-                        .id(Objects.toString(r.getEntity().get("id"), ""))
-                        .text(Objects.toString(r.getEntity().get("content"), ""))
-                        .score(r.getScore())
-                        .metadata(extractMetadata(r.getEntity().get("metadata")))
-                        .build())
+                .map(r -> new RetrievedChunk(
+                        Objects.toString(r.getEntity().get("id"), ""),
+                        Objects.toString(r.getEntity().get("content"), ""),
+                        r.getScore()))
                 .collect(Collectors.toList());
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> extractMetadata(Object metadata) {
-        if (metadata instanceof Map<?, ?> map) {
-            return (Map<String, Object>) map;
-        }
-        return Map.of();
     }
 
     private static float[] toArray(List<Float> list) {

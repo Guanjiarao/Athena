@@ -1,10 +1,24 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.rag.service.handler;
 
 import cn.hutool.core.util.StrUtil;
 import com.nageoffer.ai.ragent.rag.dao.entity.ConversationDO;
-import com.nageoffer.ai.ragent.rag.dto.ChatReferencePayload;
 import com.nageoffer.ai.ragent.rag.dto.CompletionPayload;
 import com.nageoffer.ai.ragent.rag.dto.MessageDelta;
 import com.nageoffer.ai.ragent.rag.dto.MetaPayload;
@@ -15,11 +29,12 @@ import com.nageoffer.ai.ragent.framework.web.SseEmitterSender;
 import com.nageoffer.ai.ragent.infra.chat.StreamCallback;
 import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
 import com.nageoffer.ai.ragent.rag.core.memory.ConversationMemoryService;
+import lombok.extern.slf4j.Slf4j;
 import com.nageoffer.ai.ragent.rag.service.ConversationGroupService;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.Optional;
 
+@Slf4j
 public class StreamChatEventHandler implements StreamCallback {
 
     private static final String TYPE_THINK = "think";
@@ -34,8 +49,10 @@ public class StreamChatEventHandler implements StreamCallback {
     private final String userId;
     private final StreamTaskManager taskManager;
     private final boolean sendTitleOnComplete;
-    private final java.util.List<ChatReferencePayload> references;
     private final StringBuilder answer = new StringBuilder();
+    private final StringBuilder thinking = new StringBuilder();
+    private long thinkingStartMs;
+    private int thinkingDurationSeconds;
 
     /**
      * 使用参数对象构造（推荐）
@@ -49,7 +66,6 @@ public class StreamChatEventHandler implements StreamCallback {
         this.memoryService = params.getMemoryService();
         this.conversationGroupService = params.getConversationGroupService();
         this.taskManager = params.getTaskManager();
-        this.references = params.getReferences();
         this.userId = UserContext.getUserId();
 
         // 计算配置
@@ -95,11 +111,16 @@ public class StreamChatEventHandler implements StreamCallback {
         String content = answer.toString();
         String messageId = null;
         if (StrUtil.isNotBlank(content)) {
-            messageId = memoryService.append(conversationId, userId, ChatMessage.assistant(content));
+            try {
+                String thinkingContent = thinking.isEmpty() ? null : thinking.toString();
+                ChatMessage message = ChatMessage.assistant(content, thinkingContent, resolveThinkingDuration());
+                messageId = memoryService.append(conversationId, userId, message);
+            } catch (Exception e) {
+                log.error("取消时持久化消息失败，conversationId：{}", conversationId, e);
+            }
         }
         String title = resolveTitleForEvent();
-        String messageIdText = StrUtil.isBlank(messageId) ? null : messageId;
-        return new CompletionPayload(messageIdText, title, references);
+        return new CompletionPayload(String.valueOf(messageId), title);
     }
 
     @Override
@@ -109,6 +130,9 @@ public class StreamChatEventHandler implements StreamCallback {
         }
         if (StrUtil.isBlank(chunk)) {
             return;
+        }
+        if (thinkingStartMs > 0 && thinkingDurationSeconds == 0) {
+            thinkingDurationSeconds = Math.max(1, Math.round((System.currentTimeMillis() - thinkingStartMs) / 1000.0f));
         }
         answer.append(chunk);
         sendChunked(TYPE_RESPONSE, chunk);
@@ -122,6 +146,10 @@ public class StreamChatEventHandler implements StreamCallback {
         if (StrUtil.isBlank(chunk)) {
             return;
         }
+        if (thinkingStartMs == 0) {
+            thinkingStartMs = System.currentTimeMillis();
+        }
+        thinking.append(chunk);
         sendChunked(TYPE_THINK, chunk);
     }
 
@@ -130,11 +158,17 @@ public class StreamChatEventHandler implements StreamCallback {
         if (taskManager.isCancelled(taskId)) {
             return;
         }
-        String messageId = memoryService.append(conversationId, UserContext.getUserId(),
-                ChatMessage.assistant(answer.toString()));
+        String messageId = null;
+        try {
+            String thinkingContent = thinking.isEmpty() ? null : thinking.toString();
+            ChatMessage message = ChatMessage.assistant(answer.toString(), thinkingContent, resolveThinkingDuration());
+            messageId = memoryService.append(conversationId, userId, message);
+        } catch (Exception e) {
+            log.error("对话完成时持久化消息失败，conversationId：{}", conversationId, e);
+        }
         String title = resolveTitleForEvent();
         String messageIdText = StrUtil.isBlank(messageId) ? null : messageId;
-        sender.sendEvent(SSEEventType.FINISH.value(), new CompletionPayload(messageIdText, title, references));
+        sender.sendEvent(SSEEventType.FINISH.value(), new CompletionPayload(messageIdText, title));
         sender.sendEvent(SSEEventType.DONE.value(), "[DONE]");
         taskManager.unregister(taskId);
         sender.complete();
@@ -168,6 +202,10 @@ public class StreamChatEventHandler implements StreamCallback {
         if (!buffer.isEmpty()) {
             sender.sendEvent(SSEEventType.MESSAGE.value(), new MessageDelta(type, buffer.toString()));
         }
+    }
+
+    private Integer resolveThinkingDuration() {
+        return thinkingDurationSeconds > 0 ? thinkingDurationSeconds : null;
     }
 
     private String resolveTitleForEvent() {

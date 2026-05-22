@@ -1,4 +1,19 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.framework.trace;
 
@@ -15,7 +30,15 @@ public final class RagTraceContext {
 
     private static final TransmittableThreadLocal<String> TRACE_ID = new TransmittableThreadLocal<>();
     private static final TransmittableThreadLocal<String> TASK_ID = new TransmittableThreadLocal<>();
-    private static final TransmittableThreadLocal<Deque<String>> NODE_STACK = new TransmittableThreadLocal<>();
+    // 父线程 -> 子线程的 NODE_STACK 必须深拷贝
+    // 默认 copy() 返回父值引用，并发子任务会共用同一个 Deque，
+    // 互相 push/pop 时父子节点 ID 串挂，trace 层级紊乱
+    private static final TransmittableThreadLocal<Deque<String>> NODE_STACK = new TransmittableThreadLocal<>() {
+        @Override
+        public Deque<String> copy(Deque<String> parentValue) {
+            return parentValue == null ? null : new ArrayDeque<>(parentValue);
+        }
+    };
 
     private RagTraceContext() {
     }

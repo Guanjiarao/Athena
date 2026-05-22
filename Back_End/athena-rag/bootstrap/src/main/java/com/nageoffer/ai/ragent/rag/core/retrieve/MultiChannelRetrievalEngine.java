@@ -1,4 +1,19 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.rag.core.retrieve;
 
@@ -37,7 +52,6 @@ public class MultiChannelRetrievalEngine {
 
     private final List<SearchChannel> searchChannels;
     private final List<SearchResultPostProcessor> postProcessors;
-    @Qualifier("ragRetrievalThreadPoolExecutor")
     private final Executor ragRetrievalExecutor;
 
     /**
@@ -79,7 +93,6 @@ public class MultiChannelRetrievalEngine {
         log.info("启用的检索通道：{}",
                 enabledChannels.stream().map(SearchChannel::getName).toList());
 
-        // 并行执行所有通道
         List<CompletableFuture<SearchChannelResult>> futures = enabledChannels.stream()
                 .map(channel -> CompletableFuture.supplyAsync(
                         () -> {
@@ -88,12 +101,7 @@ public class MultiChannelRetrievalEngine {
                                 return channel.search(context);
                             } catch (Exception e) {
                                 log.error("检索通道 {} 执行失败", channel.getName(), e);
-                                return SearchChannelResult.builder()
-                                        .channelType(channel.getType())
-                                        .channelName(channel.getName())
-                                        .chunks(List.of())
-                                        .confidence(0.0)
-                                        .build();
+                                return emptyResult(channel);
                             }
                         },
                         ragRetrievalExecutor
@@ -106,14 +114,7 @@ public class MultiChannelRetrievalEngine {
         int totalChunks = 0;
 
         List<SearchChannelResult> results = futures.stream()
-                .map(future -> {
-                    try {
-                        return future.join();
-                    } catch (Exception e) {
-                        log.error("获取通道检索结果失败", e);
-                        return null;
-                    }
-                })
+                .map(CompletableFuture::join)
                 .filter(Objects::nonNull)
                 .toList();
 
@@ -124,17 +125,15 @@ public class MultiChannelRetrievalEngine {
 
             if (chunkCount > 0) {
                 successCount++;
-                log.info("通道 {} 完成 ✓ - 检索到 {} 个 Chunk，置信度：{}，耗时：{}ms",
+                log.info("通道 {} 完成 ✓ - 检索到 {} 个 Chunk，耗时：{}ms",
                         result.getChannelName(),
                         chunkCount,
-                        result.getConfidence(),
                         result.getLatencyMs()
                 );
             } else {
                 failureCount++;
-                log.warn("通道 {} 完成但无结果 - 置信度：{}，耗时：{}ms",
+                log.warn("通道 {} 完成但无结果 - 耗时：{}ms",
                         result.getChannelName(),
-                        result.getConfidence(),
                         result.getLatencyMs()
                 );
             }
@@ -194,6 +193,14 @@ public class MultiChannelRetrievalEngine {
                 initialSize, chunks.size());
 
         return chunks;
+    }
+
+    private SearchChannelResult emptyResult(SearchChannel channel) {
+        return SearchChannelResult.builder()
+                .channelType(channel.getType())
+                .channelName(channel.getName())
+                .chunks(List.of())
+                .build();
     }
 
     /**

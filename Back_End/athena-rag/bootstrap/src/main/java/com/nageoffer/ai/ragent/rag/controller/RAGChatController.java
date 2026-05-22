@@ -1,19 +1,28 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.rag.controller;
 
-
-
-
-
-import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.Operation;
 import com.nageoffer.ai.ragent.framework.convention.Result;
 import com.nageoffer.ai.ragent.framework.idempotent.IdempotentSubmit;
 import com.nageoffer.ai.ragent.framework.web.Results;
+import com.nageoffer.ai.ragent.rag.config.RAGDefaultProperties;
 import com.nageoffer.ai.ragent.rag.service.RAGChatService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -24,13 +33,12 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  * RAG 对话控制器
  * 提供流式问答与任务取消接口
  */
-@Slf4j
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "RAG接口")
 public class RAGChatController {
 
     private final RAGChatService ragChatService;
+    private final RAGDefaultProperties ragDefaultProperties;
 
     /**
      * 发起 SSE 流式对话
@@ -43,9 +51,7 @@ public class RAGChatController {
     public SseEmitter chat(@RequestParam String question,
                            @RequestParam(required = false) String conversationId,
                            @RequestParam(required = false, defaultValue = "false") Boolean deepThinking) {
-        log.info("[RAG对话链路][入口] 收到流式对话请求，conversationId：{}，deepThinking：{}，questionLength：{}",
-                conversationId, deepThinking, question == null ? 0 : question.length());
-        SseEmitter emitter = new SseEmitter(0L);
+        SseEmitter emitter = new SseEmitter(ragDefaultProperties.getSseTimeoutMs());
         ragChatService.streamChat(question, conversationId, deepThinking, emitter);
         return emitter;
     }
@@ -55,7 +61,6 @@ public class RAGChatController {
      */
     @IdempotentSubmit
     @PostMapping(value = "/rag/v3/stop")
-    @Operation(summary = "发起 SSE 流式对话")
     public Result<Void> stop(@RequestParam String taskId) {
         ragChatService.stopTask(taskId);
         return Results.success();

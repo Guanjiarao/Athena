@@ -1,4 +1,19 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.rag.config;
 
@@ -29,7 +44,7 @@ public class ThreadPoolExecutorConfig {
      * MCP批处理线程池
      */
     @Bean
-    public Executor mcpBatchThreadPoolExecutor() {
+    public Executor mcpBatchExecutor() {
         ThreadPoolExecutor executor = new ThreadPoolExecutor(
                 CPU_COUNT,
                 CPU_COUNT << 1,
@@ -45,13 +60,13 @@ public class ThreadPoolExecutorConfig {
     }
 
     /**
-     * RAG上下文处理线程池
+     * RAG上下文处理线程池（子问题级并行：检索+MCP）
      */
     @Bean
-    public Executor ragContextThreadPoolExecutor() {
+    public Executor ragContextExecutor() {
         ThreadPoolExecutor executor = new ThreadPoolExecutor(
-                2,
-                4,
+                CPU_COUNT,
+                CPU_COUNT << 1,
                 60,
                 TimeUnit.SECONDS,
                 new SynchronousQueue<>(),
@@ -67,7 +82,7 @@ public class ThreadPoolExecutorConfig {
      * RAG 检索线程池（用于通道级别的并行）
      */
     @Bean
-    public Executor ragRetrievalThreadPoolExecutor() {
+    public Executor ragRetrievalExecutor() {
         ThreadPoolExecutor executor = new ThreadPoolExecutor(
                 CPU_COUNT,
                 CPU_COUNT << 1,
@@ -86,7 +101,7 @@ public class ThreadPoolExecutorConfig {
      * RAG 内部检索线程池
      */
     @Bean
-    public Executor ragInnerRetrievalThreadPoolExecutor() {
+    public Executor innerRetrievalExecutor() {
         ThreadPoolExecutor executor = new ThreadPoolExecutor(
                 CPU_COUNT << 1,
                 CPU_COUNT << 2,
@@ -105,7 +120,7 @@ public class ThreadPoolExecutorConfig {
      * 意图识别并行执行线程池
      */
     @Bean
-    public Executor intentClassifyThreadPoolExecutor() {
+    public Executor intentClassifyExecutor() {
         ThreadPoolExecutor executor = new ThreadPoolExecutor(
                 CPU_COUNT,
                 CPU_COUNT << 1,
@@ -124,7 +139,7 @@ public class ThreadPoolExecutorConfig {
      * 对话记忆摘要生成线程池
      */
     @Bean
-    public Executor memorySummaryThreadPoolExecutor() {
+    public Executor memorySummaryExecutor() {
         ThreadPoolExecutor executor = new ThreadPoolExecutor(
                 1,
                 Math.max(2, CPU_COUNT >> 1),
@@ -162,18 +177,20 @@ public class ThreadPoolExecutorConfig {
      * SSE 排队后执行入口线程池
      */
     @Bean
-    public Executor chatEntryExecutor() {
+    public Executor chatEntryExecutor(RAGRateLimitProperties rateLimitProperties) {
+        int size = rateLimitProperties.getGlobalMaxConcurrent();
         ThreadPoolExecutor executor = new ThreadPoolExecutor(
-                Math.max(2, CPU_COUNT >> 1),
-                Math.max(4, CPU_COUNT),
+                size,
+                size,
                 60,
                 TimeUnit.SECONDS,
-                new LinkedBlockingQueue<>(200),
+                new SynchronousQueue<>(),
                 ThreadFactoryBuilder.create()
                         .setNamePrefix("chat_entry_executor_")
                         .build(),
                 new ThreadPoolExecutor.AbortPolicy()
         );
+        executor.allowCoreThreadTimeOut(true);
         return TtlExecutors.getTtlExecutor(executor);
     }
 
@@ -192,6 +209,25 @@ public class ThreadPoolExecutorConfig {
                         .setNamePrefix("kb_chunk_executor_")
                         .build(),
                 new ThreadPoolExecutor.AbortPolicy()
+        );
+        return TtlExecutors.getTtlExecutor(executor);
+    }
+
+    /**
+     * 对话记忆加载线程池（并行加载摘要与历史记录）
+     */
+    @Bean
+    public Executor memoryLoadExecutor() {
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(
+                Math.max(2, CPU_COUNT >> 1),
+                Math.max(4, CPU_COUNT),
+                60,
+                TimeUnit.SECONDS,
+                new LinkedBlockingQueue<>(200),
+                ThreadFactoryBuilder.create()
+                        .setNamePrefix("memory_load_executor_")
+                        .build(),
+                new ThreadPoolExecutor.CallerRunsPolicy()
         );
         return TtlExecutors.getTtlExecutor(executor);
     }

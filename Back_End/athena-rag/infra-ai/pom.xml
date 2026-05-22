@@ -12,7 +12,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>athena</groupId>
+            <groupId>com.nageoffer.ai</groupId>
             <artifactId>framework</artifactId>
             <version>${project.version}</version>
         </dependency>

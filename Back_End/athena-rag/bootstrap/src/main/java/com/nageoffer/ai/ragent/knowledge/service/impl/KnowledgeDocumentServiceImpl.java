@@ -1,4 +1,19 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.knowledge.service.impl;
 
@@ -62,10 +77,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionOperations;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -74,19 +87,14 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
-
-    private static final Pattern ATHENA_NOTE_FILE_NAME_PATTERN = Pattern.compile("^athena-note-(\\d+)(?:-.*)?\\.[^.]+$");
 
     private final KnowledgeBaseMapper knowledgeBaseMapper;
     private final KnowledgeDocumentMapper documentMapper;
@@ -102,7 +110,7 @@ public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
     private final IngestionEngine ingestionEngine;
     private final ChunkEmbeddingService chunkEmbeddingService;
     private final KnowledgeDocumentChunkLogMapper chunkLogMapper;
-    private final PlatformTransactionManager transactionManager;
+    private final TransactionOperations transactionOperations;
     private final MessageQueueProducer messageQueueProducer;
     private final KnowledgeScheduleProperties scheduleProperties;
     private final RemoteFileFetcher remoteFileFetcher;
@@ -249,7 +257,7 @@ public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
                     return req;
                 })
                 .toList();
-        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+        transactionOperations.executeWithoutResult(status -> {
             knowledgeChunkService.deleteByDocId(docId);
             knowledgeChunkService.batchCreate(docId, chunks);
             vectorStoreService.deleteDocumentVectors(collectionName, docId);
@@ -348,7 +356,6 @@ public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
                 .pipelineId(pipelineId)
                 .rawBytes(fileBytes)
                 .mimeType(documentDO.getFileType())
-                .metadata(buildPipelineMetadata(documentDO))
                 .vectorSpaceId(VectorSpaceId.builder()
                         .logicalName(kbDO.getCollectionName())
                         .build())
@@ -367,47 +374,7 @@ public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
             return List.of();
         }
 
-        mergeMetadataIntoChunks(chunks, context.getMetadata());
         return chunks;
-    }
-
-    private Map<String, Object> buildPipelineMetadata(KnowledgeDocumentDO documentDO) {
-        Long noteId = extractAthenaNoteId(documentDO.getDocName());
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("noteId", noteId);
-        metadata.put("source", "athena-note");
-        log.info("[KnowledgeDocument] 解析 Athena note 文件名成功, docId={}, docName={}, noteId={}",
-                documentDO.getId(), documentDO.getDocName(), noteId);
-        return metadata;
-    }
-
-    private void mergeMetadataIntoChunks(List<VectorChunk> chunks, Map<String, Object> metadata) {
-        if (chunks == null || chunks.isEmpty() || metadata == null || metadata.isEmpty()) {
-            return;
-        }
-        for (VectorChunk chunk : chunks) {
-            if (chunk.getMetadata() == null) {
-                chunk.setMetadata(new HashMap<>());
-            }
-            metadata.forEach(chunk.getMetadata()::putIfAbsent);
-        }
-        log.info("[KnowledgeDocument] 已将 pipeline metadata 合并到分块, chunkCount={}, metadataKeys={}",
-                chunks.size(), metadata.keySet());
-    }
-
-    private Long extractAthenaNoteId(String docName) {
-        if (!StringUtils.hasText(docName)) {
-            throw new ClientException("文档名称为空，无法解析 Athena noteId");
-        }
-        Matcher matcher = ATHENA_NOTE_FILE_NAME_PATTERN.matcher(docName.trim());
-        if (!matcher.matches()) {
-            throw new ClientException("文档名称不符合 Athena note 命名规范，无法解析 noteId: " + docName);
-        }
-        try {
-            return Long.parseLong(matcher.group(1));
-        } catch (NumberFormatException ex) {
-            throw new ClientException("文档名称中的 noteId 非法: " + docName);
-        }
     }
 
     public void chunkDocument(KnowledgeDocumentDO documentDO) {
@@ -418,9 +385,7 @@ public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
     }
 
     private void markChunkFailed(String docId) {
-        TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
-        txTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        txTemplate.executeWithoutResult(status -> {
+        transactionOperations.executeWithoutResult(status -> {
             KnowledgeDocumentDO update = new KnowledgeDocumentDO();
             update.setId(docId);
             update.setStatus(DocumentStatus.FAILED.getCode());
@@ -491,7 +456,7 @@ public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
                 ChunkingMode chunkingMode = ChunkingMode.fromValue(requestParam.getChunkStrategy());
                 String chunkConfig = validateAndNormalizeChunkConfig(chunkingMode, requestParam.getChunkConfig());
                 updateWrapper.set(KnowledgeDocumentDO::getChunkStrategy, chunkingMode.getValue());
-                updateWrapper.set(KnowledgeDocumentDO::getChunkConfig, chunkConfig);
+                updateWrapper.setSql("chunk_config = CAST({0} AS jsonb)", chunkConfig);
                 updateWrapper.set(KnowledgeDocumentDO::getPipelineId, null);
             } else {
                 if (!StringUtils.hasText(requestParam.getPipelineId())) {
@@ -622,7 +587,6 @@ public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public void enable(String docId, boolean enabled) {
         KnowledgeDocumentDO documentDO = documentMapper.selectById(docId);
         Assert.notNull(documentDO, () -> new ClientException("文档不存在"));
@@ -638,36 +602,42 @@ public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
             return;
         }
 
-        documentDO.setEnabled(targetEnabled);
-        documentDO.setUpdatedBy(UserContext.getUsername());
-        documentMapper.updateById(documentDO);
-        scheduleService.syncScheduleIfExists(documentDO);
+        // 提前查知识库，两个分支都需要，避免重复查询
+        KnowledgeBaseDO kbDO = knowledgeBaseMapper.selectById(documentDO.getKbId());
+        String collectionName = kbDO.getCollectionName();
 
-        // 同步更新 Chunk 表的状态
-        knowledgeChunkService.updateEnabledByDocId(docId, enabled);
-
-        if (!enabled) {
-            // 禁用文档时，从向量库中删除对应的向量
-            String collectionName = resolveCollectionName(documentDO.getKbId());
-            vectorStoreService.deleteDocumentVectors(collectionName, docId);
-        } else {
-            // 启用文档时，根据文档分块记录重建向量索引
-            KnowledgeBaseDO kbDO = knowledgeBaseMapper.selectById(documentDO.getKbId());
-            String collectionName = kbDO.getCollectionName();
-            String embeddingModel = kbDO.getEmbeddingModel();
+        // 启用时：embed 耗时较长，在事务外提前执行，避免长事务占用连接
+        List<VectorChunk> vectorChunks = null;
+        if (enabled) {
             List<KnowledgeChunkVO> chunks = knowledgeChunkService.listByDocId(docId);
-            List<VectorChunk> vectorChunks = chunks.stream().map(each ->
+            vectorChunks = chunks.stream().map(each ->
                     VectorChunk.builder()
                             .chunkId(each.getId())
                             .content(each.getContent())
                             .index(each.getChunkIndex())
                             .build()
             ).toList();
-            if (CollUtil.isNotEmpty(vectorChunks)) {
-                chunkEmbeddingService.embed(vectorChunks, embeddingModel);
-                vectorStoreService.indexDocumentChunks(collectionName, docId, vectorChunks);
+            if (CollUtil.isEmpty(vectorChunks)) {
+                log.warn("启用文档时未找到任何 Chunk，跳过向量重建，docId={}", docId);
+                return;
             }
+            chunkEmbeddingService.embed(vectorChunks, kbDO.getEmbeddingModel());
         }
+
+        final List<VectorChunk> finalVectorChunks = vectorChunks;
+        transactionOperations.executeWithoutResult(status -> {
+            documentDO.setEnabled(targetEnabled);
+            documentDO.setUpdatedBy(UserContext.getUsername());
+            documentMapper.updateById(documentDO);
+            scheduleService.syncScheduleIfExists(documentDO);
+            knowledgeChunkService.updateEnabledByDocId(docId, String.valueOf(kbDO.getId()), enabled);
+
+            if (!enabled) {
+                vectorStoreService.deleteDocumentVectors(collectionName, docId);
+            } else {
+                vectorStoreService.indexDocumentChunks(collectionName, docId, finalVectorChunks);
+            }
+        });
     }
 
     @Override

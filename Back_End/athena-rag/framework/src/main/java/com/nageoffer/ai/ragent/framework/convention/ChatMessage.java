@@ -1,4 +1,19 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.framework.convention;
 
@@ -71,6 +86,21 @@ public class ChatMessage {
     private String content;
 
     /**
+     * 深度思考内容（仅 ASSISTANT 角色可能携带）
+     */
+    private String thinkingContent;
+
+    /**
+     * 深度思考耗时（秒，仅 ASSISTANT 角色可能携带）
+     */
+    private Integer thinkingDuration;
+
+    public ChatMessage(Role role, String content) {
+        this.role = role;
+        this.content = content;
+    }
+
+    /**
      * 创建一条系统消息
      *
      * @param content 系统提示词内容
@@ -99,5 +129,30 @@ public class ChatMessage {
     public static ChatMessage assistant(String content) {
         return new ChatMessage(Role.ASSISTANT, content);
     }
-}
 
+    /**
+     * 创建一条带思考内容的助手消息
+     *
+     * @param content         助手回复内容
+     * @param thinkingContent 深度思考内容
+     * @return 封装好的 {@link ChatMessage} 对象，角色为 {@link Role#ASSISTANT}
+     */
+    public static ChatMessage assistant(String content, String thinkingContent) {
+        return assistant(content, thinkingContent, null);
+    }
+
+    /**
+     * 创建一条带思考内容和思考耗时的助手消息
+     *
+     * @param content          助手回复内容
+     * @param thinkingContent  深度思考内容
+     * @param thinkingDuration 深度思考耗时（秒）
+     * @return 封装好的 {@link ChatMessage} 对象，角色为 {@link Role#ASSISTANT}
+     */
+    public static ChatMessage assistant(String content, String thinkingContent, Integer thinkingDuration) {
+        ChatMessage message = new ChatMessage(Role.ASSISTANT, content);
+        message.setThinkingContent(thinkingContent);
+        message.setThinkingDuration(thinkingDuration);
+        return message;
+    }
+}

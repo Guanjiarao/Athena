@@ -1,9 +1,22 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.framework.web;
 
-import com.nageoffer.ai.ragent.framework.errorcode.BaseErrorCode;
-import com.nageoffer.ai.ragent.framework.exception.ServiceException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -34,6 +47,9 @@ public class SseEmitterSender {
      */
     public SseEmitterSender(SseEmitter emitter) {
         this.emitter = emitter;
+        emitter.onCompletion(() -> closed.set(true));
+        emitter.onTimeout(() -> closed.set(true));
+        emitter.onError(e -> closed.set(true));
     }
 
     /**
@@ -47,22 +63,18 @@ public class SseEmitterSender {
      *
      * @param eventName 事件名称，为 null 时使用默认格式
      * @param data      要发送的数据内容
-     * @throws ServiceException 当连接已关闭或发送失败时抛出
      */
     public void sendEvent(String eventName, Object data) {
-        // 检查连接是否已关闭
         if (closed.get()) {
-            throw new ServiceException("SSE already closed", BaseErrorCode.SERVICE_ERROR);
+            return;
         }
         try {
-            // 根据是否指定事件名称选择不同的发送方式
             if (eventName == null) {
                 emitter.send(data);
                 return;
             }
             emitter.send(SseEmitter.event().name(eventName).data(data));
         } catch (Exception e) {
-            // 发送失败时，关闭连接并通知失败
             fail(e);
         }
     }

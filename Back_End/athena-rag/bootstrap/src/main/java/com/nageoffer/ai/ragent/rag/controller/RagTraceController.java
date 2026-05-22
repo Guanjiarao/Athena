@@ -1,13 +1,22 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.rag.controller;
 
-
-
-
-
-import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.Operation;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.nageoffer.ai.ragent.framework.convention.Result;
 import com.nageoffer.ai.ragent.framework.web.Results;
@@ -28,7 +37,6 @@ import java.util.List;
  */
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "RAG接口")
 public class RagTraceController {
 
     private final RagTraceQueryService ragTraceQueryService;
@@ -37,7 +45,6 @@ public class RagTraceController {
      * 分页查询链路运行记录
      */
     @GetMapping("/rag/traces/runs")
-    @Operation(summary = "分页查询链路运行记录")
     public Result<IPage<RagTraceRunVO>> pageRuns(RagTraceRunPageRequest request) {
         return Results.success(ragTraceQueryService.pageRuns(request));
     }
@@ -46,7 +53,6 @@ public class RagTraceController {
      * 查询链路详情（包含节点）
      */
     @GetMapping("/rag/traces/runs/{traceId}")
-    @Operation(summary = "查询链路详情（包含节点）")
     public Result<RagTraceDetailVO> detail(@PathVariable String traceId) {
         return Results.success(ragTraceQueryService.detail(traceId));
     }
@@ -55,7 +61,6 @@ public class RagTraceController {
      * 仅查询链路节点
      */
     @GetMapping("/rag/traces/runs/{traceId}/nodes")
-    @Operation(summary = "仅查询链路节点")
     public Result<List<RagTraceNodeVO>> nodes(@PathVariable String traceId) {
         return Results.success(ragTraceQueryService.listNodes(traceId));
     }

@@ -1,13 +1,22 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.ingestion.controller;
 
-
-
-
-
-import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.Operation;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.nageoffer.ai.ragent.ingestion.controller.request.IngestionPipelineCreateRequest;
@@ -33,7 +42,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @Validated
-@Tag(name = "数据摄取接口")
 public class IngestionPipelineController {
 
     private final IngestionPipelineService pipelineService;
@@ -42,7 +50,6 @@ public class IngestionPipelineController {
      * 创建数据摄入流水线
      */
     @PostMapping("/ingestion/pipelines")
-    @Operation(summary = "创建数据摄入流水线")
     public Result<IngestionPipelineVO> create(@RequestBody IngestionPipelineCreateRequest request) {
         return Results.success(pipelineService.create(request));
     }
@@ -51,7 +58,6 @@ public class IngestionPipelineController {
      * 更新数据摄入流水线
      */
     @PutMapping("/ingestion/pipelines/{id}")
-    @Operation(summary = "更新数据摄入流水线")
     public Result<IngestionPipelineVO> update(@PathVariable String id,
                                               @RequestBody IngestionPipelineUpdateRequest request) {
         return Results.success(pipelineService.update(id, request));
@@ -61,7 +67,6 @@ public class IngestionPipelineController {
      * 获取单个数据摄入流水线详情
      */
     @GetMapping("/ingestion/pipelines/{id}")
-    @Operation(summary = "获取单个数据摄入流水线详情")
     public Result<IngestionPipelineVO> get(@PathVariable String id) {
         return Results.success(pipelineService.get(id));
     }
@@ -70,7 +75,6 @@ public class IngestionPipelineController {
      * 分页查询数据摄入流水线
      */
     @GetMapping("/ingestion/pipelines")
-    @Operation(summary = "分页查询数据摄入流水线")
     public Result<IPage<IngestionPipelineVO>> page(@RequestParam(value = "pageNo", defaultValue = "1") int pageNo,
                                                    @RequestParam(value = "pageSize", defaultValue = "10") int pageSize,
                                                    @RequestParam(value = "keyword", required = false) String keyword) {
@@ -81,7 +85,6 @@ public class IngestionPipelineController {
      * 删除数据摄入流水线
      */
     @DeleteMapping("/ingestion/pipelines/{id}")
-    @Operation(summary = "删除数据摄入流水线")
     public Result<Void> delete(@PathVariable String id) {
         pipelineService.delete(id);
         return Results.success();

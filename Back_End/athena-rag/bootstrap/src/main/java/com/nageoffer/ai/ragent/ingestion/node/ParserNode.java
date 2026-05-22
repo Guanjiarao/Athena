@@ -1,4 +1,19 @@
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.nageoffer.ai.ragent.ingestion.node;
 
@@ -16,7 +31,6 @@ import com.nageoffer.ai.ragent.core.parser.DocumentParser;
 import com.nageoffer.ai.ragent.core.parser.DocumentParserSelector;
 import com.nageoffer.ai.ragent.core.parser.ParseResult;
 import com.nageoffer.ai.ragent.core.parser.ParserType;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -28,11 +42,8 @@ import java.util.Map;
  * 文档解析节点
  * 负责将输入的字节流（如 PDF、Word、Excel 等）解析为结构化的文本或文档对象
  */
-@Slf4j
 @Component
 public class ParserNode implements IngestionNode {
-
-    private static final int SAMPLE_LENGTH = 300;
 
     private final ObjectMapper objectMapper;
     private final DocumentParserSelector parserSelector;
@@ -63,23 +74,20 @@ public class ParserNode implements IngestionNode {
         ParserSettings settings = parseSettings(config.getSettings());
         String fileName = context.getSource() == null ? null : context.getSource().getFileName();
 
+        // 验证文件类型是否符合配置
         validateMimeType(settings, mimeType, fileName);
 
         ParserSettings.ParserRule rule = matchRule(settings, mimeType, fileName);
-        String parserType = resolveParserType(rule, mimeType);
-        DocumentParser parser = parserSelector.select(parserType);
+        DocumentParser parser = parserSelector.select(ParserType.TIKA.getType());
         if (parser == null) {
-            return NodeResult.fail(new ClientException("未配置解析器: " + parserType));
+            return NodeResult.fail(new ClientException("未配置 Tika 解析器"));
         }
 
         Map<String, Object> options = rule == null ? Collections.emptyMap() : rule.getOptions();
         ParseResult result = parser.parse(context.getRawBytes(), mimeType, options);
         context.setRawText(result.text());
 
-        log.info("[AthenaIngestionParser] parser={}, mimeType={}, fileName={}, textLength={}, sample={}",
-                parser.getClass().getSimpleName(), mimeType, fileName,
-                result.text() == null ? 0 : result.text().length(), abbreviate(result.text()));
-
+        // 将 ParseResult 转换为 StructuredDocument
         StructuredDocument document = StructuredDocument.builder()
                 .text(result.text())
                 .metadata(result.metadata())
@@ -89,13 +97,19 @@ public class ParserNode implements IngestionNode {
         return NodeResult.ok("解析文本长度=" + (result.text() == null ? 0 : result.text().length()));
     }
 
+    /**
+     * 验证文件类型是否符合配置的规则
+     * 如果配置了规则但文件类型不匹配，则抛出异常
+     */
     private void validateMimeType(ParserSettings settings, String mimeType, String fileName) {
         if (settings == null || settings.getRules() == null || settings.getRules().isEmpty()) {
+            // 没有配置规则，允许所有类型
             return;
         }
 
         String resolvedType = resolveType(mimeType, fileName);
 
+        // 检查是否有匹配的规则
         boolean hasMatch = false;
         for (ParserSettings.ParserRule rule : settings.getRules()) {
             if (rule == null || !StringUtils.hasText(rule.getMimeType())) {
@@ -112,6 +126,7 @@ public class ParserNode implements IngestionNode {
         }
 
         if (!hasMatch) {
+            // 构建允许的类型列表用于错误提示
             List<String> allowedTypes = settings.getRules().stream()
                     .filter(rule -> rule != null && StringUtils.hasText(rule.getMimeType()))
                     .map(rule -> normalizeType(rule.getMimeType()))
@@ -154,19 +169,6 @@ public class ParserNode implements IngestionNode {
         return null;
     }
 
-    private String resolveParserType(ParserSettings.ParserRule rule, String mimeType) {
-        if (rule != null && rule.getOptions() != null) {
-            Object parserType = rule.getOptions().get("parserType");
-            if (parserType instanceof String parserTypeValue && StringUtils.hasText(parserTypeValue)) {
-                return parserTypeValue;
-            }
-        }
-        if (mimeType != null && mimeType.toLowerCase().contains("html")) {
-            return ParserType.HTML.getType();
-        }
-        return ParserType.TIKA.getType();
-    }
-
     private String resolveType(String mimeType, String fileName) {
         String byName = resolveTypeByName(fileName);
         if (StringUtils.hasText(byName)) {
@@ -181,9 +183,6 @@ public class ParserNode implements IngestionNode {
         }
         if (lower.contains("markdown")) {
             return "MARKDOWN";
-        }
-        if (lower.contains("html") || lower.contains("htm")) {
-            return "HTML";
         }
         if (lower.contains("word") || lower.contains("msword") || lower.contains("wordprocessingml")) {
             return "WORD";
@@ -213,9 +212,6 @@ public class ParserNode implements IngestionNode {
         }
         if (lower.endsWith(".md") || lower.endsWith(".markdown")) {
             return "MARKDOWN";
-        }
-        if (lower.endsWith(".html") || lower.endsWith(".htm")) {
-            return "HTML";
         }
         if (lower.endsWith(".doc") || lower.endsWith(".docx")) {
             return "WORD";
@@ -249,17 +245,8 @@ public class ParserNode implements IngestionNode {
             case "PPT", "PPTX", "POWERPOINT" -> "PPT";
             case "TXT", "TEXT" -> "TEXT";
             case "PNG", "JPG", "JPEG", "GIF", "BMP", "WEBP", "IMAGE", "IMG" -> "IMAGE";
-            case "HTML", "HTM" -> "HTML";
             case "PDF" -> "PDF";
             default -> value;
         };
-    }
-
-    private String abbreviate(String text) {
-        if (!StringUtils.hasText(text)) {
-            return "";
-        }
-        String normalized = text.replaceAll("\\s+", " ").trim();
-        return normalized.length() <= SAMPLE_LENGTH ? normalized : normalized.substring(0, SAMPLE_LENGTH) + "...";
     }
 }
