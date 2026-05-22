@@ -31,6 +31,11 @@ public class AthenaAutoAuthInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        // 异步调度请求跳过（SSE 完成回调会触发 asyncDispatch，此时 SaToken 上下文已丢失）
+        if (request.getDispatcherType() == jakarta.servlet.DispatcherType.ASYNC) {
+            return true;
+        }
+
         // 如果已经登录，直接放行
         if (StpUtil.isLogin()) {
             return true;
@@ -38,12 +43,7 @@ public class AthenaAutoAuthInterceptor implements HandlerInterceptor {
 
         // 获取 Authorization header
         String authorization = request.getHeader("Authorization");
-        if (StrUtil.isBlank(authorization)) {
-            return true;
-        }
-
-        // 检查是否是 Bearer token
-        if (!authorization.startsWith("Bearer ")) {
+        if (StrUtil.isBlank(authorization) || !authorization.startsWith("Bearer ")) {
             return true;
         }
 
@@ -53,7 +53,6 @@ public class AthenaAutoAuthInterceptor implements HandlerInterceptor {
         }
 
         // 从 token 中提取用户标识（Athena 使用 token 作为用户唯一标识）
-        // Token 格式：8tOKGXuYKLGanX1iJOxNCQYUcwQTUBXC
         String username = "athena_" + token.substring(0, Math.min(16, token.length()));
 
         try {
@@ -66,20 +65,18 @@ public class AthenaAutoAuthInterceptor implements HandlerInterceptor {
                 // 用户不存在，自动注册
                 user = new UserDO();
                 user.setUsername(username);
-                user.setPassword("athena" + token.substring(0, Math.min(16, token.length()))); // 密码：athena + token前16位
+                user.setPassword("athena" + token.substring(0, Math.min(16, token.length())));
                 user.setRole(UserRole.USER.name());
-                // createTime 和 updateTime 由 MyBatis-Plus 自动填充
                 userMapper.insert(user);
-                log.info("Athena 用户自动注册成功: username={}", username);
+                log.info("[AthenaAutoAuth] 用户自动注册: username={}", username);
             }
 
             // 自动登录
             StpUtil.login(user.getId());
-            log.debug("Athena 用户自动登录成功: username={}, userId=", username, user.getId());
+            log.info("[AthenaAutoAuth] 用户自动登录: username={}, userId={}", username, user.getId());
 
         } catch (Exception e) {
-            log.error("Athena 用户自动认证失败: username={}", username, e);
-            // 认证失败不阻塞请求，让后续的 SaToken 拦截器处理
+            log.error("[AthenaAutoAuth] 自动认证失败: username={}", username, e);
         }
 
         return true;

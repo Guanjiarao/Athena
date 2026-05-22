@@ -8,6 +8,7 @@ import com.nageoffer.ai.ragent.rag.config.DemoModeInterceptor;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -18,6 +19,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * SaToken 配置类
  * 配置登录拦截和用户上下文拦截器
  */
+@Slf4j
 @Configuration
 @RequiredArgsConstructor
 public class SaTokenConfig implements WebMvcConfigurer {
@@ -46,8 +48,8 @@ public class SaTokenConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         // 注册 Athena 自动认证拦截器（必须在 SaToken 登录检查之前）
         registry.addInterceptor(athenaAutoAuthInterceptor)
-                // 只拦截 triage 相关路径
-                .addPathPatterns("/triage/**", "/api/ragent/triage/**")
+                // 拦截 triage 和 rag 相关路径
+                .addPathPatterns("/triage/**", "/rag/**")
                 .order(0); // 最高优先级
 
         // 注册 SaToken 登录拦截器
@@ -62,6 +64,10 @@ public class SaTokenConfig implements WebMvcConfigurer {
                         }
                         // 预检请求直接放行，避免 CORS 被拦截
                         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+                            return;
+                        }
+                        // 来自 Athena 后端的内部服务调用直接放行
+                        if (isFromAthenaServer(request)) {
                             return;
                         }
                     }
@@ -86,5 +92,32 @@ public class SaTokenConfig implements WebMvcConfigurer {
                 .addPathPatterns("/**")
                 // 排除认证相关路径和错误页面
                 .excludePathPatterns("/auth/**", "/error");
+    }
+
+    /**
+     * 判断请求是否来自 Athena 后端服务（端口 13715）
+     */
+    private boolean isFromAthenaServer(HttpServletRequest request) {
+        // 方式1：通过 Referer 或 Origin 判断
+        String origin = request.getHeader("Origin");
+        if (origin != null && origin.contains("13715")) {
+            return true;
+        }
+        // 方式2：通过自定义 header 判断（Athena 后端调用时带上 X-Athena-Internal: true）
+        String athenaHeader = request.getHeader("X-Athena-Internal");
+        if ("true".equalsIgnoreCase(athenaHeader)) {
+            return true;
+        }
+        // 方式3：通过来源端口判断（本地调用）
+        int remotePort = request.getRemotePort();
+        String remoteHost = request.getRemoteHost();
+        if (("127.0.0.1".equals(remoteHost) || "localhost".equals(remoteHost) || "0:0:0:0:0:0:0:1".equals(remoteHost))) {
+            // 本地服务间调用，检查是否带了 Athena 的 Bearer token
+            String auth = request.getHeader("Authorization");
+            if (auth != null && auth.startsWith("Bearer ")) {
+                return true;
+            }
+        }
+        return false;
     }
 }
