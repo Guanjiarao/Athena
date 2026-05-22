@@ -94,6 +94,14 @@ public class RetrievalEngine {
             }
         }
 
+        // 打印 intentChunks 中的 metadata 信息
+        int totalChunks = mergedIntentChunks.values().stream().mapToInt(List::size).sum();
+        long chunksWithMetadata = mergedIntentChunks.values().stream()
+                .flatMap(List::stream)
+                .filter(c -> c.getMetadata() != null && !c.getMetadata().isEmpty())
+                .count();
+        log.info("[RetrievalEngine] intentChunks 统计: 总 chunks={}, 有 metadata 的={}", totalChunks, chunksWithMetadata);
+
         boolean singleQuestion = contexts.size() == 1;
         String kbContext;
         String mcpContext;

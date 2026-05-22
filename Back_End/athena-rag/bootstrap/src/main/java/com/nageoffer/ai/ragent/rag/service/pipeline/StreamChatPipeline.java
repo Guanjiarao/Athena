@@ -6,6 +6,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.nageoffer.ai.ragent.framework.convention.ChatMessage;
 import com.nageoffer.ai.ragent.framework.convention.ChatRequest;
+import com.nageoffer.ai.ragent.framework.convention.RetrievedChunk;
 import com.nageoffer.ai.ragent.infra.chat.LLMService;
 import com.nageoffer.ai.ragent.infra.chat.StreamCallback;
 import com.nageoffer.ai.ragent.infra.chat.StreamCancellationHandle;
@@ -142,7 +143,10 @@ public class StreamChatPipeline {
     }
 
     private RetrievalContext retrieve(StreamChatContext ctx) {
-        return retrievalEngine.retrieve(ctx.getSubIntents(), searchProperties.getDefaultTopK());
+        RetrievalContext retrievalCtx = retrievalEngine.retrieve(ctx.getSubIntents(), searchProperties.getDefaultTopK());
+        log.info("[StreamChatPipeline] 检索完成, 检索到 {} 个 chunks",
+                retrievalCtx.getAllChunks() != null ? retrievalCtx.getAllChunks().size() : 0);
+        return retrievalCtx;
     }
 
     private boolean handleEmptyRetrieval(StreamChatContext ctx, RetrievalContext retrievalCtx) {
@@ -160,8 +164,14 @@ public class StreamChatPipeline {
         IntentGroup mergedGroup = intentResolver.mergeIntentGroup(ctx.getSubIntents());
 
         // 设置检索到的 chunks 到 callback（用于 finish 事件返回）
+        List<RetrievedChunk> chunks = ctx.getRetrievedChunks();
+        log.info("[StreamChatPipeline] 准备设置 chunks 到 callback, chunks 数量: {}", chunks != null ? chunks.size() : 0);
         if (ctx.getCallback() instanceof com.nageoffer.ai.ragent.rag.service.handler.StreamChatEventHandler handler) {
-            handler.setRetrievedChunks(ctx.getRetrievedChunks());
+            handler.setRetrievedChunks(chunks);
+            log.info("[StreamChatPipeline] 已设置 {} 个 chunks 到 StreamChatEventHandler", chunks != null ? chunks.size() : 0);
+        } else {
+            log.warn("[StreamChatPipeline] callback 不是 StreamChatEventHandler 类型: {}",
+                    ctx.getCallback() != null ? ctx.getCallback().getClass().getName() : "null");
         }
 
         StreamCancellationHandle handle = streamLLMResponse(

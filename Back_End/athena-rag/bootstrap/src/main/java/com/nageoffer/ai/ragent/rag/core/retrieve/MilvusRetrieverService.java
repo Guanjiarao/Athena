@@ -70,7 +70,7 @@ public class MilvusRetrieverService implements RetrieverService {
             return List.of();
         }
 
-        return results.get(0).stream()
+        List<RetrievedChunk> chunks = results.get(0).stream()
                 .filter(r -> r.getScore() >= MIN_SCORE_THRESHOLD)
                 .map(r -> {
                     Object metadataObj = r.getEntity().get("metadata");
@@ -78,6 +78,8 @@ public class MilvusRetrieverService implements RetrieverService {
                     if (metadataObj instanceof Map) {
                         metadata = (Map<String, Object>) metadataObj;
                     }
+                    log.debug("[MilvusRetriever] chunk id={}, score={}, hasMetadata={}",
+                            r.getEntity().get("id"), r.getScore(), metadata != null);
                     return RetrievedChunk.builder()
                             .id(Objects.toString(r.getEntity().get("id"), ""))
                             .text(Objects.toString(r.getEntity().get("content"), ""))
@@ -86,6 +88,10 @@ public class MilvusRetrieverService implements RetrieverService {
                             .build();
                 })
                 .collect(Collectors.toList());
+
+        log.info("[MilvusRetriever] 检索完成, 原始结果: {}, 过滤后: {}, 阈值: {}",
+                results.get(0).size(), chunks.size(), MIN_SCORE_THRESHOLD);
+        return chunks;
     }
 
     private static float[] toArray(List<Float> list) {

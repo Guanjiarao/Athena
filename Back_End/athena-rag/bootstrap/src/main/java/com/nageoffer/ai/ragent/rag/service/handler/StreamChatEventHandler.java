@@ -97,6 +97,7 @@ public class StreamChatEventHandler implements StreamCallback {
      */
     public void setRetrievedChunks(List<RetrievedChunk> chunks) {
         this.retrievedChunks = chunks;
+        log.info("[StreamChatEventHandler] setRetrievedChunks 被调用, chunks 数量: {}", chunks != null ? chunks.size() : "null");
     }
 
     /**
@@ -217,14 +218,23 @@ public class StreamChatEventHandler implements StreamCallback {
     }
 
     private List<CompletionPayload.NoteReference> buildNoteReferences() {
+        log.info("[StreamChatEventHandler] 开始构建笔记引用, retrievedChunks: {}",
+                retrievedChunks != null ? retrievedChunks.size() : "null");
+
         if (retrievedChunks == null || retrievedChunks.isEmpty()) {
+            log.info("[StreamChatEventHandler] retrievedChunks 为空，返回 null");
             return null;
         }
 
-        return retrievedChunks.stream()
-                .filter(chunk -> chunk.getMetadata() != null)
+        List<CompletionPayload.NoteReference> references = retrievedChunks.stream()
+                .filter(chunk -> {
+                    boolean hasMetadata = chunk.getMetadata() != null;
+                    log.debug("[StreamChatEventHandler] chunk id={}, hasMetadata={}", chunk.getId(), hasMetadata);
+                    return hasMetadata;
+                })
                 .map(chunk -> {
                     Long noteId = extractNoteId(chunk.getMetadata());
+                    log.debug("[StreamChatEventHandler] chunk id={}, noteId=", chunk.getId(), noteId);
                     if (noteId == null) {
                         return null;
                     }
@@ -236,6 +246,9 @@ public class StreamChatEventHandler implements StreamCallback {
                 .distinct()
                 .limit(5)
                 .toList();
+
+        log.info("[StreamChatEventHandler] 构建笔记引用完成, 引用数量: {}", references.size());
+        return references.isEmpty() ? null : references;
     }
 
     private Long extractNoteId(java.util.Map<String, Object> metadata) {
