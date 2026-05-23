@@ -55,7 +55,7 @@ public class AthenaAutoAuthInterceptor implements HandlerInterceptor {
         log.info("[AthenaAutoAuth] 收到请求: path={}, userId={}, Authorization={}",
                 request.getRequestURI(), userIdHeader, authHeader != null ? "存在" : "不存在");
 
-        if (StrUtil.isNotBlank(userIdHeader)) {
+        if (StrUtil.isNotBlank(userIdHeader) && !"null".equals(userIdHeader)) {
             try {
                 Long userId = Long.parseLong(userIdHeader);
                 String username = "athena_" + userId;

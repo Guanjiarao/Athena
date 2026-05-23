@@ -100,7 +100,7 @@ public class SaTokenConfig implements WebMvcConfigurer {
     private boolean isFromAthenaServer(HttpServletRequest request) {
         // 方式1：通过 userId header 判断（Athena 后端调用时会设置 userId header）
         String userId = request.getHeader("userId");
-        if (userId != null && !userId.isEmpty()) {
+        if (userId != null && !userId.isEmpty() && !"null".equals(userId)) {
             return true;
         }
         // 方式2：通过 Referer 或 Origin 判断
