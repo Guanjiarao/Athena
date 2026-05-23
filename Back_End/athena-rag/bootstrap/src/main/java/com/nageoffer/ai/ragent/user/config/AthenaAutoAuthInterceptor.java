@@ -45,15 +45,21 @@ public class AthenaAutoAuthInterceptor implements HandlerInterceptor {
 
         // 如果已经登录，直接放行
         if (StpUtil.isLogin()) {
+            log.debug("[AthenaAutoAuth] 用户已登录，直接放行: path={}", request.getRequestURI());
             return true;
         }
 
         // 优先从 userId header 获取用户 ID（Athena Gateway 会设置）
         String userIdHeader = request.getHeader("userId");
+        String authHeader = request.getHeader("Authorization");
+        log.info("[AthenaAutoAuth] 收到请求: path={}, userId={}, Authorization={}",
+                request.getRequestURI(), userIdHeader, authHeader != null ? "存在" : "不存在");
+
         if (StrUtil.isNotBlank(userIdHeader)) {
             try {
                 Long userId = Long.parseLong(userIdHeader);
                 String username = "athena_" + userId;
+                log.info("[AthenaAutoAuth] 解析 userId header 成功: userId={}, username={}", userId, username);
 
                 // 查询用户是否存在
                 LambdaQueryWrapper<UserDO> queryWrapper = Wrappers.lambdaQuery(UserDO.class)
@@ -67,17 +73,21 @@ public class AthenaAutoAuthInterceptor implements HandlerInterceptor {
                     user.setPassword("athena" + userId);
                     user.setRole(UserRole.USER.name());
                     userMapper.insert(user);
-                    log.info("[AthenaAutoAuth] 用户自动注册: username={}, athenaUserId={}", username, userId);
+                    log.info("[AthenaAutoAuth] 用户自动注册成功: username={}, athenaUserId={}", username, userId);
+                } else {
+                    log.info("[AthenaAutoAuth] 用户已存在: username={}, ragUserId={}", username, user.getId());
                 }
 
                 // 自动登录
                 StpUtil.login(user.getId());
-                log.info("[AthenaAutoAuth] 用户自动登录: username={}, userId={}, athenaUserId={}", username, user.getId(), userId);
+                log.info("[AthenaAutoAuth] 用户自动登录成功: username={}, ragUserId={}, athenaUserId={}", username, user.getId(), userId);
                 return true;
 
             } catch (Exception e) {
                 log.error("[AthenaAutoAuth] 通过 userId header 自动认证失败: userId={}", userIdHeader, e);
             }
+        } else {
+            log.warn("[AthenaAutoAuth] userId header 为空，尝试降级方案（使用 Authorization token）");
         }
 
         // 降级方案：从 Authorization header 获取 token（用于直接调用，不经过 Gateway）
