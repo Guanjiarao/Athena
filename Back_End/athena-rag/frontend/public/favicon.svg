@@ -9,4 +9,5 @@
   <circle cx="22" cy="28" r="6" fill="#ffffff" />
   <circle cx="42" cy="28" r="6" fill="#ffffff" />
   <rect x="18" y="40" width="28" height="6" rx="3" fill="#ffffff" />
+  <rect x="30" y="10" width="4" height="8" rx="2" fill="#ffffff" />
 </svg>

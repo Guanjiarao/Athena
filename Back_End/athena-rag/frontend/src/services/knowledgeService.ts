@@ -310,28 +310,22 @@ export const deleteChunk = async (docId: string, chunkId: string): Promise<void>
   await api.delete(`/knowledge-base/docs/${docId}/chunks/${chunkId}`);
 };
 
-export const enableChunk = async (docId: string, chunkId: string): Promise<void> => {
-  await api.post(`/knowledge-base/docs/${docId}/chunks/${chunkId}/enable`);
-};
-
-export const disableChunk = async (docId: string, chunkId: string): Promise<void> => {
-  await api.post(`/knowledge-base/docs/${docId}/chunks/${chunkId}/disable`);
-};
-
-export const batchEnableChunks = async (docId: string, chunkIds?: Array<string | number>): Promise<void> => {
-  await api.post(`/knowledge-base/docs/${docId}/chunks/batch-enable`, {
-    chunkIds: chunkIds && chunkIds.length ? chunkIds : undefined
+export const toggleChunk = async (docId: string, chunkId: string, enabled: boolean): Promise<void> => {
+  await api.patch(`/knowledge-base/docs/${docId}/chunks/${chunkId}/enable`, null, {
+    params: { value: enabled }
   });
 };
 
-export const batchDisableChunks = async (docId: string, chunkIds?: Array<string | number>): Promise<void> => {
-  await api.post(`/knowledge-base/docs/${docId}/chunks/batch-disable`, {
-    chunkIds: chunkIds && chunkIds.length ? chunkIds : undefined
-  });
-};
-
-export const rebuildChunks = async (docId: string): Promise<void> => {
-  await api.post(`/knowledge-base/docs/${docId}/chunks/rebuild`);
+export const batchToggleChunks = async (
+  docId: string,
+  enabled: boolean,
+  chunkIds: Array<string | number>
+): Promise<void> => {
+  await api.patch(
+    `/knowledge-base/docs/${docId}/chunks/batch-enable`,
+    { chunkIds },
+    { params: { value: enabled } }
+  );
 };
 
 // 文档分块日志管理

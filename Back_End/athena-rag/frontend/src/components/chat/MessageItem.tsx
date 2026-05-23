@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Brain, ChevronDown } from "lucide-react";
+import { Brain, ChevronDown, FileText } from "lucide-react";
 
 import { FeedbackButtons } from "@/components/chat/FeedbackButtons";
 import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
@@ -89,6 +89,38 @@ export const MessageItem = React.memo(function MessageItem({ message, isLast }: 
           {hasContent ? <MarkdownRenderer content={message.content} /> : null}
           {message.status === "error" ? (
             <p className="text-xs text-rose-500">生成已中断。</p>
+          ) : null}
+          {message.references && message.references.length > 0 ? (
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <FileText className="h-3.5 w-3.5" />
+                <span>参考笔记</span>
+              </div>
+              <div className="space-y-2">
+                {message.references.map((ref) => (
+                  <div
+                    key={ref.noteId}
+                    className="rounded-lg border border-border bg-muted/30 p-3 transition-colors hover:bg-muted/50"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-medium text-foreground">{ref.title}</h4>
+                          <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                            {(ref.score * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                        {ref.snippet ? (
+                          <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                            {ref.snippet}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : null}
           {showFeedback ? (
             <FeedbackButtons

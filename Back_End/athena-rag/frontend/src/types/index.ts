@@ -31,6 +31,7 @@ export interface Message {
   createdAt?: string;
   feedback?: FeedbackValue;
   status?: MessageStatus;
+  references?: NoteReference[];
 }
 
 export interface StreamMetaPayload {
@@ -43,7 +44,15 @@ export interface MessageDeltaPayload {
   delta: string;
 }
 
+export interface NoteReference {
+  noteId: number;
+  title: string;
+  snippet: string;
+  score: number;
+}
+
 export interface CompletionPayload {
   messageId?: string | null;
   title?: string | null;
+  references?: NoteReference[] | null;
 }

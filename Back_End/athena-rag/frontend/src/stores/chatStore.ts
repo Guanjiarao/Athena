@@ -186,6 +186,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
         id: String(item.id),
         role: item.role === "assistant" ? "assistant" : "user",
         content: item.content,
+        thinking: item.thinkingContent || undefined,
+        thinkingDuration: item.thinkingDuration || undefined,
+        isDeepThinking: Boolean(item.thinkingContent),
         createdAt: item.createTime,
         feedback: mapVoteToFeedback(item.vote),
         status: "done"
@@ -249,7 +252,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       messages: [...state.messages, userMessage, assistantMessage],
       isStreaming: true,
       streamingMessageId: assistantId,
-      thinkingStartAt: deepThinkingEnabled ? Date.now() : null,
+      thinkingStartAt: null,
       inputFocusKey,
       streamTaskId: null,
       cancelRequested: false
@@ -329,7 +332,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
                     status: "done",
                     isThinking: false,
                     thinkingDuration:
-                      message.thinkingDuration ?? computeThinkingDuration(state.thinkingStartAt)
+                      message.thinkingDuration ?? computeThinkingDuration(state.thinkingStartAt),
+                    references: payload.references || undefined
                   }
                 : message
             )
@@ -343,7 +347,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
                     status: "done",
                     isThinking: false,
                     thinkingDuration:
-                      message.thinkingDuration ?? computeThinkingDuration(state.thinkingStartAt)
+                      message.thinkingDuration ?? computeThinkingDuration(state.thinkingStartAt),
+                    references: payload.references || undefined
                   }
                 : message
             )
