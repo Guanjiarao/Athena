@@ -63,12 +63,22 @@ public class ParserNode implements IngestionNode {
         validateMimeType(settings, mimeType, fileName);
 
         ParserSettings.ParserRule rule = matchRule(settings, mimeType, fileName);
-        DocumentParser parser = parserSelector.select(ParserType.TIKA.getType());
-        if (parser == null) {
-            return NodeResult.fail(new ClientException("未配置 Tika 解析器"));
+
+        // 从配置中获取 parserType，默认使用 TIKA
+        String parserType = ParserType.TIKA.getType();
+        Map<String, Object> options = Collections.emptyMap();
+        if (rule != null && rule.getOptions() != null) {
+            options = rule.getOptions();
+            Object parserTypeObj = options.get("parserType");
+            if (parserTypeObj != null) {
+                parserType = String.valueOf(parserTypeObj);
+            }
         }
 
-        Map<String, Object> options = rule == null ? Collections.emptyMap() : rule.getOptions();
+        DocumentParser parser = parserSelector.select(parserType);
+        if (parser == null) {
+            return NodeResult.fail(new ClientException("未找到解析器: " + parserType));
+        }
         ParseResult result = parser.parse(context.getRawBytes(), mimeType, options);
         context.setRawText(result.text());
 
