@@ -38,14 +38,18 @@ public class AthenaAutoAuthInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        log.info("[AthenaAutoAuth] ===== 拦截器被触发 ===== path={}, method={}",
+                request.getRequestURI(), request.getMethod());
+
         // 异步调度请求跳过（SSE 完成回调会触发 asyncDispatch，此时 SaToken 上下文已丢失）
         if (request.getDispatcherType() == jakarta.servlet.DispatcherType.ASYNC) {
+            log.info("[AthenaAutoAuth] 异步请求，跳过");
             return true;
         }
 
         // 如果已经登录，直接放行
         if (StpUtil.isLogin()) {
-            log.debug("[AthenaAutoAuth] 用户已登录，直接放行: path={}", request.getRequestURI());
+            log.info("[AthenaAutoAuth] 用户已登录，直接放行: path={}", request.getRequestURI());
             return true;
         }
 
