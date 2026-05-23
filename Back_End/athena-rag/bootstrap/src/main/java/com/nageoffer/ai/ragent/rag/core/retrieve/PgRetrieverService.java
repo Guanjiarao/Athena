@@ -36,14 +36,33 @@ public class PgRetrieverService implements RetrieverService {
 
         String vectorLiteral = toVectorLiteral(vector);
         // noinspection SqlDialectInspection,SqlNoDataSourceInspection
-        return jdbcTemplate.query("SELECT id, content, 1 - (embedding <=> ?::vector) AS score FROM t_knowledge_vector WHERE metadata->>'collection_name' = ? ORDER BY embedding <=> ?::vector LIMIT ?",
-                (rs, rowNum) -> RetrievedChunk.builder()
-                        .id(rs.getString("id"))
-                        .text(rs.getString("content"))
-                        .score(rs.getFloat("score"))
-                        .build(),
+        List<RetrievedChunk> chunks = jdbcTemplate.query("SELECT id, content, metadata, 1 - (embedding <=> ?::vector) AS score FROM t_knowledge_vector WHERE metadata->>'collection_name' = ? ORDER BY embedding <=> ?::vector LIMIT ?",
+                (rs, rowNum) -> {
+                    String metadataJson = rs.getString("metadata");
+                    java.util.Map<String, Object> metadata = null;
+                    if (metadataJson != null) {
+                        try {
+                            metadata = new com.fasterxml.jackson.databind.ObjectMapper().readValue(metadataJson, java.util.Map.class);
+                        } catch (Exception e) {
+                            log.warn("解析 metadata 失败: {}", metadataJson, e);
+                        }
+                    }
+                    log.debug("[PgRetriever] chunk id={}, score={}, hasMetadata={}",
+                            rs.getString("id"), rs.getFloat("score"), metadata != null);
+                    return RetrievedChunk.builder()
+                            .id(rs.getString("id"))
+                            .text(rs.getString("content"))
+                            .score(rs.getFloat("score"))
+                            .metadata(metadata)
+                            .build();
+                },
                 vectorLiteral, request.getCollectionName(), vectorLiteral, request.getTopK()
         );
+
+        log.info("[PgRetriever] 检索完成, collectionName={}, 结果数量: {}, 有 metadata 的: {}",
+                request.getCollectionName(), chunks.size(),
+                chunks.stream().filter(c -> c.getMetadata() != null).count());
+        return chunks;
     }
 
     private float[] normalize(float[] vector) {
