@@ -95,6 +95,7 @@ public class StreamChatEventHandler implements StreamCallback {
     /**
      * 设置检索到的 chunks（用于 finish 事件返回）
      */
+    @Override
     public void setRetrievedChunks(List<RetrievedChunk> chunks) {
         this.retrievedChunks = chunks;
         log.info("[StreamChatEventHandler] setRetrievedChunks 被调用, chunks 数量: {}", chunks != null ? chunks.size() : "null");

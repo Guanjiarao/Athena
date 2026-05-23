@@ -2,6 +2,10 @@
 
 package com.nageoffer.ai.ragent.infra.chat;
 
+import com.nageoffer.ai.ragent.framework.convention.RetrievedChunk;
+
+import java.util.List;
+
 /**
  * 流式响应回调接口（StreamCallback）
  * <p>
@@ -45,6 +49,16 @@ public interface StreamCallback {
      * @param content 当前推送的思考内容
      */
     default void onThinking(String content) {
+    }
+
+    /**
+     * 设置检索到的 chunks（用于 RAG 场景返回笔记引用）
+     * <p>
+     * 默认空实现，非 RAG 场景可以忽略
+     *
+     * @param chunks 检索到的文档片段列表
+     */
+    default void setRetrievedChunks(List<RetrievedChunk> chunks) {
     }
 
     /**

@@ -2,6 +2,9 @@
 
 package com.nageoffer.ai.ragent.infra.chat;
 
+import com.nageoffer.ai.ragent.framework.convention.RetrievedChunk;
+
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -35,6 +38,11 @@ public abstract class ForwardingStreamCallback implements StreamCallback {
     @Override
     public final void onThinking(String content) {
         delegate.onThinking(content);
+    }
+
+    @Override
+    public void setRetrievedChunks(List<RetrievedChunk> chunks) {
+        delegate.setRetrievedChunks(chunks);
     }
 
     /**

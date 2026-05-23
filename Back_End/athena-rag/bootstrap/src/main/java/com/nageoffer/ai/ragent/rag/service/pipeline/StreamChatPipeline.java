@@ -165,14 +165,8 @@ public class StreamChatPipeline {
 
         // 设置检索到的 chunks 到 callback（用于 finish 事件返回）
         List<RetrievedChunk> chunks = ctx.getRetrievedChunks();
-        log.info("[StreamChatPipeline] 准备设置 chunks 到 callback, chunks 数量: {}", chunks != null ? chunks.size() : 0);
-        if (ctx.getCallback() instanceof com.nageoffer.ai.ragent.rag.service.handler.StreamChatEventHandler handler) {
-            handler.setRetrievedChunks(chunks);
-            log.info("[StreamChatPipeline] 已设置 {} 个 chunks 到 StreamChatEventHandler", chunks != null ? chunks.size() : 0);
-        } else {
-            log.warn("[StreamChatPipeline] callback 不是 StreamChatEventHandler 类型: {}",
-                    ctx.getCallback() != null ? ctx.getCallback().getClass().getName() : "null");
-        }
+        log.info("[StreamChatPipeline] 设置 {} 个 chunks 到 callback", chunks != null ? chunks.size() : 0);
+        ctx.getCallback().setRetrievedChunks(chunks);
 
         StreamCancellationHandle handle = streamLLMResponse(
                 ctx.getRewriteResult(),
