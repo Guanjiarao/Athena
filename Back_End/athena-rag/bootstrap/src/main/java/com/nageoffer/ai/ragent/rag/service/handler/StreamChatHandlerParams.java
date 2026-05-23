@@ -3,6 +3,7 @@
 package com.nageoffer.ai.ragent.rag.service.handler;
 
 import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
+import com.nageoffer.ai.ragent.rag.config.SearchChannelProperties;
 import com.nageoffer.ai.ragent.rag.core.memory.ConversationMemoryService;
 import com.nageoffer.ai.ragent.rag.service.ConversationGroupService;
 import lombok.Builder;
@@ -51,4 +52,9 @@ public class StreamChatHandlerParams {
      * 任务管理器
      */
     private final StreamTaskManager taskManager;
+
+    /**
+     * 检索配置
+     */
+    private final SearchChannelProperties searchChannelProperties;
 }

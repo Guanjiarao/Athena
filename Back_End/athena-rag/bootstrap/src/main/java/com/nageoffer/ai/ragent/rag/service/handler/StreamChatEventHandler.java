@@ -4,6 +4,7 @@ package com.nageoffer.ai.ragent.rag.service.handler;
 
 import cn.hutool.core.util.StrUtil;
 import com.nageoffer.ai.ragent.framework.convention.RetrievedChunk;
+import com.nageoffer.ai.ragent.rag.config.SearchChannelProperties;
 import com.nageoffer.ai.ragent.rag.dao.entity.ConversationDO;
 import com.nageoffer.ai.ragent.rag.dto.CompletionPayload;
 import com.nageoffer.ai.ragent.rag.dto.MessageDelta;
@@ -36,6 +37,7 @@ public class StreamChatEventHandler implements StreamCallback {
     private final String userId;
     private final StreamTaskManager taskManager;
     private final boolean sendTitleOnComplete;
+    private final SearchChannelProperties searchChannelProperties;
     private final StringBuilder answer = new StringBuilder();
     private final StringBuilder thinking = new StringBuilder();
     private long thinkingStartMs;
@@ -55,6 +57,7 @@ public class StreamChatEventHandler implements StreamCallback {
         this.conversationGroupService = params.getConversationGroupService();
         this.taskManager = params.getTaskManager();
         this.userId = UserContext.getUserId();
+        this.searchChannelProperties = params.getSearchChannelProperties();
 
         // 计算配置
         this.messageChunkSize = resolveMessageChunkSize(params.getModelProperties());
@@ -227,15 +230,20 @@ public class StreamChatEventHandler implements StreamCallback {
             return null;
         }
 
+        double minScoreThreshold = searchChannelProperties.getNoteReference().getMinScoreThreshold();
+        int maxCount = searchChannelProperties.getNoteReference().getMaxCount();
+
         List<CompletionPayload.NoteReference> references = retrievedChunks.stream()
                 .filter(chunk -> {
                     boolean hasMetadata = chunk.getMetadata() != null;
-                    log.debug("[StreamChatEventHandler] chunk id={}, hasMetadata={}", chunk.getId(), hasMetadata);
-                    return hasMetadata;
+                    boolean scoreAboveThreshold = chunk.getScore() >= minScoreThreshold;
+                    log.debug("[StreamChatEventHandler] chunk id={}, score={}, hasMetadata={}, scoreAboveThreshold={}",
+                            chunk.getId(), chunk.getScore(), hasMetadata, scoreAboveThreshold);
+                    return hasMetadata && scoreAboveThreshold;
                 })
                 .map(chunk -> {
                     Long noteId = extractNoteId(chunk.getMetadata());
-                    log.debug("[StreamChatEventHandler] chunk id={}, noteId=", chunk.getId(), noteId);
+                    log.debug("[StreamChatEventHandler] chunk id={}, noteId={}", chunk.getId(), noteId);
                     if (noteId == null) {
                         return null;
                     }
@@ -244,11 +252,19 @@ public class StreamChatEventHandler implements StreamCallback {
                     return new CompletionPayload.NoteReference(noteId, title, snippet, chunk.getScore());
                 })
                 .filter(ref -> ref != null)
-                .distinct()
-                .limit(5)
+                .collect(java.util.stream.Collectors.toMap(
+                        CompletionPayload.NoteReference::noteId,
+                        ref -> ref,
+                        (ref1, ref2) -> ref1.score() > ref2.score() ? ref1 : ref2  // 保留分数更高的
+                ))
+                .values()
+                .stream()
+                .sorted((r1, r2) -> Double.compare(r2.score(), r1.score()))  // 按分数降序排序
+                .limit(maxCount)
                 .toList();
 
-        log.info("[StreamChatEventHandler] 构建笔记引用完成, 引用数量: {}", references.size());
+        log.info("[StreamChatEventHandler] 构建笔记引用完成, 引用数量: {}, 阈值: {}, 最大数量: {}",
+                references.size(), minScoreThreshold, maxCount);
         return references.isEmpty() ? null : references;
     }
 

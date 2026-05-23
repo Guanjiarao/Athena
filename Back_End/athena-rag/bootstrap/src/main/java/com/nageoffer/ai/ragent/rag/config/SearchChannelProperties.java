@@ -26,9 +26,29 @@ public class SearchChannelProperties {
     private double minScoreThreshold = 0.25;
 
     /**
+     * 笔记引用配置
+     */
+    private NoteReference noteReference = new NoteReference();
+
+    /**
      * 检索通道配置
      */
     private Channels channels = new Channels();
+
+    @Data
+    public static class NoteReference {
+
+        /**
+         * 最多显示的笔记引用数量
+         */
+        private int maxCount = 5;
+
+        /**
+         * 笔记引用最低分数阈值
+         * 低于此分数的笔记不会显示在引用列表中
+         */
+        private double minScoreThreshold = 0.3;
+    }
 
     @Data
     public static class Channels {
