@@ -49,7 +49,7 @@ public class SaTokenConfig implements WebMvcConfigurer {
         // 注册 Athena 自动认证拦截器（必须在 SaToken 登录检查之前）
         registry.addInterceptor(athenaAutoAuthInterceptor)
                 // 拦截 triage 和 rag 相关路径
-                .addPathPatterns("/triage/**", "/rag/**")
+                .addPathPatterns("/triage/**", "/rag/**", "/api/ragent/**")
                 .order(0); // 最高优先级
 
         // 注册 SaToken 登录拦截器
