@@ -39,8 +39,18 @@ public class HtmlDocumentParser implements DocumentParser {
         try {
             String html = new String(content, StandardCharsets.UTF_8);
             Document doc = Jsoup.parse(html);
-            // 提取纯文本，自动去除所有 HTML 标签和样式
-            String text = doc.text();
+
+            // 提取段落文本，保留段落结构
+            StringBuilder textBuilder = new StringBuilder();
+            doc.select("p, h1, h2, h3, h4, h5, h6, li").forEach(element -> {
+                String paragraphText = element.text().trim();
+                if (!paragraphText.isEmpty()) {
+                    textBuilder.append(paragraphText).append("\n\n");
+                }
+            });
+
+            // 如果没有找到段落标签，回退到提取全部文本
+            String text = textBuilder.length() > 0 ? textBuilder.toString().trim() : doc.text();
             String cleaned = TextCleanupUtil.cleanup(text);
             return ParseResult.ofText(cleaned);
         } catch (Exception e) {
@@ -53,7 +63,18 @@ public class HtmlDocumentParser implements DocumentParser {
     public String extractText(InputStream stream, String fileName) {
         try {
             Document doc = Jsoup.parse(stream, StandardCharsets.UTF_8.name(), "");
-            String text = doc.text();
+
+            // 提取段落文本，保留段落结构
+            StringBuilder textBuilder = new StringBuilder();
+            doc.select("p, h1, h2, h3, h4, h5, h6, li").forEach(element -> {
+                String paragraphText = element.text().trim();
+                if (!paragraphText.isEmpty()) {
+                    textBuilder.append(paragraphText).append("\n\n");
+                }
+            });
+
+            // 如果没有找到段落标签，回退到提取全部文本
+            String text = textBuilder.length() > 0 ? textBuilder.toString().trim() : doc.text();
             return TextCleanupUtil.cleanup(text);
         } catch (Exception e) {
             log.error("从 HTML 文件中提取文本内容失败: {}", fileName, e);
