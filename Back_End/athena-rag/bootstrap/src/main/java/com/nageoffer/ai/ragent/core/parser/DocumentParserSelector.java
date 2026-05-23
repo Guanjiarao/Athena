@@ -46,7 +46,20 @@ public class DocumentParserSelector {
      * @return 解析器实例，如果不存在则返回 null
      */
     public DocumentParser select(String parserType) {
-        return strategyMap.get(parserType);
+        if (parserType == null) {
+            return null;
+        }
+        // 先尝试精确匹配
+        DocumentParser parser = strategyMap.get(parserType);
+        if (parser != null) {
+            return parser;
+        }
+        // 如果精确匹配失败，尝试大小写不敏感匹配
+        return strategyMap.entrySet().stream()
+                .filter(entry -> entry.getKey().equalsIgnoreCase(parserType))
+                .map(Map.Entry::getValue)
+                .findFirst()
+                .orElse(null);
     }
 
     /**
