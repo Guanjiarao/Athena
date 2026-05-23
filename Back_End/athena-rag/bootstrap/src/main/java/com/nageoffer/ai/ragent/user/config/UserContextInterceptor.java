@@ -54,6 +54,11 @@ public class UserContextInterceptor implements HandlerInterceptor {
             return true;
         }
 
+        // 检查是否已登录，如果未登录则跳过（避免抛出异常）
+        if (!StpUtil.isLogin()) {
+            return true;
+        }
+
         String loginId = StpUtil.getLoginIdAsString();
         UserDO user = userMapper.selectById(loginId);
 
