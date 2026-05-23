@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -53,8 +54,14 @@ public class AthenaNoteDocumentUploadServiceImpl implements AthenaNoteDocumentUp
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
         headers.set(GlobalConstants.USER_ID, String.valueOf(authorId));
 
+        // 为文件设置 Content-Type
+        HttpHeaders fileHeaders = new HttpHeaders();
+        fileHeaders.setContentType(MediaType.TEXT_HTML);
+        Resource fileResource = new NamedByteArrayResource(contentHtml.getBytes(StandardCharsets.UTF_8), fileName);
+        HttpEntity<Resource> fileEntity = new HttpEntity<>(fileResource, fileHeaders);
+
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("file", new NamedByteArrayResource(contentHtml.getBytes(StandardCharsets.UTF_8), fileName));
+        body.add("file", fileEntity);
         body.add("sourceType", "file");
         body.add("processMode", "pipeline");
         body.add("pipelineId", target.pipelineId());
