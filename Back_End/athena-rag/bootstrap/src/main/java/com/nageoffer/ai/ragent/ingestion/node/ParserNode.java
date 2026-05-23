@@ -169,6 +169,9 @@ public class ParserNode implements IngestionNode {
         if (lower.contains("markdown")) {
             return "MARKDOWN";
         }
+        if (lower.contains("html")) {
+            return "HTML";
+        }
         if (lower.contains("word") || lower.contains("msword") || lower.contains("wordprocessingml")) {
             return "WORD";
         }
@@ -197,6 +200,9 @@ public class ParserNode implements IngestionNode {
         }
         if (lower.endsWith(".md") || lower.endsWith(".markdown")) {
             return "MARKDOWN";
+        }
+        if (lower.endsWith(".html") || lower.endsWith(".htm")) {
+            return "HTML";
         }
         if (lower.endsWith(".doc") || lower.endsWith(".docx")) {
             return "WORD";
