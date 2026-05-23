@@ -196,6 +196,10 @@ public class IndexerNode implements IngestionNode {
                                        float[][] vectors,
                                        List<String> metadataFields) {
         Map<String, Object> mergedMetadata = mergeMetadata(context);
+
+        log.info("[IndexerNode] ===== 开始构建 rows ===== taskId={}, chunkCount={}, metadataFields={}, contextMetadata={}",
+                context.getTaskId(), chunks.size(), metadataFields, context.getMetadata());
+
         List<JsonObject> rows = new java.util.ArrayList<>(chunks.size());
         for (int i = 0; i < chunks.size(); i++) {
             VectorChunk chunk = chunks.get(i);
@@ -221,11 +225,16 @@ public class IndexerNode implements IngestionNode {
                 metadata.addProperty("source_location", source.getLocation());
             }
 
+            log.info("[IndexerNode] Chunk #{}: chunkId={}, index={}, metadataFields={}, mergedMetadata={}",
+                    i, chunkId, chunk.getIndex(), metadataFields, mergedMetadata);
+
             if (metadataFields != null && !metadataFields.isEmpty()) {
                 Map<String, Object> combined = new HashMap<>(mergedMetadata);
                 if (chunk.getMetadata() != null) {
                     combined.putAll(chunk.getMetadata());
                 }
+                log.info("[IndexerNode] Chunk #{}: combined metadata keys={}", i, combined.keySet());
+
                 for (String field : metadataFields) {
                     if (!StringUtils.hasText(field)) {
                         continue;
@@ -233,8 +242,13 @@ public class IndexerNode implements IngestionNode {
                     Object value = combined.get(field);
                     if (value != null) {
                         addMetadataValue(metadata, field, value);
+                        log.info("[IndexerNode] Chunk #{}: ✅ 添加 metadata: {}={}", i, field, value);
+                    } else {
+                        log.warn("[IndexerNode] Chunk #{}: ❌ metadata 字段 {} 不存在于 combined metadata 中", i, field);
                     }
                 }
+            } else {
+                log.warn("[IndexerNode] Chunk #{}: metadataFields 为空，不添加自定义 metadata", i);
             }
 
             JsonObject row = new JsonObject();
@@ -243,7 +257,11 @@ public class IndexerNode implements IngestionNode {
             row.add("metadata", metadata);
             row.add("embedding", toJsonArray(vectors[i]));
             rows.add(row);
+
+            log.info("[IndexerNode] Chunk #{}: 最终 metadata={}", i, metadata);
         }
+
+        log.info("[IndexerNode] ===== 构建 rows 完成 ===== rowCount={}", rows.size());
         return rows;
     }
 

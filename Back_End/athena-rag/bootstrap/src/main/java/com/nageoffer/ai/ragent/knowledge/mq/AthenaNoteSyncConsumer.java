@@ -30,8 +30,8 @@ public class AthenaNoteSyncConsumer implements RocketMQListener<MessageWrapper<A
     public void onMessage(MessageWrapper<AthenaNoteSyncEvent> message) {
         AthenaNoteSyncEvent event = message.getBody();
 
-        log.info("[消费者] 开始处理 Athena 笔记同步事件，noteId={}, type={}, keys={}",
-                event.getNoteId(), event.getType(), message.getKeys());
+        log.info("[AthenaNoteSyncConsumer] ===== 收到 Athena 笔记同步事件 ===== noteId={}, title={}, type={}, authorId={}, keys={}",
+                event.getNoteId(), event.getTitle(), event.getType(), event.getAuthorId(), message.getKeys());
 
         athenaNoteIngestionService.ingest(AthenaNoteSyncRequest.builder()
                 .noteId(event.getNoteId())
@@ -40,5 +40,7 @@ public class AthenaNoteSyncConsumer implements RocketMQListener<MessageWrapper<A
                 .type(event.getType())
                 .authorId(event.getAuthorId())
                 .build());
+
+        log.info("[AthenaNoteSyncConsumer] ===== Athena 笔记同步完成 ===== noteId={}", event.getNoteId());
     }
 }

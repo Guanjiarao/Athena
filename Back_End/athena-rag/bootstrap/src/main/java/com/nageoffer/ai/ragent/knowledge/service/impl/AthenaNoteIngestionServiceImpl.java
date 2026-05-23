@@ -23,6 +23,7 @@ import com.nageoffer.ai.ragent.knowledge.service.dto.AthenaNoteSyncRequest;
 import com.nageoffer.ai.ragent.knowledge.service.dto.AthenaNoteSyncResult;
 import com.nageoffer.ai.ragent.rag.core.vector.VectorSpaceId;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -33,6 +34,7 @@ import java.util.Map;
 /**
  * Athena 笔记摄取服务实现
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AthenaNoteIngestionServiceImpl implements AthenaNoteIngestionService {
@@ -50,19 +52,34 @@ public class AthenaNoteIngestionServiceImpl implements AthenaNoteIngestionServic
     public AthenaNoteSyncResult ingest(AthenaNoteSyncRequest request) {
         validateRequest(request);
 
+        log.info("[AthenaNoteIngestion] ===== 开始摄取 Athena 笔记 ===== noteId={}, title={}, type={}, authorId={}",
+                request.getNoteId(), request.getTitle(), request.getType(), request.getAuthorId());
+
         String kbCode = knowledgeBaseRoutingService.resolveKbCodeByType(request.getType());
         KnowledgeBaseDO knowledgeBase = loadKnowledgeBase(kbCode);
 
+        log.info("[AthenaNoteIngestion] 解析知识库: kbCode={}, collectionName={}", kbCode, knowledgeBase.getCollectionName());
+
         IngestionContext context = buildContext(request, knowledgeBase.getCollectionName());
+
+        log.info("[AthenaNoteIngestion] 构建 IngestionContext: taskId={}, pipelineId={}, metadata={}",
+                context.getTaskId(), context.getPipelineId(), context.getMetadata());
+
         PipelineDefinition pipeline = buildPipelineDefinition(knowledgeBase);
         IngestionContext result = ingestionEngine.execute(pipeline, context);
 
         if (result.getError() != null) {
+            log.error("[AthenaNoteIngestion] ❌ Athena 笔记摄取失败: noteId={}, error={}",
+                    request.getNoteId(), result.getError().getMessage());
             throw new ClientException("Athena 笔记摄取失败: " + result.getError().getMessage());
         }
         if (result.getChunks() == null || result.getChunks().isEmpty()) {
+            log.error("[AthenaNoteIngestion] ❌ Athena 笔记摄取失败: noteId={}, 未生成任何分块", request.getNoteId());
             throw new ClientException("Athena 笔记摄取失败: 未生成任何分块");
         }
+
+        log.info("[AthenaNoteIngestion] ✅ Athena 笔记摄取成功: noteId={}, chunkCount={}",
+                request.getNoteId(), result.getChunks().size());
 
         return AthenaNoteSyncResult.builder()
                 .noteId(request.getNoteId())
