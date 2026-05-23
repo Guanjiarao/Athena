@@ -222,40 +222,60 @@ public class StreamChatEventHandler implements StreamCallback {
     }
 
     private List<CompletionPayload.NoteReference> buildNoteReferences() {
-        log.info("[StreamChatEventHandler] 开始构建笔记引用, retrievedChunks: {}",
+        log.info("[NoteReference] 开始构建笔记引用, retrievedChunks 数量: {}",
                 retrievedChunks != null ? retrievedChunks.size() : "null");
 
         if (retrievedChunks == null || retrievedChunks.isEmpty()) {
-            log.info("[StreamChatEventHandler] retrievedChunks 为空，返回 null");
+            log.info("[NoteReference] retrievedChunks 为空，返回 null");
             return null;
         }
 
         double minScoreThreshold = searchChannelProperties.getNoteReference().getMinScoreThreshold();
         int maxCount = searchChannelProperties.getNoteReference().getMaxCount();
 
+        log.info("[NoteReference] 配置: minScoreThreshold={}, maxCount={}", minScoreThreshold, maxCount);
+
+        // 打印所有 chunk 的分数
+        retrievedChunks.forEach(chunk -> {
+            log.info("[NoteReference] Chunk: id={}, score={}, hasMetadata={}, text={}",
+                    chunk.getId(), chunk.getScore(), chunk.getMetadata() != null,
+                    chunk.getText() != null ? chunk.getText().substring(0, Math.min(50, chunk.getText().length())) + "..." : "null");
+        });
+
         List<CompletionPayload.NoteReference> references = retrievedChunks.stream()
                 .filter(chunk -> {
                     boolean hasMetadata = chunk.getMetadata() != null;
                     boolean scoreAboveThreshold = chunk.getScore() >= minScoreThreshold;
-                    log.debug("[StreamChatEventHandler] chunk id={}, score={}, hasMetadata={}, scoreAboveThreshold={}",
-                            chunk.getId(), chunk.getScore(), hasMetadata, scoreAboveThreshold);
+                    if (!scoreAboveThreshold) {
+                        log.info("[NoteReference] ❌ Chunk id={} 被过滤: score={} < threshold={}",
+                                chunk.getId(), chunk.getScore(), minScoreThreshold);
+                    }
+                    if (!hasMetadata) {
+                        log.info("[NoteReference] ❌ Chunk id={} 被过滤: 缺少 metadata", chunk.getId());
+                    }
                     return hasMetadata && scoreAboveThreshold;
                 })
                 .map(chunk -> {
                     Long noteId = extractNoteId(chunk.getMetadata());
-                    log.debug("[StreamChatEventHandler] chunk id={}, noteId={}", chunk.getId(), noteId);
                     if (noteId == null) {
+                        log.info("[NoteReference] ❌ Chunk id={} 被过滤: 无法提取 noteId", chunk.getId());
                         return null;
                     }
                     String title = extractTitle(chunk.getMetadata(), noteId);
                     String snippet = buildSnippet(chunk.getText());
+                    log.info("[NoteReference] ✅ Chunk id={} 通过: noteId={}, title={}, score={}",
+                            chunk.getId(), noteId, title, chunk.getScore());
                     return new CompletionPayload.NoteReference(noteId, title, snippet, chunk.getScore());
                 })
                 .filter(ref -> ref != null)
                 .collect(java.util.stream.Collectors.toMap(
                         CompletionPayload.NoteReference::noteId,
                         ref -> ref,
-                        (ref1, ref2) -> ref1.score() > ref2.score() ? ref1 : ref2  // 保留分数更高的
+                        (ref1, ref2) -> {
+                            log.info("[NoteReference] 笔记 {} 有多个 chunk，保留分数更高的: {} vs {}",
+                                    ref1.noteId(), ref1.score(), ref2.score());
+                            return ref1.score() > ref2.score() ? ref1 : ref2;
+                        }
                 ))
                 .values()
                 .stream()
@@ -263,8 +283,16 @@ public class StreamChatEventHandler implements StreamCallback {
                 .limit(maxCount)
                 .toList();
 
-        log.info("[StreamChatEventHandler] 构建笔记引用完成, 引用数量: {}, 阈值: {}, 最大数量: {}",
-                references.size(), minScoreThreshold, maxCount);
+        log.info("[NoteReference] 构建笔记引用完成, 最终引用数量: {}/{}, 阈值: {}, 最大数量: {}",
+                references.size(), retrievedChunks.size(), minScoreThreshold, maxCount);
+
+        if (!references.isEmpty()) {
+            references.forEach(ref -> {
+                log.info("[NoteReference] 最终引用: noteId=, title={}, score={}",
+                        ref.noteId(), ref.title(), ref.score());
+            });
+        }
+
         return references.isEmpty() ? null : references;
     }
 
