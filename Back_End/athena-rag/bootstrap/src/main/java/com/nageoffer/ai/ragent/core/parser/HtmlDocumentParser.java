@@ -5,25 +5,25 @@ package com.nageoffer.ai.ragent.core.parser;
 import com.nageoffer.ai.ragent.framework.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.tika.Tika;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /**
  * HTML 文档解析器
  * <p>
  * 专门用于解析 HTML 格式的文档，特别是 Athena 笔记
- * 内部使用 Apache Tika 进行 HTML 解析和文本提取
+ * 使用 Jsoup 进行 HTML 解析和文本提取，能够正确处理 HTML 标签和样式
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class HtmlDocumentParser implements DocumentParser {
-
-    private static final Tika TIKA = new Tika();
 
     @Override
     public String getParserType() {
@@ -36,8 +36,11 @@ public class HtmlDocumentParser implements DocumentParser {
             return ParseResult.ofText("");
         }
 
-        try (ByteArrayInputStream is = new ByteArrayInputStream(content)) {
-            String text = TIKA.parseToString(is);
+        try {
+            String html = new String(content, StandardCharsets.UTF_8);
+            Document doc = Jsoup.parse(html);
+            // 提取纯文本，自动去除所有 HTML 标签和样式
+            String text = doc.text();
             String cleaned = TextCleanupUtil.cleanup(text);
             return ParseResult.ofText(cleaned);
         } catch (Exception e) {
@@ -49,7 +52,8 @@ public class HtmlDocumentParser implements DocumentParser {
     @Override
     public String extractText(InputStream stream, String fileName) {
         try {
-            String text = TIKA.parseToString(stream);
+            Document doc = Jsoup.parse(stream, StandardCharsets.UTF_8.name(), "");
+            String text = doc.text();
             return TextCleanupUtil.cleanup(text);
         } catch (Exception e) {
             log.error("从 HTML 文件中提取文本内容失败: {}", fileName, e);
