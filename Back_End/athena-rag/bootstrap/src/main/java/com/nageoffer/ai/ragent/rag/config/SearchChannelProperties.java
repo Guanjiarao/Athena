@@ -20,6 +20,12 @@ public class SearchChannelProperties {
     private int defaultTopK = 10;
 
     /**
+     * 检索结果最低分数阈值
+     * 低于此分数的检索结果会被过滤
+     */
+    private double minScoreThreshold = 0.25;
+
+    /**
      * 检索通道配置
      */
     private Channels channels = new Channels();

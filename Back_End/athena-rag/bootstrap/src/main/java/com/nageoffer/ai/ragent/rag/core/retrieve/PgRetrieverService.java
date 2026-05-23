@@ -4,6 +4,7 @@ package com.nageoffer.ai.ragent.rag.core.retrieve;
 
 import com.nageoffer.ai.ragent.framework.convention.RetrievedChunk;
 import com.nageoffer.ai.ragent.infra.embedding.EmbeddingService;
+import com.nageoffer.ai.ragent.rag.config.SearchChannelProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -20,6 +21,7 @@ public class PgRetrieverService implements RetrieverService {
 
     private final JdbcTemplate jdbcTemplate;
     private final EmbeddingService embeddingService;
+    private final SearchChannelProperties searchChannelProperties;
 
     @Override
     public List<RetrievedChunk> retrieve(RetrieveRequest request) {
@@ -36,7 +38,7 @@ public class PgRetrieverService implements RetrieverService {
 
         String vectorLiteral = toVectorLiteral(vector);
         // noinspection SqlDialectInspection,SqlNoDataSourceInspection
-        List<RetrievedChunk> chunks = jdbcTemplate.query("SELECT id, content, metadata, 1 - (embedding <=> ?::vector) AS score FROM t_knowledge_vector WHERE metadata->>'collection_name' = ? ORDER BY embedding <=> ?::vector LIMIT ?",
+        List<RetrievedChunk> allChunks = jdbcTemplate.query("SELECT id, content, metadata, 1 - (embedding <=> ?::vector) AS score FROM t_knowledge_vector WHERE metadata->>'collection_name' = ? ORDER BY embedding <=> ?::vector LIMIT ?",
                 (rs, rowNum) -> {
                     String metadataJson = rs.getString("metadata");
                     java.util.Map<String, Object> metadata = null;
@@ -59,8 +61,14 @@ public class PgRetrieverService implements RetrieverService {
                 vectorLiteral, request.getCollectionName(), vectorLiteral, request.getTopK()
         );
 
-        log.info("[PgRetriever] 检索完成, collectionName={}, 结果数量: {}, 有 metadata 的: {}",
-                request.getCollectionName(), chunks.size(),
+        // 过滤低分结果
+        double minScoreThreshold = searchChannelProperties.getMinScoreThreshold();
+        List<RetrievedChunk> chunks = allChunks.stream()
+                .filter(chunk -> chunk.getScore() >= minScoreThreshold)
+                .toList();
+
+        log.info("[PgRetriever] 检索完成, collectionName={}, 原始结果: {}, 过滤后: {}, 阈值: {}, 有 metadata 的: {}",
+                request.getCollectionName(), allChunks.size(), chunks.size(), minScoreThreshold,
                 chunks.stream().filter(c -> c.getMetadata() != null).count());
         return chunks;
     }

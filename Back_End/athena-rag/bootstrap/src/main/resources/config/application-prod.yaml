@@ -84,6 +84,7 @@ rag:
         url: http://localhost:9099
 
   search:
+    min-score-threshold: 0.25
     channels:
       vector-global:
         confidence-threshold: 0.6

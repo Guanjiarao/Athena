@@ -4,6 +4,7 @@ package com.nageoffer.ai.ragent.rag.core.retrieve;
 
 import cn.hutool.core.util.StrUtil;
 import com.nageoffer.ai.ragent.rag.config.RAGDefaultProperties;
+import com.nageoffer.ai.ragent.rag.config.SearchChannelProperties;
 import com.nageoffer.ai.ragent.framework.convention.RetrievedChunk;
 import com.nageoffer.ai.ragent.infra.embedding.EmbeddingService;
 import io.milvus.v2.client.MilvusClientV2;
@@ -28,11 +29,10 @@ import java.util.stream.Collectors;
 @ConditionalOnProperty(name = "rag.vector.type", havingValue = "milvus", matchIfMissing = true)
 public class MilvusRetrieverService implements RetrieverService {
 
-    private static final float MIN_SCORE_THRESHOLD = 0.25f;
-
     private final EmbeddingService embeddingService;
     private final MilvusClientV2 milvusClient;
     private final RAGDefaultProperties ragDefaultProperties;
+    private final SearchChannelProperties searchChannelProperties;
 
     @Override
     public List<RetrievedChunk> retrieve(RetrieveRequest retrieveParam) {
@@ -71,7 +71,7 @@ public class MilvusRetrieverService implements RetrieverService {
         }
 
         List<RetrievedChunk> chunks = results.get(0).stream()
-                .filter(r -> r.getScore() >= MIN_SCORE_THRESHOLD)
+                .filter(r -> r.getScore() >= searchChannelProperties.getMinScoreThreshold())
                 .map(r -> {
                     Object metadataObj = r.getEntity().get("metadata");
                     Map<String, Object> metadata = null;
@@ -90,7 +90,7 @@ public class MilvusRetrieverService implements RetrieverService {
                 .collect(Collectors.toList());
 
         log.info("[MilvusRetriever] 检索完成, 原始结果: {}, 过滤后: {}, 阈值: {}",
-                results.get(0).size(), chunks.size(), MIN_SCORE_THRESHOLD);
+                results.get(0).size(), chunks.size(), searchChannelProperties.getMinScoreThreshold());
         return chunks;
     }
 
