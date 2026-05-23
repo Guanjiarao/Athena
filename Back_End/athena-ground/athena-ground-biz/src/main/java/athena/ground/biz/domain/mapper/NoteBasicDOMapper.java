@@ -85,7 +85,8 @@ public interface NoteBasicDOMapper {
             "WHERE user_id = #{userId}",
             "AND title LIKE CONCAT('%', #{keyword}, '%')",
             "<if test='status != null'> AND status = #{status}</if>",
-            "<if test='type != null'> AND type = #{type}</if>",
+            "<if test='type != null and type == 1'> AND type IN (1, 2)</if>",
+            "<if test='type != null and type != 1'> AND type = #{type}</if>",
             "ORDER BY update_time DESC, note_id DESC LIMIT #{offset}, #{pageSize}",
             "</script>"})
     List<NoteBasicDO> searchByUserIdAndTitle(@Param("userId") Long userId,
