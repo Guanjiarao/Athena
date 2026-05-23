@@ -102,9 +102,7 @@ public class SaTokenConfig implements WebMvcConfigurer {
     private boolean isFromAthenaServer(HttpServletRequest request) {
         // 方式1：通过 userId header 判断（Athena 后端调用时会设置 userId header）
         String userId = request.getHeader("userId");
-        log.info("[SaToken] isFromAthenaServer 检查: path={}, userId={}", request.getRequestURI(), userId);
         if (userId != null && !userId.isEmpty() && !"null".equals(userId)) {
-            log.info("[SaToken] 识别为 Athena 内部调用，跳过登录检查");
             return true;
         }
         // 方式2：通过 Referer 或 Origin 判断
