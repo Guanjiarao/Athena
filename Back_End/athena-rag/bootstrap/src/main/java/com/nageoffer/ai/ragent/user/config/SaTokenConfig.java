@@ -95,20 +95,25 @@ public class SaTokenConfig implements WebMvcConfigurer {
     }
 
     /**
-     * 判断请求是否来自 Athena 后端服务（端口 13715）
+     * 判断请求是否来自 Athena 后端服务
      */
     private boolean isFromAthenaServer(HttpServletRequest request) {
-        // 方式1：通过 Referer 或 Origin 判断
+        // 方式1：通过 userId header 判断（Athena 后端调用时会设置 userId header）
+        String userId = request.getHeader("userId");
+        if (userId != null && !userId.isEmpty()) {
+            return true;
+        }
+        // 方式2：通过 Referer 或 Origin 判断
         String origin = request.getHeader("Origin");
         if (origin != null && origin.contains("13715")) {
             return true;
         }
-        // 方式2：通过自定义 header 判断（Athena 后端调用时带上 X-Athena-Internal: true）
+        // 方式3：通过自定义 header 判断（Athena 后端调用时带上 X-Athena-Internal: true）
         String athenaHeader = request.getHeader("X-Athena-Internal");
         if ("true".equalsIgnoreCase(athenaHeader)) {
             return true;
         }
-        // 方式3：通过来源端口判断（本地调用）
+        // 方式4：通过来源端口判断（本地调用）
         int remotePort = request.getRemotePort();
         String remoteHost = request.getRemoteHost();
         if (("127.0.0.1".equals(remoteHost) || "localhost".equals(remoteHost) || "0:0:0:0:0:0:0:1".equals(remoteHost))) {
