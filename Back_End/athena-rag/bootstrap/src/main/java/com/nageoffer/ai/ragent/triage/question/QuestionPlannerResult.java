@@ -47,4 +47,8 @@ public class QuestionPlannerResult {
     private List<Boolean> llmFallbackHistory = new ArrayList<>();
 
     private boolean llmFallbackTriggered;
+
+    private boolean forceGenerateReport;
+
+    private String forceGenerateReportReason;
 }

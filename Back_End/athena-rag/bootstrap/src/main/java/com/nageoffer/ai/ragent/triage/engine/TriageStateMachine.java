@@ -4,33 +4,34 @@ package com.nageoffer.ai.ragent.triage.engine;
 
 import cn.hutool.core.util.StrUtil;
 import com.nageoffer.ai.ragent.framework.exception.ClientException;
+import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
 import com.nageoffer.ai.ragent.triage.agent.TriageSupervisor;
 import com.nageoffer.ai.ragent.triage.session.TriageSessionProperties;
 import com.nageoffer.ai.ragent.triage.model.AuditLog;
+import com.nageoffer.ai.ragent.triage.model.QuestionPlan;
 import com.nageoffer.ai.ragent.triage.model.RiskDecision;
 import com.nageoffer.ai.ragent.triage.model.RiskDecisionType;
 import com.nageoffer.ai.ragent.triage.model.RiskLevel;
 import com.nageoffer.ai.ragent.triage.model.TriageAction;
 import com.nageoffer.ai.ragent.triage.model.TriageContext;
 import com.nageoffer.ai.ragent.triage.service.TriageModelGateway;
-import com.nageoffer.ai.ragent.triage.normalization.FactExtractor;
 import com.nageoffer.ai.ragent.triage.question.QuestionOptionProvider;
-import com.nageoffer.ai.ragent.triage.question.QuestionPlanner;
 import com.nageoffer.ai.ragent.triage.question.QuestionPlanningSupport;
 import com.nageoffer.ai.ragent.triage.risk.RiskHeuristicHelper;
-import com.nageoffer.ai.ragent.triage.risk.RiskStratifierWorker;
-import com.nageoffer.ai.ragent.triage.worker.SOPValidatorWorker;
-import com.nageoffer.ai.ragent.triage.normalization.SemanticParserWorker;
-import com.nageoffer.ai.ragent.triage.slot.SlotManager;
-import com.nageoffer.ai.ragent.triage.slot.StateReducer;
-import com.nageoffer.ai.ragent.triage.normalization.TurnUnderstandingWorker;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 
+/**
+ * 分诊状态机只负责状态流转和终态动作选择。
+ *
+ * <p>语义归一化、规则检索、槽位更新、风险评估和问题规划统一由 TriageSupervisor 编排；
+ * 状态机消费 Supervisor 已写入的结果，不再直接调用旧 parsing/slot/risk/question worker。</p>
+ */
 @Slf4j
 @Component
 public class TriageStateMachine {
@@ -38,14 +39,6 @@ public class TriageStateMachine {
     private static final int WARNING_THRESHOLD_LEVEL = 3;
     private static final Map<TriageState, Map<TriageEvent, TriageState>> TRANSITIONS = buildTransitions();
 
-    private final TurnUnderstandingWorker turnUnderstandingWorker;
-    private final SemanticParserWorker semanticParserWorker;
-    private final FactExtractor factExtractor;
-    private final StateReducer stateReducer;
-    private final SlotManager slotManager;
-    private final QuestionPlanner questionPlanner;
-    private final SOPValidatorWorker sopValidatorWorker;
-    private final RiskStratifierWorker riskStratifierWorker;
     private final RiskHeuristicHelper riskHeuristicHelper;
     private final TriageModelGateway triageModelGateway;
     private final TriageSessionProperties triageSessionProperties;
@@ -55,29 +48,13 @@ public class TriageStateMachine {
     private final TriageSupervisor triageSupervisor;
     private final Map<TriageState, StateHandler> stateHandlers;
 
-    public TriageStateMachine(TurnUnderstandingWorker turnUnderstandingWorker,
-                              SemanticParserWorker semanticParserWorker,
-                              FactExtractor factExtractor,
-                              StateReducer stateReducer,
-                              SlotManager slotManager,
-                              QuestionPlanner questionPlanner,
-                              SOPValidatorWorker sopValidatorWorker,
-                              RiskStratifierWorker riskStratifierWorker,
-                              TriageModelGateway triageModelGateway,
+    public TriageStateMachine(TriageModelGateway triageModelGateway,
                               RiskHeuristicHelper riskHeuristicHelper,
                               TriageSessionProperties triageSessionProperties,
                               TurnLimitHelper turnLimitHelper,
                               QuestionOptionProvider optionGenerator,
                               QuestionPlanningSupport questionPlanSupport,
                               TriageSupervisor triageSupervisor) {
-        this.turnUnderstandingWorker = turnUnderstandingWorker;
-        this.semanticParserWorker = semanticParserWorker;
-        this.factExtractor = factExtractor;
-        this.stateReducer = stateReducer;
-        this.slotManager = slotManager;
-        this.questionPlanner = questionPlanner;
-        this.sopValidatorWorker = sopValidatorWorker;
-        this.riskStratifierWorker = riskStratifierWorker;
         this.triageModelGateway = triageModelGateway;
         this.riskHeuristicHelper = riskHeuristicHelper;
         this.triageSessionProperties = triageSessionProperties;
@@ -88,11 +65,30 @@ public class TriageStateMachine {
         this.stateHandlers = buildStateHandlers();
     }
 
+    @RagTraceNode(name = "TriageStateMachine", type = "TRIAGE_STATE")
     public TriageState execute(TriageContext context) {
         if (context == null) {
             throw new IllegalArgumentException("TriageContext must not be null.");
         }
         context.ensureCollections();
+        if (turnLimitHelper.shouldForceReport(context)) {
+            context.setCurrentState(TriageState.REPORT_GENERATING);
+            context.setNextAction(TriageAction.GENERATE_REPORT);
+            context.setPendingSlots(List.of());
+            context.setMissingFields(List.of());
+            context.setQuestionPlan(QuestionPlan.builder()
+                    .nextSlotsToAsk(List.of())
+                    .pendingSlots(List.of())
+                    .askCount(0)
+                    .followUpMode(false)
+                    .priorityReason("达到最大轮次，强制生成报告。")
+                    .policyReason("maxTotalTurns=" + triageSessionProperties.getMaxTotalTurns())
+                    .build());
+            context.setFinalReply(TriageReplyBuilder.generatePreTriageReport(context, triageModelGateway));
+            context.appendState("Max turn guard triggered before state machine: totalTurnCount="
+                    + context.getTotalTurnCount() + ", maxTotalTurns=" + triageSessionProperties.getMaxTotalTurns());
+            return TriageState.COMPLETED;
+        }
         TriageState currentState = TriageState.INIT;
         context.setCurrentState(currentState);
         currentState = moveTo(context, currentState,
@@ -155,13 +151,9 @@ public class TriageStateMachine {
             );
         }
 
-        String rationale = TriageStageExecutor.executeValidation(context, questionPlanner, sopValidatorWorker, optionGenerator, questionPlanSupport, triageModelGateway);
+        String rationale = TriageStageExecutor.executeValidation(context, optionGenerator, questionPlanSupport, triageModelGateway);
         boolean needsClarification = context.getPendingSlots() != null && !context.getPendingSlots().isEmpty();
         boolean shouldFastTrackHighRisk = riskHeuristicHelper.shouldFastTrackHighRisk(context);
-        boolean hasRiskSignals = context.getRiskSignalState() != null && !context.getRiskSignalState().isEmpty();
-        if (needsClarification && hasRiskSignals) {
-            riskStratifierWorker.execute(context);
-        }
 
         // 检查是否触发硬红旗快速通道（优先级最高）
         if (needsClarification && shouldFastTrackHighRisk) {
@@ -216,9 +208,8 @@ public class TriageStateMachine {
             return new TransitionDecision(TriageEvent.HIGH_RISK,
                     "High-risk interrupt reused from supervisor risk assessment.");
         }
-        riskStratifierWorker.execute(context);
         RiskLevel riskLevel = context.getRiskAssessment() == null
-                ? RiskLevel.conservativeFallback("Risk result missing, fallback applied.").normalize()
+                ? RiskLevel.conservativeFallback("Risk result missing after supervisor, fallback applied.").normalize()
                 : context.getRiskAssessment().normalize();
         context.setRiskAssessment(riskLevel);
         RiskDecision riskDecision = context.getRiskDecision();

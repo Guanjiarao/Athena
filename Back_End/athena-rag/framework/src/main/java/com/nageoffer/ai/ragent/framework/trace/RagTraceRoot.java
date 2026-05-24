@@ -28,4 +28,17 @@ public @interface RagTraceRoot {
      * 任务 ID 参数名
      */
     String taskIdArg() default "taskId";
+
+    /**
+     * 从参数对象中读取会话 ID 的 getter 名称。
+     *
+     * <p>当入口方法只有 request 对象时，可配置 conversationIdArg="request"、conversationIdGetter="getSessionId"。
+     * 如果直接使用字符串参数，保持默认空值即可。</p>
+     */
+    String conversationIdGetter() default "";
+
+    /**
+     * 从参数对象中读取任务 ID 的 getter 名称。
+     */
+    String taskIdGetter() default "";
 }

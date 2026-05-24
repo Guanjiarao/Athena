@@ -37,7 +37,12 @@ public class RAGChatServiceImpl implements RAGChatService {
         String actualConversationId = StrUtil.isBlank(conversationId) ? IdUtil.getSnowflakeNextIdStr() : conversationId;
         String taskId = IdUtil.getSnowflakeNextIdStr();
         StreamCallback callback = callbackFactory.createChatEventHandler(emitter, actualConversationId, taskId);
+        log.info("[RAGChatService] 收到流式对话请求, conversationId={}, taskId={}, deepThinking={}, question={}",
+                actualConversationId, taskId, Boolean.TRUE.equals(deepThinking), question);
 
+        // 调用链入口：Controller -> RAGChatServiceImpl.streamChat -> ChatQueueLimiter.enqueue
+        // -> StreamChatTraceRunner.run -> StreamChatPipeline.execute。
+        // 真正决定走「系统问答 prompt」还是「RAG 检索 prompt」的逻辑在 StreamChatPipeline 内部。
         chatQueueLimiter.enqueue(question, actualConversationId, emitter,
                 () -> traceRunner.run(question, actualConversationId, taskId, callback, traceAware -> {
                     StreamChatContext ctx = StreamChatContext.builder()
@@ -48,6 +53,8 @@ public class RAGChatServiceImpl implements RAGChatService {
                             .userId(UserContext.getUserId())
                             .callback(traceAware)
                             .build();
+                    log.info("[RAGChatService] 请求进入 StreamChatPipeline, conversationId={}, taskId={}",
+                            actualConversationId, taskId);
                     chatPipeline.execute(ctx);
                 }));
     }

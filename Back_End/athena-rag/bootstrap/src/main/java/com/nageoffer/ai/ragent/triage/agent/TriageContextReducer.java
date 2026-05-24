@@ -9,6 +9,7 @@ import com.nageoffer.ai.ragent.triage.model.QuestionGapType;
 import com.nageoffer.ai.ragent.triage.model.RiskGap;
 import com.nageoffer.ai.ragent.triage.model.SlotState;
 import com.nageoffer.ai.ragent.triage.model.TriageContext;
+import com.nageoffer.ai.ragent.triage.normalization.NormalizationAgentResult;
 import com.nageoffer.ai.ragent.triage.normalization.NormalizedTurn;
 import com.nageoffer.ai.ragent.triage.question.QuestionPlannerResult;
 import com.nageoffer.ai.ragent.triage.rule.RuleAgentResult;
@@ -24,10 +25,30 @@ import java.util.Map;
 
 /**
  * Context Reducer 是多 Agent 架构中的单写者。
+ *
+ * <p>各 Agent 只返回 result，Reducer 负责把 normalization/risk/rule/slot/question plan 的结果
+ * 合并写回 TriageContext，避免多个 Agent 并发直接修改同一个上下文。</p>
  */
 @Slf4j
 @Component
 public class TriageContextReducer {
+
+    public void applyNormalization(TriageContext context, NormalizationAgentResult normalizationResult) {
+        if (context == null || normalizationResult == null) {
+            return;
+        }
+        context.ensureCollections();
+        if (normalizationResult.getLatestTurnUnderstanding() != null) {
+            context.setLatestTurnUnderstanding(normalizationResult.getLatestTurnUnderstanding());
+        }
+        context.setFactHistory(normalizationResult.getFactHistory());
+        context.setExtractedSymptoms(normalizationResult.getExtractedSymptoms());
+        context.setFinalPrimaryComplaint(normalizationResult.getFinalPrimaryComplaint());
+        context.setLatestStateReducerResult(normalizationResult.getLatestStateReducerResult());
+        context.setStateReducerHistory(normalizationResult.getStateReducerHistory());
+        context.setRiskSignalState(normalizationResult.getRiskSignalState());
+        context.setCorrectionHistory(normalizationResult.getCorrectionHistory());
+    }
 
     public void apply(TriageContext context,
                       NormalizedTurn normalizedTurn,
@@ -87,7 +108,8 @@ public class TriageContextReducer {
         context.setPendingSlots(plannerResult.getPendingSlots());
         context.setLastAskedSlots(plannerResult.getLastAskedSlots());
         context.setLlmFallbackHistory(plannerResult.getLlmFallbackHistory());
-        context.setForceGenerateReport(plannerResult.isLlmFallbackTriggered());
+        context.setForceGenerateReport(plannerResult.isForceGenerateReport());
+        context.setForceGenerateReportReason(plannerResult.getForceGenerateReportReason());
     }
 
     private List<QuestionGap> mergeRuleAndRiskGaps(RuleAgentResult ruleResult,

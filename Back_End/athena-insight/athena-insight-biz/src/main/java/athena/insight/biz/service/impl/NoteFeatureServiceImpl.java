@@ -56,42 +56,38 @@ public class NoteFeatureServiceImpl implements NoteFeatureService {
         if (noteId == null) {
             return null;
         }
-        Map<String, Object> base = findBlogBase(noteId);
-        if (base == null || base.isEmpty()) {
-            log.warn("[NoteFeature] 刷新失败，未找到内容基础信息, noteId={}", noteId);
+
+        // 直接调用详情接口获取完整信息（不再需要 type 参数）
+        Map<String, Object> detail = groundFeignApi.getBlogDetail(noteId);
+        if (detail == null || detail.isEmpty()) {
+            log.warn("[NoteFeature] 刷新失败，未找到内容详情, noteId={}", noteId);
             return null;
         }
 
-        Byte type = getByte(base.get("type"));
+        Byte type = getByte(detail.get("type"));
         if (type == null) {
             log.warn("[NoteFeature] 刷新失败，内容类型为空, noteId={}", noteId);
             return null;
         }
 
-        Map<String, Object> detail = groundFeignApi.getBlogDetail(noteId, type);
-        if (detail == null || detail.isEmpty()) {
-            detail = base;
-        }
-
-        NoteFeatureDO target = getByNoteId(noteId);
-        if (target == null) {
-            target = new NoteFeatureDO();
+        NoteFeatureDO existing = getByNoteId(noteId);
+        NoteFeatureDO target = existing != null ? existing : new NoteFeatureDO();
+        if (target.getNoteId() == null) {
             target.setNoteId(noteId);
+        }
+        if (target.getFeatureVersion() == null) {
             target.setFeatureVersion(1);
         }
 
         target.setType(type);
-        target.setAuthorId(getLong(detail.get("userId"), getLong(base.get("userId"), getNestedUserId(base.get("userDTO")))));
-        target.setTitle(getString(detail.get("title"), getString(base.get("title"), null)));
-        target.setCoverUrl(getString(detail.get("coverUrl"), getString(base.get("coverUrl"), null)));
-        target.setChannelId(getInteger(detail.get("channelId"), getInteger(base.get("channelId"), null)));
-        target.setStatus(getByte(detail.get("status"), getByte(base.get("status"), STATUS_ACTIVE)));
+        target.setAuthorId(getLong(detail.get("userId"), getNestedUserId(detail.get("userDTO"))));
+        target.setTitle(getString(detail.get("title"), null));
+        target.setCoverUrl(getString(detail.get("coverUrl"), null));
+        target.setChannelId(getInteger(detail.get("channelId"), null));
+        target.setStatus(getByte(detail.get("status"), STATUS_ACTIVE));
         target.setTopicFeatureJson(buildTopicFeatureJson(noteId));
-        target.setHotScore(buildHotScore(detail, base));
-        target.setQualityScore(buildQualityScore(detail, base));
-        if (target.getFeatureVersion() == null) {
-            target.setFeatureVersion(1);
-        }
+        target.setHotScore(buildHotScore(detail, detail));
+        target.setQualityScore(buildQualityScore(detail, detail));
 
         if (target.getId() == null) {
             noteFeatureMapper.insert(target);
@@ -129,25 +125,6 @@ public class NoteFeatureServiceImpl implements NoteFeatureService {
                 .map(this::refreshByNoteId)
                 .filter(java.util.Objects::nonNull)
                 .toList();
-    }
-
-    private Map<String, Object> findBlogBase(Long noteId) {
-        for (int page = 1; page <= 20; page++) {
-            List<Map<String, Object>> blogs = groundFeignApi.getBlogListPage(page, 50);
-            if (blogs == null || blogs.isEmpty()) {
-                break;
-            }
-            for (Map<String, Object> blog : blogs) {
-                Long blogId = getLong(blog.get("blogId"), null);
-                if (noteId.equals(blogId)) {
-                    return blog;
-                }
-            }
-            if (blogs.size() < 50) {
-                break;
-            }
-        }
-        return null;
     }
 
     private String buildTopicFeatureJson(Long noteId) {

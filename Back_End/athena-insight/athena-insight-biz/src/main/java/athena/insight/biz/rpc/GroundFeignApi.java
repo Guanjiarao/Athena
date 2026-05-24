@@ -21,10 +21,10 @@ public class GroundFeignApi {
         return extractList(result, "查询公共内容列表失败, pageNum=" + pageNum + ", pageSize=" + pageSize);
     }
 
-    public Map<String, Object> getBlogDetail(Long blogId, Byte type) {
-        Result<?> result = insightGroundFeignApi.getBlogDetail(blogId, type);
+    public Map<String, Object> getBlogDetail(Long blogId) {
+        Result<?> result = insightGroundFeignApi.getBlogDetail(blogId);
         if (result == null || result.getCode() != 200 || !(result.getData() instanceof Map<?, ?> data)) {
-            log.warn("[GroundFeignApi] 查询内容详情失败, blogId={}, type={}", blogId, type);
+            log.warn("[GroundFeignApi] 查询内容详情失败, blogId={}", blogId);
             return null;
         }
         return (Map<String, Object>) data;

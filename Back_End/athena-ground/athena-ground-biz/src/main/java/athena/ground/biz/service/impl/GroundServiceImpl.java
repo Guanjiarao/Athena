@@ -37,10 +37,13 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -205,40 +208,87 @@ public class GroundServiceImpl implements GroundService {
     }
 
     private List<BlogListDTO> basicToBlogDTO(List<NoteBasicDO> noteBasicDOList) {
+        if (noteBasicDOList == null || noteBasicDOList.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 批量查询用户信息
+        List<Long> userIds = noteBasicDOList.stream()
+                .map(NoteBasicDO::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<Long, UserDTO> userMap = buildUserMap(userIds);
+
+        // 批量查询笔记统计数据
+        List<Long> noteIds = noteBasicDOList.stream()
+                .map(NoteBasicDO::getNoteId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        Map<Long, NoteCountDO> countMap = buildNoteCountMap(noteIds);
+
         return noteBasicDOList.stream()
                 .map(noteBasicDO -> {
                     BlogListDTO dto = new BlogListDTO();
                     Long noteId = noteBasicDO.getNoteId();
                     Long userId = noteBasicDO.getUserId();
-                    UserDTO byUserId = userAuthFeginApi.findByUserId(userId);
-                    NoteCountDO noteCountDO = noteCountDOMapper.selectByNoteId(noteId);
+
+                    NoteCountDO noteCountDO = countMap.get(noteId);
                     dto.setLikeTotal(noteCountDO != null ? noteCountDO.getLikeTotal() : 0L);
                     BeanUtils.copyProperties(noteBasicDO, dto);
                     dto.setBlogId(noteBasicDO.getNoteId());
-                    dto.setUserDTO(byUserId);
+                    dto.setUserDTO(userMap.get(userId));
                     return dto;
                 })
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public Result getBlogDetail(Long blogId, Byte type) {
-        log.info("开始查询博客详情, blogId={}, type={}", blogId, type);
-        NoteBasicDO noteBasicDO = noteBasicMapper.selectApprovedByNoteId(blogId);
-        if (noteBasicDO == null) {
-            log.warn("博客不存在或未通过审核, blogId={}", blogId);
-            return Result.fail("博客不存在或未通过审核");
+    private Map<Long, UserDTO> buildUserMap(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
         }
-        if (type != null && noteBasicDO.getType() != null && !type.equals(noteBasicDO.getType())) {
-            log.warn("博客类型不匹配, blogId={}, expectedType={}, actualType={}", blogId, type, noteBasicDO.getType());
-            return Result.fail("博客不存在");
+        List<UserDTO> userDTOList = userAuthFeginApi.findByUserIds(userIds);
+        if (userDTOList == null || userDTOList.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return userDTOList.stream()
+                .filter(Objects::nonNull)
+                .filter(userDTO -> userDTO.getUserId() != null)
+                .collect(Collectors.toMap(UserDTO::getUserId, Function.identity(), (left, right) -> left));
+    }
+
+    private Map<Long, NoteCountDO> buildNoteCountMap(List<Long> noteIds) {
+        if (noteIds == null || noteIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<NoteCountDO> countList = noteCountDOMapper.selectByNoteIds(noteIds);
+        if (countList == null || countList.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return countList.stream()
+                .filter(Objects::nonNull)
+                .filter(count -> count.getNoteId() != null)
+                .collect(Collectors.toMap(NoteCountDO::getNoteId, Function.identity(), (left, right) -> left));
+    }
+
+    @Override
+    public Result getBlogDetail(Long noteId) {
+        log.info("开始查询博客详情, noteId={}", noteId);
+        if (noteId == null) {
+            return Result.fail("noteId不能为空");
         }
 
-        NoteDO noteDO = noteMapper.selectByPrimaryKey(blogId);
-        NoteContentDO noteContentDO = noteContentDOMapper.selectByNoteId(blogId);
-        NoteCountDO noteCountDO = noteCountDOMapper.selectByNoteId(blogId);
+        NoteBasicDO noteBasicDO = noteBasicMapper.selectApprovedByNoteId(noteId);
+        if (noteBasicDO == null) {
+            log.warn("博客不存在或未通过审核, noteId={}", noteId);
+            return Result.fail("博客不存在或未通过审核");
+        }
+
+        NoteDO noteDO = noteMapper.selectByPrimaryKey(noteId);
+        NoteContentDO noteContentDO = noteContentDOMapper.selectByNoteId(noteId);
+        NoteCountDO noteCountDO = noteCountDOMapper.selectByNoteId(noteId);
         if (noteDO == null) {
-            log.warn("博客详情不存在, blogId={}", blogId);
+            log.warn("博客详情不存在, noteId={}", noteId);
             return Result.fail("博客不存在");
         }
 
@@ -254,7 +304,7 @@ public class GroundServiceImpl implements GroundService {
             BeanUtils.copyProperties(noteCountDO, dto);
         }
         dto.setStatus(noteBasicDO.getStatus() == null ? STATUS_APPROVED : noteBasicDO.getStatus());
-        dto.setId(blogId);
+        dto.setId(noteId);
         dto.setUserDTO(byUserId);
         return Result.ok(dto);
     }
@@ -281,6 +331,15 @@ public class GroundServiceImpl implements GroundService {
         Map<Long, NoteBasicDO> noteBasicMap = noteBasicDOList.stream()
                 .collect(Collectors.toMap(NoteBasicDO::getNoteId, item -> item, (left, right) -> left, LinkedHashMap::new));
 
+        // 批量查询用户信息和统计数据
+        List<Long> userIds = noteBasicDOList.stream()
+                .map(NoteBasicDO::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<Long, UserDTO> userMap = buildUserMap(userIds);
+        Map<Long, NoteCountDO> countMap = buildNoteCountMap(distinctNoteIdList);
+
         List<BlogListDTO> resultList = distinctNoteIdList.stream()
                 .map(noteBasicMap::get)
                 .filter(java.util.Objects::nonNull)
@@ -288,10 +347,9 @@ public class GroundServiceImpl implements GroundService {
                     BlogListDTO dto = new BlogListDTO();
                     BeanUtils.copyProperties(noteBasicDO, dto);
                     dto.setBlogId(noteBasicDO.getNoteId());
-                    NoteCountDO noteCountDO = noteCountDOMapper.selectByNoteId(noteBasicDO.getNoteId());
+                    NoteCountDO noteCountDO = countMap.get(noteBasicDO.getNoteId());
                     dto.setLikeTotal(noteCountDO == null ? 0L : noteCountDO.getLikeTotal());
-                    UserDTO userDTO = userAuthFeginApi.findByUserId(noteBasicDO.getUserId());
-                    dto.setUserDTO(userDTO);
+                    dto.setUserDTO(userMap.get(noteBasicDO.getUserId()));
                     return dto;
                 })
                 .collect(Collectors.toList());

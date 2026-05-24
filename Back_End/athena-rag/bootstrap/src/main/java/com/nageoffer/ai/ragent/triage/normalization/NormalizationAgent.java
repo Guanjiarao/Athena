@@ -2,6 +2,7 @@
 
 package com.nageoffer.ai.ragent.triage.normalization;
 
+import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
 import com.nageoffer.ai.ragent.triage.model.Fact;
 import com.nageoffer.ai.ragent.triage.model.SlotCode;
 import com.nageoffer.ai.ragent.triage.model.TriageContext;
@@ -14,11 +15,11 @@ import java.util.LinkedHashSet;
 import java.util.List;
 
 /**
- * 入口语义归一化 Agent。
+ * Normalization Agent 是多 Agent 架构的入口语义层。
  *
- * <p>NormalizationAgent 是 normalization 包的对外边界：输入为当前轮上下文/快照，输出为
- * NormalizedTurn。第一阶段仍按旧顺序包裹 TurnUnderstandingWorker、SemanticParserWorker、FactExtractor，
- * 保持 worker 的既有副作用和行为不变。</p>
+ * <p>对外保持 result-only：输入当前轮上下文快照，输出 NormalizationAgentResult/NormalizedTurn，
+ * 不决定下一问、不做风险中断、不查规则、不组装响应。当前内部复用旧 normalization worker，
+ * 并限制其只作用在 workingContext 上；状态写回统一由 TriageContextReducer 完成。</p>
  */
 @Component
 @RequiredArgsConstructor
@@ -29,26 +30,69 @@ public class NormalizationAgent {
     private final FactExtractor factExtractor;
 
     public NormalizedTurn normalize(TriageContext context) {
-        TurnInputSnapshot snapshot = TurnInputSnapshot.from(context);
-        return normalize(context, snapshot);
+        return normalizeToResult(context).getNormalizedTurn();
     }
 
-    public NormalizedTurn normalize(TriageContext context, TurnInputSnapshot snapshot) {
+    @RagTraceNode(name = "NormalizationAgent", type = "TRIAGE_NORM")
+    public NormalizationAgentResult normalizeToResult(TriageContext context) {
+        TurnInputSnapshot snapshot = TurnInputSnapshot.from(context);
+        return normalizeToResult(context, snapshot);
+    }
+
+    public NormalizationAgentResult normalizeToResult(TriageContext context, TurnInputSnapshot snapshot) {
         if (context == null) {
-            return NormalizedTurn.builder().build();
+            NormalizedTurn emptyTurn = NormalizedTurn.builder().build();
+            return NormalizationAgentResult.builder().normalizedTurn(emptyTurn).build();
         }
         context.ensureCollections();
-        turnUnderstandingWorker.execute(context);
-        semanticParserWorker.execute(context);
-        factExtractor.execute(context);
-        return NormalizedTurn.builder()
-                .turnUnderstanding(context.getLatestTurnUnderstanding())
-                .primaryComplaint(context.getFinalPrimaryComplaint())
-                .signals(collectSignals(context, snapshot))
-                .symptoms(context.getExtractedSymptoms() == null ? new ArrayList<>() : new ArrayList<>(context.getExtractedSymptoms()))
-                .facts(context.getFactHistory() == null ? new ArrayList<>() : new ArrayList<>(context.getFactHistory()))
-                .answeredSlots(collectAnsweredSlots(context.getFactHistory()))
+        TriageContext workingContext = cloneNormalizationWorkingContext(context);
+        turnUnderstandingWorker.execute(workingContext);
+        semanticParserWorker.execute(workingContext);
+        factExtractor.execute(workingContext);
+        NormalizedTurn normalizedTurn = NormalizedTurn.builder()
+                .turnUnderstanding(workingContext.getLatestTurnUnderstanding())
+                .primaryComplaint(workingContext.getFinalPrimaryComplaint())
+                .signals(collectSignals(workingContext, snapshot))
+                .symptoms(workingContext.getExtractedSymptoms() == null ? new ArrayList<>() : new ArrayList<>(workingContext.getExtractedSymptoms()))
+                .facts(workingContext.getFactHistory() == null ? new ArrayList<>() : new ArrayList<>(workingContext.getFactHistory()))
+                .answeredSlots(collectAnsweredSlots(workingContext))
                 .build();
+        return NormalizationAgentResult.builder()
+                .normalizedTurn(normalizedTurn)
+                .latestTurnUnderstanding(workingContext.getLatestTurnUnderstanding())
+                .factHistory(workingContext.getFactHistory() == null ? new ArrayList<>() : new ArrayList<>(workingContext.getFactHistory()))
+                .extractedSymptoms(workingContext.getExtractedSymptoms() == null ? new ArrayList<>() : new ArrayList<>(workingContext.getExtractedSymptoms()))
+                .finalPrimaryComplaint(workingContext.getFinalPrimaryComplaint())
+                .latestStateReducerResult(workingContext.getLatestStateReducerResult())
+                .stateReducerHistory(workingContext.getStateReducerHistory() == null ? new ArrayList<>() : new ArrayList<>(workingContext.getStateReducerHistory()))
+                .riskSignalState(workingContext.getRiskSignalState() == null ? new ArrayList<>() : new ArrayList<>(workingContext.getRiskSignalState()))
+                .correctionHistory(workingContext.getCorrectionHistory() == null ? new ArrayList<>() : new ArrayList<>(workingContext.getCorrectionHistory()))
+                .build();
+    }
+
+    private TriageContext cloneNormalizationWorkingContext(TriageContext source) {
+        TriageContext clone = TriageContext.builder()
+                .sessionId(source.getSessionId())
+                .userInput(source.getUserInput())
+                .latestUserTurn(source.getLatestUserTurn())
+                .conversationSummary(source.getConversationSummary())
+                .finalPrimaryComplaint(source.getFinalPrimaryComplaint())
+                .conversationHistory(source.getConversationHistory() == null ? new ArrayList<>() : new ArrayList<>(source.getConversationHistory()))
+                .factHistory(source.getFactHistory() == null ? new ArrayList<>() : new ArrayList<>(source.getFactHistory()))
+                .extractedSymptoms(source.getExtractedSymptoms() == null ? new ArrayList<>() : new ArrayList<>(source.getExtractedSymptoms()))
+                .latestTurnUnderstanding(source.getLatestTurnUnderstanding())
+                .turnUnderstandingHistory(source.getTurnUnderstandingHistory() == null ? new ArrayList<>() : new ArrayList<>(source.getTurnUnderstandingHistory()))
+                .latestStateReducerResult(source.getLatestStateReducerResult())
+                .stateReducerHistory(source.getStateReducerHistory() == null ? new ArrayList<>() : new ArrayList<>(source.getStateReducerHistory()))
+                .riskSignalState(source.getRiskSignalState() == null ? new ArrayList<>() : new ArrayList<>(source.getRiskSignalState()))
+                .correctionHistory(source.getCorrectionHistory() == null ? new ArrayList<>() : new ArrayList<>(source.getCorrectionHistory()))
+                .slotState(source.getSlotState())
+                .answeredSlots(source.getAnsweredSlots() == null ? new ArrayList<>() : new ArrayList<>(source.getAnsweredSlots()))
+                .pendingSlots(source.getPendingSlots() == null ? new ArrayList<>() : new ArrayList<>(source.getPendingSlots()))
+                .lastAskedSlots(source.getLastAskedSlots() == null ? new ArrayList<>() : new ArrayList<>(source.getLastAskedSlots()))
+                .build();
+        clone.ensureCollections();
+        return clone;
     }
 
     private List<String> collectSignals(TriageContext context, TurnInputSnapshot snapshot) {
@@ -70,14 +114,25 @@ public class NormalizationAgent {
         return new ArrayList<>(signals);
     }
 
-    private List<SlotCode> collectAnsweredSlots(List<Fact> facts) {
-        if (facts == null || facts.isEmpty()) {
+    private List<SlotCode> collectAnsweredSlots(TriageContext context) {
+        if (context == null) {
             return List.of();
         }
         LinkedHashSet<SlotCode> slots = new LinkedHashSet<>();
-        for (Fact fact : facts) {
-            if (fact != null && fact.getSlot() != null) {
-                slots.add(fact.getSlot());
+        if (context.getLatestTurnUnderstanding() != null
+                && context.getLatestTurnUnderstanding().getAnsweredSlots() != null) {
+            context.getLatestTurnUnderstanding().getAnsweredSlots().forEach(answered -> {
+                if (answered != null && answered.getSlot() != null) {
+                    slots.add(answered.getSlot());
+                }
+            });
+        }
+        List<Fact> facts = context.getFactHistory();
+        if (facts != null) {
+            for (Fact fact : facts) {
+                if (fact != null && fact.getSlot() != null) {
+                    slots.add(fact.getSlot());
+                }
             }
         }
         return new ArrayList<>(slots);

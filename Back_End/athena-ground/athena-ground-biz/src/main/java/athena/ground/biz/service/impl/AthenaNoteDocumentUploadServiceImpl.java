@@ -60,16 +60,20 @@ public class AthenaNoteDocumentUploadServiceImpl implements AthenaNoteDocumentUp
         Resource fileResource = new NamedByteArrayResource(contentHtml.getBytes(StandardCharsets.UTF_8), fileName);
         HttpEntity<Resource> fileEntity = new HttpEntity<>(fileResource, fileHeaders);
 
+        // 构建 metadata JSON
+        String metadataJson = buildMetadataJson(noteId, title, type, authorId);
+
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", fileEntity);
         body.add("sourceType", "file");
         body.add("processMode", "pipeline");
         body.add("pipelineId", target.pipelineId());
+        body.add("metadata", metadataJson);
 
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
-        log.info("[AthenaNoteUpload] 开始上传 HTML 文档, noteId={}, authorId={}, type={}, kbCode={}, kbId={}, pipelineId={}, fileName={}",
-                noteId, authorId, type, target.kbCode(), target.kbId(), target.pipelineId(), fileName);
+        log.info("[AthenaNoteUpload] 开始上传 HTML 文档, noteId={}, authorId={}, type={}, kbCode={}, kbId={}, pipelineId={}, fileName={}, metadata={}",
+                noteId, authorId, type, target.kbCode(), target.kbId(), target.pipelineId(), fileName, metadataJson);
 
         ResponseEntity<String> response = restTemplate.exchange(uploadUrl, HttpMethod.POST, requestEntity, String.class);
         Map<String, Object> payload = JsonUtils.parseObject(response.getBody(), new TypeReference<Map<String, Object>>() {
@@ -228,6 +232,24 @@ public class AthenaNoteDocumentUploadServiceImpl implements AthenaNoteDocumentUp
             return "athena-note-" + noteId + ".html";
         }
         return "athena-note-" + noteId + "-" + normalizedTitle + ".html";
+    }
+
+    /**
+     * 构建 metadata JSON 字符串
+     */
+    private String buildMetadataJson(Long noteId, String title, Byte type, Long authorId) {
+        Map<String, Object> metadata = new java.util.HashMap<>();
+        metadata.put("noteId", noteId);
+        metadata.put("title", title);
+        metadata.put("type", type);
+        metadata.put("authorId", authorId);
+        metadata.put("source", "athena-note");
+        try {
+            return JsonUtils.toJsonString(metadata);
+        } catch (Exception e) {
+            log.error("构建 metadata JSON 失败", e);
+            return "{}";
+        }
     }
 
     private static final class NamedByteArrayResource extends ByteArrayResource {

@@ -5,6 +5,7 @@ package com.nageoffer.ai.ragent.triage.service.impl;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.nageoffer.ai.ragent.framework.exception.ClientException;
+import com.nageoffer.ai.ragent.framework.trace.RagTraceRoot;
 import com.nageoffer.ai.ragent.triage.controller.request.TriageAnalyzeRequest;
 import com.nageoffer.ai.ragent.triage.controller.vo.TriageAnalyzeResponse;
 import com.nageoffer.ai.ragent.triage.engine.TriageStateMachine;
@@ -36,6 +37,7 @@ public class TriageOrchestratorServiceImpl implements TriageOrchestratorService 
     private final TriageResponseAgent triageResponseAgent;
 
     @Override
+    @RagTraceRoot(name = "TRIAGE_ANALYZE", conversationIdArg = "request", conversationIdGetter = "getSessionId")
     public TriageAnalyzeResponse analyze(TriageAnalyzeRequest request) {
         validateRequest(request);
         TriageContext context = loadOrCreateContext(request);

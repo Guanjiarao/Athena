@@ -228,6 +228,9 @@ public class IndexerNode implements IngestionNode {
             log.info("[IndexerNode] Chunk #{}: chunkId={}, index={}, metadataFields={}, mergedMetadata={}",
                     i, chunkId, chunk.getIndex(), metadataFields, mergedMetadata);
 
+            // 构建 chunk 的 metadata Map（用于写入向量库）
+            Map<String, Object> chunkMetadataMap = new HashMap<>();
+
             if (metadataFields != null && !metadataFields.isEmpty()) {
                 Map<String, Object> combined = new HashMap<>(mergedMetadata);
                 if (chunk.getMetadata() != null) {
@@ -242,6 +245,7 @@ public class IndexerNode implements IngestionNode {
                     Object value = combined.get(field);
                     if (value != null) {
                         addMetadataValue(metadata, field, value);
+                        chunkMetadataMap.put(field, value);
                         log.info("[IndexerNode] Chunk #{}: ✅ 添加 metadata: {}={}", i, field, value);
                     } else {
                         log.warn("[IndexerNode] Chunk #{}: ❌ metadata 字段 {} 不存在于 combined metadata 中", i, field);
@@ -250,6 +254,9 @@ public class IndexerNode implements IngestionNode {
             } else {
                 log.warn("[IndexerNode] Chunk #{}: metadataFields 为空，不添加自定义 metadata", i);
             }
+
+            // 将 metadata 设置到 chunk 对象上（供 VectorStoreService 使用）
+            chunk.setMetadata(chunkMetadataMap);
 
             JsonObject row = new JsonObject();
             row.addProperty("id", chunkId);

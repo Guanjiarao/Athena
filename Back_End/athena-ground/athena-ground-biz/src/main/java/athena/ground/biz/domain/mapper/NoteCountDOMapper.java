@@ -3,6 +3,8 @@ package athena.ground.biz.domain.mapper;
 import athena.ground.biz.domain.dataobject.NoteCountDO;
 import org.apache.ibatis.annotations.*;
 
+import java.util.List;
+
 public interface NoteCountDOMapper {
     int deleteByPrimaryKey(Long id);
 
@@ -21,6 +23,20 @@ public interface NoteCountDOMapper {
             "FROM tb_note_count " +
             "WHERE note_id = #{noteId}")
     NoteCountDO selectByNoteId(@Param("noteId") Long noteId);
+
+    /**
+     * 批量查询笔记计数记录
+     */
+    @Select("<script>" +
+            "SELECT id, note_id as noteId, like_total as likeTotal, " +
+            "collect_total as collectTotal, comment_total as commentTotal " +
+            "FROM tb_note_count " +
+            "WHERE note_id IN " +
+            "<foreach collection='noteIds' item='noteId' open='(' separator=',' close=')'>" +
+            "#{noteId}" +
+            "</foreach>" +
+            "</script>")
+    List<NoteCountDO> selectByNoteIds(@Param("noteIds") List<Long> noteIds);
 
     /**
      * 新增笔记计数记录

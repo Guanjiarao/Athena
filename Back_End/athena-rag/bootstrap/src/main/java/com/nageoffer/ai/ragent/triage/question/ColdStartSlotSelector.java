@@ -3,6 +3,7 @@
 package com.nageoffer.ai.ragent.triage.question;
 
 import cn.hutool.core.util.StrUtil;
+import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nageoffer.ai.ragent.framework.convention.ChatMessage;
@@ -95,6 +96,7 @@ public class ColdStartSlotSelector {
     private final TriageModelGateway triageModelGateway;
     private final TriageSlotRuleService triageSlotRuleService;
 
+    @RagTraceNode(name = "ColdStartSlotSelector", type = "TRIAGE_COLD")
     public QuestionPlan select(TriageContext context, int consecutiveFallbackCount) {
         log.warn("[ColdStartSlotSelector] 启动 LLM 冷启动槽位选择，连续兜底次数: {}", consecutiveFallbackCount);
 
@@ -274,30 +276,126 @@ public class ColdStartSlotSelector {
                 jsonStr = jsonStr.substring(0, jsonStr.length() - 3);
             }
             JsonNode root = new ObjectMapper().readTree(jsonStr.trim());
-            List<SlotScore> scores = new ArrayList<>();
-            JsonNode scoresNode = root.get("scores");
-            if (scoresNode != null && scoresNode.isArray()) {
-                for (JsonNode scoreNode : scoresNode) {
-                    try {
-                        scores.add(SlotScore.builder()
-                                .slot(SlotCode.valueOf(scoreNode.get("slot").asText()))
-                                .score(scoreNode.get("score").asInt())
-                                .reason(scoreNode.get("reason").asText())
-                                .build());
-                    } catch (Exception ex) {
-                        log.warn("[ColdStartSlotSelector] 忽略无法识别的槽位评分节点: {}", scoreNode, ex);
-                    }
-                }
-            }
-            return SlotScoringResult.builder()
-                    .scores(scores)
-                    .recommendation(root.path("recommendation").asText())
-                    .rationale(root.path("rationale").asText())
-                    .build();
+            return buildScoringResult(root);
         } catch (Exception e) {
+            SlotScoringResult partial = parsePartialSlotScores(response);
+            if (partial != null && partial.getScores() != null && !partial.getScores().isEmpty()) {
+                log.warn("[ColdStartSlotSelector] LLM 响应不是完整 JSON，已从 partial scores 兜底解析，count={}", partial.getScores().size());
+                return partial;
+            }
             log.error("[ColdStartSlotSelector] 解析 LLM 响应失败", e);
             return null;
         }
+    }
+
+    private SlotScoringResult buildScoringResult(JsonNode root) {
+        List<SlotScore> scores = new ArrayList<>();
+        JsonNode scoresNode = root.get("scores");
+        if (scoresNode != null && scoresNode.isArray()) {
+            for (JsonNode scoreNode : scoresNode) {
+                try {
+                    scores.add(SlotScore.builder()
+                            .slot(SlotCode.valueOf(scoreNode.get("slot").asText()))
+                            .score(scoreNode.get("score").asInt())
+                            .reason(scoreNode.get("reason").asText())
+                            .build());
+                } catch (Exception ex) {
+                    log.warn("[ColdStartSlotSelector] 忽略无法识别的槽位评分节点: {}", scoreNode, ex);
+                }
+            }
+        }
+        return SlotScoringResult.builder()
+                .scores(scores)
+                .recommendation(StrUtil.blankToDefault(root.path("recommendation").asText(), "continue"))
+                .rationale(root.path("rationale").asText())
+                .build();
+    }
+
+    private SlotScoringResult parsePartialSlotScores(String response) {
+        if (StrUtil.isBlank(response)) {
+            return null;
+        }
+        List<SlotScore> scores = new ArrayList<>();
+        for (SlotCode slot : SlotCode.values()) {
+            SlotScore score = parsePartialSlotScore(response, slot);
+            if (score != null) {
+                scores.add(score);
+            }
+        }
+        if (scores.isEmpty()) {
+            return null;
+        }
+        return SlotScoringResult.builder()
+                .scores(scores)
+                .recommendation(response.contains("generate_report") ? "generate_report" : "continue")
+                .rationale("LLM 返回被截断，已根据已完成的 scores 部分兜底解析。")
+                .build();
+    }
+
+    private SlotScore parsePartialSlotScore(String response, SlotCode slot) {
+        int slotIndex = response.indexOf("\"slot\": \"" + slot.name() + "\"");
+        if (slotIndex < 0) {
+            slotIndex = response.indexOf("\"slot\":\"" + slot.name() + "\"");
+        }
+        if (slotIndex < 0) {
+            return null;
+        }
+        int nextSlotIndex = response.indexOf("\"slot\":", slotIndex + 8);
+        String block = nextSlotIndex < 0 ? response.substring(slotIndex) : response.substring(slotIndex, nextSlotIndex);
+        Integer score = extractPartialInt(block, "score");
+        if (score == null) {
+            return null;
+        }
+        return SlotScore.builder()
+                .slot(slot)
+                .score(score)
+                .reason(StrUtil.blankToDefault(extractPartialString(block, "reason"), "LLM partial score"))
+                .build();
+    }
+
+    private Integer extractPartialInt(String block, String fieldName) {
+        String field = "\"" + fieldName + "\"";
+        int fieldIndex = block.indexOf(field);
+        if (fieldIndex < 0) {
+            return null;
+        }
+        int colonIndex = block.indexOf(':', fieldIndex + field.length());
+        if (colonIndex < 0) {
+            return null;
+        }
+        int index = colonIndex + 1;
+        while (index < block.length() && Character.isWhitespace(block.charAt(index))) {
+            index++;
+        }
+        int start = index;
+        while (index < block.length() && Character.isDigit(block.charAt(index))) {
+            index++;
+        }
+        if (start == index) {
+            return null;
+        }
+        return Integer.parseInt(block.substring(start, index));
+    }
+
+    private String extractPartialString(String block, String fieldName) {
+        String field = "\"" + fieldName + "\"";
+        int fieldIndex = block.indexOf(field);
+        if (fieldIndex < 0) {
+            return null;
+        }
+        int colonIndex = block.indexOf(':', fieldIndex + field.length());
+        if (colonIndex < 0) {
+            return null;
+        }
+        int quoteStart = block.indexOf('"', colonIndex + 1);
+        if (quoteStart < 0) {
+            return null;
+        }
+        int quoteEnd = block.indexOf('"', quoteStart + 1);
+        if (quoteEnd < 0) {
+            return block.substring(quoteStart + 1).trim();
+        }
+        return block.substring(quoteStart + 1, quoteEnd);
     }
 
     private void cacheHighConfidenceSlotScores(TriageContext context, SlotScoringResult scoringResult) {

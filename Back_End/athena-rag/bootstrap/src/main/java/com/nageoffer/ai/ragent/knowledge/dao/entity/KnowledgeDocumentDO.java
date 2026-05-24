@@ -110,6 +110,14 @@ public class KnowledgeDocumentDO {
     private String pipelineId;
 
     /**
+     * 文档元数据（JSON）
+     * 用于存储文档的自定义元数据，如 noteId、title、type、authorId 等
+     * 在重新分块时会将这些元数据传递给 IngestionContext
+     */
+    @TableField(typeHandler = com.nageoffer.ai.ragent.knowledge.dao.handler.JsonbTypeHandler.class)
+    private String metadata;
+
+    /**
      * 状态：
      * - pending：待向量化
      * - running：向量化中

@@ -2,6 +2,7 @@
 
 package com.nageoffer.ai.ragent.triage.rule;
 
+import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
 import com.nageoffer.ai.ragent.triage.controller.vo.TriageClarificationData;
 import com.nageoffer.ai.ragent.triage.model.QuestionGap;
 import com.nageoffer.ai.ragent.triage.model.QuestionGapSource;
@@ -22,14 +23,18 @@ public class RuleAgent {
 
     private final TriageSlotRuleService triageSlotRuleService;
 
+    @RagTraceNode(name = "RuleAgent", type = "TRIAGE_RULE")
     public RuleAgentResult lookup(RuleLookupRequest request) {
         List<String> signals = normalizeSignals(request == null ? null : request.getSignals());
         List<MatchedSlotRule> matchedRules = new ArrayList<>();
         for (String signal : signals) {
-            List<MatchedSlotRule> rules = triageSlotRuleService.getRulesBySignal(signal).stream()
+            List<SlotRuleDefinition> rules = triageSlotRuleService.getRulesBySignal(signal);
+            if (rules == null || rules.isEmpty()) {
+                continue;
+            }
+            matchedRules.addAll(rules.stream()
                     .map(MatchedSlotRule::from)
-                    .toList();
-            matchedRules.addAll(rules);
+                    .toList());
         }
         return RuleAgentResult.builder()
                 .searchedSignals(signals)

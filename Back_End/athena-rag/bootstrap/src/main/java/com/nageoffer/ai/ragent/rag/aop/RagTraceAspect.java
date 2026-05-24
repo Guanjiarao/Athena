@@ -57,42 +57,35 @@ public class RagTraceAspect {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         Method method = signature.getMethod();
         String traceId = IdUtil.getSnowflakeNextIdStr();
-        String conversationId = resolveStringArg(signature, joinPoint.getArgs(), traceRoot.conversationIdArg());
-        String taskId = resolveStringArg(signature, joinPoint.getArgs(), traceRoot.taskIdArg());
+        String conversationId = resolveStringArg(signature, joinPoint.getArgs(), traceRoot.conversationIdArg(), traceRoot.conversationIdGetter());
+        String taskId = resolveStringArg(signature, joinPoint.getArgs(), traceRoot.taskIdArg(), traceRoot.taskIdGetter());
         String traceName = StrUtil.blankToDefault(traceRoot.name(), method.getName());
         Date startTime = new Date();
         long startMillis = System.currentTimeMillis();
 
-        traceRecordService.startRun(RagTraceRunDO.builder()
-                .traceId(traceId)
-                .traceName(traceName)
-                .entryMethod(method.getDeclaringClass().getName() + "#" + method.getName())
-                .conversationId(conversationId)
-                .taskId(taskId)
-                .userId(UserContext.getUserId())
-                .status(STATUS_RUNNING)
-                .startTime(startTime)
-                .build());
+        try {
+            traceRecordService.startRun(RagTraceRunDO.builder()
+                    .traceId(traceId)
+                    .traceName(limitLength(traceName, 64))
+                    .entryMethod(limitLength(method.getDeclaringClass().getName() + "#" + method.getName(), 255))
+                    .conversationId(limitLength(conversationId, 20))
+                    .taskId(limitLength(taskId, 64))
+                    .userId(limitLength(UserContext.getUserId(), 64))
+                    .status(limitLength(STATUS_RUNNING, 20))
+                    .startTime(startTime)
+                    .build());
+        } catch (Exception traceEx) {
+            log.warn("trace run start 失败，跳过本次 trace，traceName={}", traceName, traceEx);
+            return joinPoint.proceed();
+        }
 
         RagTraceContext.setTraceId(traceId);
         try {
             Object result = joinPoint.proceed();
-            traceRecordService.finishRun(
-                    traceId,
-                    STATUS_SUCCESS,
-                    null,
-                    new Date(),
-                    System.currentTimeMillis() - startMillis
-            );
+            finishRunSafely(traceId, STATUS_SUCCESS, null, startMillis);
             return result;
         } catch (Throwable ex) {
-            traceRecordService.finishRun(
-                    traceId,
-                    STATUS_ERROR,
-                    truncateError(ex),
-                    new Date(),
-                    System.currentTimeMillis() - startMillis
-            );
+            finishRunSafely(traceId, STATUS_ERROR, truncateError(ex), startMillis);
             throw ex;
         } finally {
             RagTraceContext.clear();
@@ -117,47 +110,38 @@ public class RagTraceAspect {
         Date startTime = new Date();
         long startMillis = System.currentTimeMillis();
 
-        traceRecordService.startNode(RagTraceNodeDO.builder()
-                .traceId(traceId)
-                .nodeId(nodeId)
-                .parentNodeId(parentNodeId)
-                .depth(depth)
-                .nodeType(StrUtil.blankToDefault(traceNode.type(), "METHOD"))
-                .nodeName(StrUtil.blankToDefault(traceNode.name(), method.getName()))
-                .className(method.getDeclaringClass().getName())
-                .methodName(method.getName())
-                .status(STATUS_RUNNING)
-                .startTime(startTime)
-                .build());
+        try {
+            traceRecordService.startNode(RagTraceNodeDO.builder()
+                    .traceId(traceId)
+                    .nodeId(nodeId)
+                    .parentNodeId(parentNodeId)
+                    .depth(depth)
+                    .nodeType(limitLength(StrUtil.blankToDefault(traceNode.type(), "METHOD"), 16))
+                    .nodeName(limitLength(StrUtil.blankToDefault(traceNode.name(), method.getName()), 128))
+                    .className(limitLength(method.getDeclaringClass().getName(), 255))
+                    .methodName(limitLength(method.getName(), 128))
+                    .status(limitLength(STATUS_RUNNING, 20))
+                    .startTime(startTime)
+                    .build());
+        } catch (Exception traceEx) {
+            log.warn("trace node start 失败，跳过节点 trace，nodeName={}，nodeType={}", traceNode.name(), traceNode.type(), traceEx);
+            return joinPoint.proceed();
+        }
 
         RagTraceContext.pushNode(nodeId);
         try {
             Object result = joinPoint.proceed();
-            traceRecordService.finishNode(
-                    traceId,
-                    nodeId,
-                    STATUS_SUCCESS,
-                    null,
-                    new Date(),
-                    System.currentTimeMillis() - startMillis
-            );
+            finishNodeSafely(traceId, nodeId, STATUS_SUCCESS, null, startMillis);
             return result;
         } catch (Throwable ex) {
-            traceRecordService.finishNode(
-                    traceId,
-                    nodeId,
-                    STATUS_ERROR,
-                    truncateError(ex),
-                    new Date(),
-                    System.currentTimeMillis() - startMillis
-            );
+            finishNodeSafely(traceId, nodeId, STATUS_ERROR, truncateError(ex), startMillis);
             throw ex;
         } finally {
-            RagTraceContext.popNode();
+            RagTraceContext.popNodeIfCurrent(nodeId);
         }
     }
 
-    private String resolveStringArg(MethodSignature signature, Object[] args, String argName) {
+    private String resolveStringArg(MethodSignature signature, Object[] args, String argName, String getterName) {
         if (StrUtil.isBlank(argName) || args == null || args.length == 0) {
             return null;
         }
@@ -173,9 +157,62 @@ public class RagTraceAspect {
             if (arg == null) {
                 return null;
             }
-            return String.valueOf(arg);
+            Object value = resolveGetterValue(arg, getterName);
+            return value == null ? null : String.valueOf(value);
         }
         return null;
+    }
+
+    private Object resolveGetterValue(Object arg, String getterName) {
+        if (arg == null) {
+            return null;
+        }
+        if (StrUtil.isBlank(getterName)) {
+            return arg;
+        }
+        try {
+            Method getter = arg.getClass().getMethod(getterName);
+            return getter.invoke(arg);
+        } catch (Exception ex) {
+            log.debug("trace root 参数 getter 解析失败，class={}，getter={}", arg.getClass().getName(), getterName, ex);
+            return null;
+        }
+    }
+
+    private void finishRunSafely(String traceId, String status, String errorMessage, long startMillis) {
+        try {
+            traceRecordService.finishRun(
+                    traceId,
+                    limitLength(status, 20),
+                    errorMessage,
+                    new Date(),
+                    System.currentTimeMillis() - startMillis
+            );
+        } catch (Exception traceEx) {
+            log.warn("trace run finish 失败，traceId={}，status={}", traceId, status, traceEx);
+        }
+    }
+
+    private void finishNodeSafely(String traceId, String nodeId, String status, String errorMessage, long startMillis) {
+        try {
+            traceRecordService.finishNode(
+                    traceId,
+                    nodeId,
+                    status,
+                    errorMessage,
+                    new Date(),
+                    System.currentTimeMillis() - startMillis
+            );
+        } catch (Exception traceEx) {
+            log.warn("trace node finish 失败，traceId={}，nodeId={}，status={}", traceId, nodeId, status, traceEx);
+        }
+    }
+
+    private String limitLength(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength);
     }
 
     private String truncateError(Throwable throwable) {

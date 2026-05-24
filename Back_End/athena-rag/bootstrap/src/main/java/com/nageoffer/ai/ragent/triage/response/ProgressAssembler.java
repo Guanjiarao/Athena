@@ -2,8 +2,8 @@
 
 package com.nageoffer.ai.ragent.triage.response;
 
-import com.nageoffer.ai.ragent.triage.session.TriageSessionProperties;
 import com.nageoffer.ai.ragent.triage.controller.vo.TriageClarificationData;
+import com.nageoffer.ai.ragent.triage.session.TriageSessionProperties;
 import com.nageoffer.ai.ragent.triage.model.QuestionGap;
 import com.nageoffer.ai.ragent.triage.model.QuestionGapSource;
 import com.nageoffer.ai.ragent.triage.model.QuestionGapType;
@@ -20,10 +20,10 @@ public class ProgressAssembler {
     public TriageClarificationData.TriageProgress assemble(TriageContext context) {
         int targetSteps = safePositive(triageSessionProperties.getTargetClarificationTurns(), 7);
         int maxSteps = Math.max(safePositive(triageSessionProperties.getMaxTotalTurns(), 9), targetSteps);
-        int currentStep = context == null || context.getQuestionPlan() == null || context.getQuestionPlan().getAskCount() == null
+        int currentStep = context == null
                 ? 1
-                : Math.max(1, context.getQuestionPlan().getAskCount());
-        int percent = Math.min(100, (int) Math.round(currentStep * 100.0D / targetSteps));
+                : Math.max(1, context.getTotalTurnCount());
+        int percent = Math.min(100, (int) Math.round(Math.min(currentStep, maxSteps) * 100.0D / targetSteps));
         boolean riskCheck = hasRiskQuestion(context);
         boolean extended = currentStep > targetSteps;
         String mode;

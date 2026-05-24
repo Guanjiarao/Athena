@@ -9,7 +9,7 @@ import java.util.List;
 public interface GroundService {
     Result getBlogListPage(Integer pageNum,Integer pageSize);
 
-    Result getBlogDetail(Long blogId, Byte type);
+    Result getBlogDetail(Long noteId);
 
     Result getNoteBasicListByNoteIdList(List<Long> noteIdList);
 

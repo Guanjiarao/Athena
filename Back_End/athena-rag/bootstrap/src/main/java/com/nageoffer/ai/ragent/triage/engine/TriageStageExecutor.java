@@ -7,19 +7,11 @@ import com.nageoffer.ai.ragent.triage.model.SlotCode;
 import com.nageoffer.ai.ragent.triage.model.TriageAction;
 import com.nageoffer.ai.ragent.triage.model.TriageContext;
 import com.nageoffer.ai.ragent.triage.service.TriageModelGateway;
-import com.nageoffer.ai.ragent.triage.normalization.FactExtractor;
 import com.nageoffer.ai.ragent.triage.question.QuestionOptionProvider;
-import com.nageoffer.ai.ragent.triage.question.QuestionPlanner;
 import com.nageoffer.ai.ragent.triage.question.QuestionPlanningSupport;
-import com.nageoffer.ai.ragent.triage.worker.SOPValidatorWorker;
-import com.nageoffer.ai.ragent.triage.normalization.SemanticParserWorker;
-import com.nageoffer.ai.ragent.triage.slot.SlotManager;
-import com.nageoffer.ai.ragent.triage.slot.StateReducer;
-import com.nageoffer.ai.ragent.triage.normalization.TurnUnderstandingWorker;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 
 @Slf4j
@@ -28,41 +20,12 @@ final class TriageStageExecutor {
     private TriageStageExecutor() {
     }
 
-    static String executeParsing(TriageContext context,
-                                 TurnUnderstandingWorker turnUnderstandingWorker,
-                                 SemanticParserWorker semanticParserWorker,
-                                 FactExtractor factExtractor,
-                                 StateReducer stateReducer,
-                                 SlotManager slotManager) {
-        turnUnderstandingWorker.execute(context);
-        semanticParserWorker.execute(context);
-        factExtractor.execute(context);
-        stateReducer.execute(context);
-        slotManager.execute(context);
-        int symptomCount = context.getExtractedSymptoms() == null ? 0 : context.getExtractedSymptoms().size();
-        int factCount = context.getFactHistory() == null ? 0 : context.getFactHistory().size();
-        int filledSlotCount = context.getSlotState() == null || context.getSlotState().getSlots() == null
-                ? 0
-                : context.getSlotState().getSlots().size();
-        int reducedSlotCount = context.getLatestStateReducerResult() == null || context.getLatestStateReducerResult().getReducedSlots() == null
-                ? 0
-                : context.getLatestStateReducerResult().getReducedSlots().size();
-        String turnIntent = context.getLatestTurnUnderstanding() == null || context.getLatestTurnUnderstanding().getIntent() == null
-                ? "UNKNOWN"
-                : context.getLatestTurnUnderstanding().getIntent().name();
-        return "Parsing finished with intent=" + turnIntent + ", " + symptomCount + " symptom(s), "
-                + factCount + " fact(s), " + reducedSlotCount + " reduced slot(s), and " + filledSlotCount + " projected slot value(s).";
-    }
-
     static String executeValidation(TriageContext context,
-                                    QuestionPlanner questionPlanner,
-                                    SOPValidatorWorker sopValidatorWorker,
                                     QuestionOptionProvider optionGenerator,
                                     QuestionPlanningSupport questionPlanSupport,
                                     TriageModelGateway triageModelGateway) {
-        questionPlanner.execute(context);
         QuestionPlan questionPlanAfterPlanner = context.getQuestionPlan();
-        log.info("[StageExecutor] questionPlanner 执行后: nextSlotsToAsk={}, pendingSlots={}, priorityReason={}, policyReason={}, askCount={}, followUpMode={}",
+        log.info("[StageExecutor] 使用 Supervisor/ContextReducer 已写入的问题计划: nextSlotsToAsk={}, pendingSlots={}, priorityReason={}, policyReason={}, askCount={}, followUpMode={}",
                 questionPlanAfterPlanner == null ? "null" : questionPlanAfterPlanner.getNextSlotsToAsk(),
                 questionPlanAfterPlanner == null ? "null" : questionPlanAfterPlanner.getPendingSlots(),
                 questionPlanAfterPlanner == null ? "null" : questionPlanAfterPlanner.getPriorityReason(),
@@ -72,12 +35,6 @@ final class TriageStageExecutor {
         syncMissingFieldsFromQuestionPlan(context);
         log.info("[StageExecutor] syncMissingFields 后: missingFields={}, pendingSlots={}, hasMissingFields={}",
                 context.getMissingFields(), context.getPendingSlots(), context.hasMissingFields());
-        if (shouldRunLegacyValidationFallback(context)) {
-            List<String> plannedMissingFields = new ArrayList<>(context.getMissingFields());
-            sopValidatorWorker.execute(context);
-            context.setMissingFields(mergeMissingFields(plannedMissingFields, context.getMissingFields()));
-            log.info("[StageExecutor] legacy fallback 后: plannedMissingFields={}, mergedMissingFields={}", plannedMissingFields, context.getMissingFields());
-        }
         QuestionPlan questionPlan = context.getQuestionPlan();
         if (questionPlan != null && questionPlan.getNextSlotsToAsk() != null) {
             context.setLastAskedSlots(new ArrayList<>(questionPlan.getNextSlotsToAsk()));
@@ -124,10 +81,6 @@ final class TriageStageExecutor {
         context.setMissingFields(missingFields);
     }
 
-    private static boolean shouldRunLegacyValidationFallback(TriageContext context) {
-        return context.getQuestionPlan() == null;
-    }
-
     private static String buildPendingSlotRationale(TriageContext context) {
         List<SlotCode> pendingSlots = context.getPendingSlots() == null ? List.of() : context.getPendingSlots();
         QuestionPlan questionPlan = context.getQuestionPlan();
@@ -148,17 +101,6 @@ final class TriageStageExecutor {
             return "Compatibility fallback missing fields: " + String.join(", ", missingFields);
         }
         return "Additional clarification is required before risk assessment.";
-    }
-
-    private static List<String> mergeMissingFields(List<String> primaryFields, List<String> fallbackFields) {
-        LinkedHashSet<String> merged = new LinkedHashSet<>();
-        if (primaryFields != null) {
-            merged.addAll(primaryFields);
-        }
-        if (fallbackFields != null) {
-            merged.addAll(fallbackFields);
-        }
-        return new ArrayList<>(merged);
     }
 
     private static String mapSlotToMissingField(SlotCode slotCode) {

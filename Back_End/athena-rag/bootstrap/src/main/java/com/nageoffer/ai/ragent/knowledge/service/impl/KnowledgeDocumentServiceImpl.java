@@ -130,6 +130,7 @@ public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
                 .chunkStrategy(modeConfig.chunkingMode() != null ? modeConfig.chunkingMode().getValue() : null)
                 .chunkConfig(modeConfig.chunkConfig())
                 .pipelineId(modeConfig.pipelineId())
+                .metadata(StrUtil.trimToNull(requestParam.getMetadata()))
                 .createdBy(UserContext.getUsername())
                 .updatedBy(UserContext.getUsername())
                 .build();
@@ -336,11 +337,15 @@ public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
             throw new RuntimeException("读取文件内容失败：docId=" + docId, e);
         }
 
+        // 解析 metadata（如果存在）
+        Map<String, Object> metadata = parseMetadata(documentDO.getMetadata());
+
         IngestionContext context = IngestionContext.builder()
                 .taskId(docId)
                 .pipelineId(pipelineId)
                 .rawBytes(fileBytes)
                 .mimeType(documentDO.getFileType())
+                .metadata(metadata)
                 .vectorSpaceId(VectorSpaceId.builder()
                         .logicalName(kbDO.getCollectionName())
                         .build())
@@ -360,6 +365,21 @@ public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
         }
 
         return chunks;
+    }
+
+    /**
+     * 解析 metadata JSON 字符串为 Map
+     */
+    private Map<String, Object> parseMetadata(String metadataJson) {
+        if (!StringUtils.hasText(metadataJson)) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(metadataJson, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            log.warn("解析 metadata 失败，将忽略: {}", metadataJson, e);
+            return null;
+        }
     }
 
     public void chunkDocument(KnowledgeDocumentDO documentDO) {

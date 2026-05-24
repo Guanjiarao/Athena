@@ -16,8 +16,7 @@ public interface InsightGroundFeignApi {
                               @RequestParam("pageSize") Integer pageSize);
 
     @GetMapping(PREFIX + "/Detail")
-    Result<?> getBlogDetail(@RequestParam("blog_id") Long blogId,
-                            @RequestParam("type") Byte type);
+    Result<?> getBlogDetail(@RequestParam("blog_id") Long blogId);
 
     @GetMapping(PREFIX + "/myList")
     Result<?> getBlogListByUserId(@RequestParam(value = "userId", required = false) Long userId,

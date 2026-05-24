@@ -43,16 +43,21 @@ public class GroundController {
 
     /**
      * 博客详情：返回所有字段
-     * @param blog_id 博客ID（对应NoteDO的id）
-     * @param type 博客类型
+     * 支持传 noteId 或 blogId，数据库主键实际为 noteId
      */
     @GetMapping("/Detail")
     public Result getBlogDetail(
-            @RequestParam("blog_id") Long blog_id,
-            @RequestParam("type") Byte type
+            @RequestParam(value = "noteId", required = false) Long noteId,
+            @RequestParam(value = "noteid", required = false) Long noteid,
+            @RequestParam(value = "blogId", required = false) Long blogId,
+            @RequestParam(value = "blogid", required = false) Long blogid,
+            @RequestParam(value = "blog_id", required = false) Long blog_id
     ) {
-        // 直接调用Service返回所有字段
-        return groundService.getBlogDetail(blog_id, type);
+        Long targetNoteId = noteId != null ? noteId : noteid;
+        targetNoteId = targetNoteId != null ? targetNoteId : blogId;
+        targetNoteId = targetNoteId != null ? targetNoteId : blogid;
+        targetNoteId = targetNoteId != null ? targetNoteId : blog_id;
+        return groundService.getBlogDetail(targetNoteId);
     }
 
     /**

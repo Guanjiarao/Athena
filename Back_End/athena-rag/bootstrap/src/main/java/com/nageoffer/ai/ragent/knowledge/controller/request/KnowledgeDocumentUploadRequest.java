@@ -51,4 +51,11 @@ public class KnowledgeDocumentUploadRequest {
      * 仅在 processMode=pipeline 时有效
      */
     private String pipelineId;
+
+    /**
+     * 文档元数据（JSON 字符串）
+     * 用于存储文档的自定义元数据，如 noteId、title、type、authorId 等
+     * 示例：{"noteId":123,"title":"标题","type":50,"authorId":1024}
+     */
+    private String metadata;
 }

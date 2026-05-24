@@ -92,6 +92,7 @@ rag:
     channels:
       vector-global:
         confidence-threshold: 0.6
+        single-intent-supplement-threshold: 0.8
         top-k-multiplier: 3
       intent-directed:
         min-intent-score: 0.4
@@ -224,6 +225,9 @@ triage:
     context-window-max-chars: 200
     target-recent-window-chars: 120
     summary-max-chars: 200
+    target-clarification-turns: 7
+    max-total-turns: 8
+    min-required-turns: 5
   ai:
     text-model: qwen-plus
     report-model: qwen3-max

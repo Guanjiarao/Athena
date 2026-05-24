@@ -2,6 +2,7 @@
 
 package com.nageoffer.ai.ragent.triage.risk;
 
+import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
 import com.nageoffer.ai.ragent.triage.normalization.NormalizedTurn;
 import com.nageoffer.ai.ragent.triage.model.RiskDecision;
 import com.nageoffer.ai.ragent.triage.model.RiskGap;
@@ -12,7 +13,11 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 
 /**
- * 风险 Agent。负责 LLM 风险识别、风险追问建议和红旗中断判断。
+ * Risk Agent 是多 Agent 架构中的安全官。
+ *
+ * <p>对外保持 result-only：输入当前 context 快照与 NormalizedTurn，输出 RiskAgentResult，
+ * 不直接写原始 TriageContext。当前内部复用 RiskStratifierWorker，并限制其只作用在 workingContext 上；
+ * 状态写回统一由 TriageContextReducer 完成。</p>
  */
 @Component
 @RequiredArgsConstructor
@@ -20,6 +25,7 @@ public class RiskAgent {
 
     private final RiskStratifierWorker riskStratifierWorker;
 
+    @RagTraceNode(name = "RiskAgent", type = "TRIAGE_RISK")
     public RiskAgentResult assess(TriageContext context, NormalizedTurn normalizedTurn) {
         TriageContext workingContext = cloneRiskWorkingContext(context);
         riskStratifierWorker.execute(workingContext);

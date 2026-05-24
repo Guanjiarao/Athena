@@ -3,6 +3,7 @@
 package com.nageoffer.ai.ragent.triage.normalization;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
 import com.nageoffer.ai.ragent.infra.chat.LLMService;
 import com.nageoffer.ai.ragent.triage.config.TriageAiProperties;
 import com.nageoffer.ai.ragent.triage.model.TriageContext;
@@ -38,6 +39,7 @@ public class TurnUnderstandingWorker {
                 triageAiProperties);
     }
 
+    @RagTraceNode(name = "TurnUnderstandingLLM", type = "TRIAGE_LLM_TURN")
     public TriageContext execute(TriageContext context) {
         return turnUnderstandingExecutionEngine.execute(context);
     }

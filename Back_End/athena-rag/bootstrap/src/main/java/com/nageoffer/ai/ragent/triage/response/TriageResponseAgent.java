@@ -3,6 +3,7 @@
 package com.nageoffer.ai.ragent.triage.response;
 
 import cn.hutool.core.util.StrUtil;
+import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
 import com.nageoffer.ai.ragent.triage.controller.vo.TriageAnalyzeResponse;
 import com.nageoffer.ai.ragent.triage.model.TriageAction;
 import com.nageoffer.ai.ragent.triage.model.TriageContext;
@@ -17,6 +18,7 @@ public class TriageResponseAgent {
     private final WarningResponseAssembler warningResponseAssembler;
     private final ReportResponseAssembler reportResponseAssembler;
 
+    @RagTraceNode(name = "TriageResponseAgent", type = "TRIAGE_RESPONSE")
     public TriageAnalyzeResponse toResponse(TriageContext context) {
         TriageAction action = context.getNextAction();
         if (action == null) {

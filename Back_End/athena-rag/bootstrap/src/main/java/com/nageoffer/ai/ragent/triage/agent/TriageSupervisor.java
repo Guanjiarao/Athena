@@ -2,9 +2,12 @@
 
 package com.nageoffer.ai.ragent.triage.agent;
 
+import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
 import com.nageoffer.ai.ragent.triage.model.QuestionPlan;
+import com.nageoffer.ai.ragent.triage.model.TriageAction;
 import com.nageoffer.ai.ragent.triage.model.TriageContext;
 import com.nageoffer.ai.ragent.triage.normalization.NormalizationAgent;
+import com.nageoffer.ai.ragent.triage.normalization.NormalizationAgentResult;
 import com.nageoffer.ai.ragent.triage.normalization.NormalizedTurn;
 import com.nageoffer.ai.ragent.triage.risk.RiskAgent;
 import com.nageoffer.ai.ragent.triage.risk.RiskAgentResult;
@@ -26,8 +29,8 @@ import java.util.concurrent.Executor;
 /**
  * 多 Agent 架构入口。
  *
- * <p>当前实现保持 Normalization 先跑，随后 Rule/Slot/Risk 并发执行。
- * 这些 Agent 仍包裹旧 worker，后续会继续演进为只返回 result、由 ContextReducer 单写 context。</p>
+ * <p>当前实现遵循多 Agent 架构：Normalization 先产出 NormalizedTurn，随后 Rule/Slot/Risk 并发执行；
+ * Rule miss 时同步启动 ColdStart 预取，最终由 ContextReducer 单写 context，再进入 QuestionPlanner/Response。</p>
  */
 @Slf4j
 @Component
@@ -60,8 +63,13 @@ public class TriageSupervisor {
         this.triageAgentExecutor = triageAgentExecutor;
     }
 
+    @RagTraceNode(name = "TriageSupervisor", type = "TRIAGE_SUP")
     public void runUnderstandingAndAgents(TriageContext context) {
-        NormalizedTurn normalizedTurn = normalizationAgent.normalize(context);
+        NormalizationAgentResult normalizationResult = normalizationAgent.normalizeToResult(context);
+        contextReducer.applyNormalization(context, normalizationResult);
+        NormalizedTurn normalizedTurn = normalizationResult.getNormalizedTurn() == null
+                ? NormalizedTurn.builder().build()
+                : normalizationResult.getNormalizedTurn();
         CompletableFuture<RuleAgentResult> ruleFuture = CompletableFuture
                 .supplyAsync(() -> ruleAgent.lookup(RuleLookupRequest.builder()
                         .signals(normalizedTurn.getSignals())
@@ -87,20 +95,28 @@ public class TriageSupervisor {
                             .interrupt(Boolean.FALSE)
                             .build();
                 });
+        CompletableFuture<QuestionPlan> coldStartFuture = ruleFuture.thenCompose(ruleResult -> {
+            if (ruleResult != null && Boolean.TRUE.equals(ruleResult.getColdStartNeeded())) {
+                return CompletableFuture.supplyAsync(() -> prefetchColdStartQuestionPlan(context), triageAgentExecutor);
+            }
+            return CompletableFuture.completedFuture(null);
+        }).exceptionally(ex -> {
+            log.warn("[TriageSupervisor] ColdStart prefetch failed, skip prefetched plan. sessionId={}", context.getSessionId(), ex);
+            return null;
+        });
         RuleAgentResult ruleResult = ruleFuture.join();
         SlotAgentResult slotResult = slotFuture.join();
         RiskAgentResult riskResult = riskFuture.join();
+        QuestionPlan prefetchedColdStartPlan = coldStartFuture.join();
         contextReducer.apply(context, normalizedTurn, riskResult, ruleResult, slotResult);
-        if (ruleResult != null && Boolean.TRUE.equals(ruleResult.getColdStartNeeded())) {
-            try {
-                context.setPrefetchedColdStartQuestionPlan(prefetchColdStartQuestionPlan(context));
-            } catch (Exception ex) {
-                log.warn("[TriageSupervisor] ColdStart prefetch failed, skip prefetched plan. sessionId={}", context.getSessionId(), ex);
-                context.setPrefetchedColdStartQuestionPlan(null);
-            }
-        } else {
+        if (riskResult != null && Boolean.TRUE.equals(riskResult.getInterrupt())) {
+            context.setNextAction(TriageAction.TRIGGER_WARNING);
             context.setPrefetchedColdStartQuestionPlan(null);
+            log.info("[TriageSupervisor] risk interrupt=true, skip QuestionPlanner. sessionId={}, reason={}",
+                    context.getSessionId(), riskResult.getWarningReason());
+            return;
         }
+        context.setPrefetchedColdStartQuestionPlan(prefetchedColdStartPlan);
         QuestionPlannerResult questionPlannerResult;
         try {
             questionPlannerResult = questionPlanner.execute(context);

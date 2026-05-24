@@ -8,6 +8,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nageoffer.ai.ragent.framework.convention.ChatMessage;
 import com.nageoffer.ai.ragent.framework.convention.ChatRequest;
+import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
 import com.nageoffer.ai.ragent.infra.chat.LLMService;
 import com.nageoffer.ai.ragent.infra.util.LLMResponseCleaner;
 import com.nageoffer.ai.ragent.triage.config.TriageAiProperties;
@@ -56,9 +57,9 @@ public abstract class AbstractStructuredTriageWorker {
     /**
      * 统一调用模型，并支持显式指定模型标识。
      */
+    @RagTraceNode(name = "StructuredTriageWorkerLLM", type = "TRIAGE_LLM_ST")
     protected String invokeLlm(String modelId, String systemPrompt, String userPrompt, double temperature, double topP) {
         ChatRequest request = ChatRequest.builder()
-                // .modelId(StrUtil.isBlank(modelId) ? null : modelId)  // modelId 字段已从 ChatRequest 中移除
                 .messages(List.of(
                         ChatMessage.system(systemPrompt),
                         ChatMessage.user(userPrompt)
@@ -68,7 +69,7 @@ public abstract class AbstractStructuredTriageWorker {
                 .thinking(false)
                 .maxTokens(800)
                 .build();
-        return llmService.chat(request);
+        return llmService.chat(request, modelId);
     }
 
     protected String resolveModelId(String propertyName, String defaultModelId) {

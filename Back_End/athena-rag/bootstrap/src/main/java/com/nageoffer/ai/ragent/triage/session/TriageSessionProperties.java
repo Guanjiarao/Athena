@@ -45,9 +45,9 @@ public class TriageSessionProperties {
     private Integer targetClarificationTurns = 7;
 
     /**
-     * 最大总对话轮次。
+     * 最大总对话轮次。达到该轮次时，即使仍有待补槽位，也强制生成报告。
      */
-    private Integer maxTotalTurns = 9;
+    private Integer maxTotalTurns = 8;
 
     /**
      * 最少必须问的问题数（红旗情况除外）。

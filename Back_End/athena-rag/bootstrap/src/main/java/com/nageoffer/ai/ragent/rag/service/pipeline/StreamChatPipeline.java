@@ -59,9 +59,19 @@ public class StreamChatPipeline {
     private final StreamTaskManager taskManager;
 
     /**
-     * 执行流式对话管道
+     * 执行流式对话管道。
+     *
+     * 调用链说明：
+     * 1. RAGChatServiceImpl.streamChat 负责生成 conversationId/taskId、创建 SSE callback，并进入队列与 trace 包装。
+     * 2. StreamChatPipeline.execute 负责实际业务编排：加载记忆 -> 问题改写 -> 意图识别 -> 分支处理。
+     * 3. 如果命中歧义引导，直接返回引导语，不调用 LLM 检索回答。
+     * 4. 如果所有意图都是 system-only（如“你好”“你是谁”“你能做什么”），走 answer-chat-system.st。
+     * 5. 否则先检索知识，再走 RAG prompt（如 answer-chat-kb.st / MCP 相关 prompt）。
      */
     public void execute(StreamChatContext ctx) {
+        log.info("[StreamChatPipeline] 开始执行对话流水线, conversationId={}, taskId={}, question={}",
+                ctx.getConversationId(), ctx.getTaskId(), ctx.getQuestion());
+
         loadMemory(ctx);
         rewriteQuery(ctx);
         resolveIntents(ctx);
@@ -93,16 +103,23 @@ public class StreamChatPipeline {
                 ChatMessage.user(ctx.getQuestion())
         );
         ctx.setHistory(history);
+        log.info("[StreamChatPipeline] 记忆加载完成, conversationId={}, taskId={}, historySize={}",
+                ctx.getConversationId(), ctx.getTaskId(), history != null ? history.size() : 0);
     }
 
     private void rewriteQuery(StreamChatContext ctx) {
         RewriteResult rewriteResult = queryRewriteService.rewriteWithSplit(ctx.getQuestion(), ctx.getHistory());
         ctx.setRewriteResult(rewriteResult);
+        log.info("[StreamChatPipeline] 问题改写完成, conversationId={}, taskId={}, rewrittenQuestion={}, subQuestionCount={}",
+                ctx.getConversationId(), ctx.getTaskId(), rewriteResult.rewrittenQuestion(),
+                rewriteResult.subQuestions() != null ? rewriteResult.subQuestions().size() : 0);
     }
 
     private void resolveIntents(StreamChatContext ctx) {
         List<SubQuestionIntent> subIntents = intentResolver.resolve(ctx.getRewriteResult());
         ctx.setSubIntents(subIntents);
+        log.info("[StreamChatPipeline] 意图识别完成, conversationId={}, taskId={}, subIntentCount={}",
+                ctx.getConversationId(), ctx.getTaskId(), subIntents != null ? subIntents.size() : 0);
     }
 
     private boolean handleGuidance(StreamChatContext ctx) {
@@ -111,8 +128,12 @@ public class StreamChatPipeline {
                 ctx.getSubIntents()
         );
         if (!decision.isPrompt()) {
+            log.info("[StreamChatPipeline] 未命中歧义引导分支, conversationId={}, taskId={}",
+                    ctx.getConversationId(), ctx.getTaskId());
             return false;
         }
+        log.info("[StreamChatPipeline] 命中歧义引导分支, conversationId={}, taskId={}, prompt={}",
+                ctx.getConversationId(), ctx.getTaskId(), decision.getPrompt());
         StreamCallback callback = ctx.getCallback();
         callback.onContent(decision.getPrompt());
         callback.onComplete();
@@ -124,6 +145,8 @@ public class StreamChatPipeline {
         boolean allSystemOnly = subIntents.stream()
                 .allMatch(si -> intentResolver.isSystemOnly(si.nodeScores()));
         if (!allSystemOnly) {
+            log.info("[StreamChatPipeline] 未命中 system-only 分支, 将进入检索流程, conversationId={}, taskId={}",
+                    ctx.getConversationId(), ctx.getTaskId());
             return false;
         }
         String customPrompt = subIntents.stream()
@@ -132,6 +155,10 @@ public class StreamChatPipeline {
                 .filter(StrUtil::isNotBlank)
                 .findFirst()
                 .orElse(null);
+        log.info("[StreamChatPipeline] 命中 system-only 分支, 使用{}系统提示词, conversationId={}, taskId={}, promptPath={}",
+                StrUtil.isNotBlank(customPrompt) ? "意图节点自定义" : "默认",
+                ctx.getConversationId(), ctx.getTaskId(),
+                StrUtil.isNotBlank(customPrompt) ? "intentNode.promptTemplate" : CHAT_SYSTEM_PROMPT_PATH);
         StreamCancellationHandle handle = streamSystemResponse(
                 ctx.getRewriteResult().rewrittenQuestion(),
                 ctx.getHistory(),
@@ -144,8 +171,10 @@ public class StreamChatPipeline {
 
     private RetrievalContext retrieve(StreamChatContext ctx) {
         RetrievalContext retrievalCtx = retrievalEngine.retrieve(ctx.getSubIntents(), searchProperties.getDefaultTopK());
-        log.info("[StreamChatPipeline] 检索完成, 检索到 {} 个 chunks",
-                retrievalCtx.getAllChunks() != null ? retrievalCtx.getAllChunks().size() : 0);
+        log.info("[StreamChatPipeline] 检索完成, conversationId={}, taskId={}, topK={}, chunkCount={}, hasMcp={}, hasKb={}",
+                ctx.getConversationId(), ctx.getTaskId(), searchProperties.getDefaultTopK(),
+                retrievalCtx.getAllChunks() != null ? retrievalCtx.getAllChunks().size() : 0,
+                retrievalCtx.hasMcp(), retrievalCtx.hasKb());
         return retrievalCtx;
     }
 
@@ -153,6 +182,8 @@ public class StreamChatPipeline {
         if (!retrievalCtx.isEmpty()) {
             return false;
         }
+        log.info("[StreamChatPipeline] 检索结果为空, 直接返回兜底提示, conversationId={}, taskId={}",
+                ctx.getConversationId(), ctx.getTaskId());
         StreamCallback callback = ctx.getCallback();
         callback.onContent("未检索到与问题相关的文档内容。");
         callback.onComplete();
@@ -162,10 +193,15 @@ public class StreamChatPipeline {
     private void streamRagResponse(StreamChatContext ctx, RetrievalContext retrievalCtx) {
         // 聚合所有意图用于 prompt 规划
         IntentGroup mergedGroup = intentResolver.mergeIntentGroup(ctx.getSubIntents());
+        log.info("[StreamChatPipeline] 命中 RAG 回复分支, conversationId={}, taskId={}, mcpIntentCount={}, kbIntentCount={}",
+                ctx.getConversationId(), ctx.getTaskId(),
+                mergedGroup.mcpIntents() != null ? mergedGroup.mcpIntents().size() : 0,
+                mergedGroup.kbIntents() != null ? mergedGroup.kbIntents().size() : 0);
 
         // 设置检索到的 chunks 到 callback（用于 finish 事件返回）
         List<RetrievedChunk> chunks = ctx.getRetrievedChunks();
-        log.info("[StreamChatPipeline] 设置 {} 个 chunks 到 callback", chunks != null ? chunks.size() : 0);
+        log.info("[StreamChatPipeline] 设置 {} 个 chunks 到 callback, conversationId={}, taskId={}",
+                chunks != null ? chunks.size() : 0, ctx.getConversationId(), ctx.getTaskId());
         ctx.getCallback().setRetrievedChunks(chunks);
 
         StreamCancellationHandle handle = streamLLMResponse(
@@ -194,6 +230,9 @@ public class StreamChatPipeline {
         }
         messages.add(ChatMessage.user(question));
 
+        log.info("[StreamChatPipeline] 调用 LLM 生成 system-only 回复, promptSource={}, messageCount={}, question={}",
+                StrUtil.isNotBlank(customPrompt) ? "intentNode.promptTemplate" : CHAT_SYSTEM_PROMPT_PATH,
+                messages.size(), question);
         ChatRequest req = ChatRequest.builder()
                 .messages(messages)
                 .temperature(0.7D)
@@ -220,6 +259,8 @@ public class StreamChatPipeline {
                 rewriteResult.rewrittenQuestion(),
                 rewriteResult.subQuestions()  // 传入子问题列表
         );
+        log.info("[StreamChatPipeline] 调用 LLM 生成 RAG 回复, hasMcp={}, hasKb={}, deepThinking={}, messageCount={}, rewrittenQuestion={}",
+                ctx.hasMcp(), ctx.hasKb(), deepThinking, messages.size(), rewriteResult.rewrittenQuestion());
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(messages)
                 .thinking(deepThinking)

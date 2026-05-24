@@ -65,10 +65,25 @@ public final class RagTraceContext {
 
     public static void popNode() {
         Deque<String> stack = NODE_STACK.get();
-        if (stack == null || stack.isEmpty()) {
+        if (stack == null) {
             return;
         }
-        stack.pop();
+        stack.poll();
+        if (stack.isEmpty()) {
+            NODE_STACK.remove();
+        }
+    }
+
+    public static void popNodeIfCurrent(String nodeId) {
+        Deque<String> stack = NODE_STACK.get();
+        if (stack == null || nodeId == null) {
+            return;
+        }
+        String current = stack.peek();
+        if (!nodeId.equals(current)) {
+            return;
+        }
+        stack.poll();
         if (stack.isEmpty()) {
             NODE_STACK.remove();
         }

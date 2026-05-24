@@ -2,6 +2,7 @@
 
 package com.nageoffer.ai.ragent.triage.question;
 
+import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
 import com.nageoffer.ai.ragent.triage.model.AskabilityDecision;
 import com.nageoffer.ai.ragent.triage.model.AskabilityReason;
 import com.nageoffer.ai.ragent.triage.model.QuestionGap;
@@ -38,6 +39,7 @@ public class QuestionPlanner {
         this.coldStartSlotSelector = coldStartSlotSelector;
     }
 
+    @RagTraceNode(name = "QuestionPlanner", type = "TRIAGE_PLAN")
     public QuestionPlannerResult execute(TriageContext context) {
         if (context == null) {
             context = new TriageContext();
@@ -165,12 +167,16 @@ public class QuestionPlanner {
                 continue;
             }
             SlotValue slotValue = context.getSlotState() == null ? null : context.getSlotState().get(gap.getSlot());
-            if (unresolvedRiskSlots.contains(gap.getSlot())) {
-                result.add(AskabilityDecision.builder().slot(gap.getSlot()).askable(Boolean.TRUE).reason(AskabilityReason.ASKABLE).detail("该槽位对应 unresolved risk gap，应允许持续追问直到闭合。").build());
-                continue;
-            }
             if (answeredSlots.contains(gap.getSlot())) {
                 result.add(AskabilityDecision.builder().slot(gap.getSlot()).askable(Boolean.FALSE).reason(AskabilityReason.ANSWERED_ALREADY).detail("当前轮已回答该槽位，无需重复提问。").build());
+                continue;
+            }
+            if (isResolvedSlotValue(slotValue)) {
+                result.add(AskabilityDecision.builder().slot(gap.getSlot()).askable(Boolean.FALSE).reason(AskabilityReason.ANSWERED_ALREADY).detail("该槽位已闭合，即使风险模型仍返回 unresolved gap 也不重复追问。").build());
+                continue;
+            }
+            if (unresolvedRiskSlots.contains(gap.getSlot())) {
+                result.add(AskabilityDecision.builder().slot(gap.getSlot()).askable(Boolean.TRUE).reason(AskabilityReason.ASKABLE).detail("该槽位对应 unresolved risk gap，应允许持续追问直到闭合。").build());
                 continue;
             }
             if (recentlyAskedSlots.contains(gap.getSlot()) && gap.getGapType() != QuestionGapType.RISK_REQUIRED) {
@@ -274,22 +280,32 @@ public class QuestionPlanner {
         return slotValue != null && slotValue.getStatus() == SlotStatus.CONFLICTING;
     }
 
+    private boolean isResolvedSlotValue(SlotValue slotValue) {
+        return slotValue != null && (slotValue.getStatus() == SlotStatus.FILLED
+                || slotValue.getStatus() == SlotStatus.NEGATED
+                || slotValue.getStatus() == SlotStatus.CORRECTED
+                || slotValue.getStatus() == SlotStatus.INFERRED);
+    }
+
     private QuestionPlannerResult buildEmergencyFallbackResult(TriageContext context, String triggerReason, QuestionPlannerResult result) {
         int consecutiveLLMFallbackCount = countConsecutiveLLMFallbacks(context) + 1;
         result.setLlmFallbackTriggered(true);
 
         if (consecutiveLLMFallbackCount >= 3) {
+            String forceReason = "连续兜底次数过多（" + consecutiveLLMFallbackCount + "次），强制生成报告避免死循环";
             QuestionPlan forcedReportPlan = QuestionPlan.builder()
                 .nextSlotsToAsk(List.of())
                 .pendingSlots(List.of())
                 .askCount(0)
                 .followUpMode(false)
-                .priorityReason("连续兜底次数过多（" + consecutiveLLMFallbackCount + "次），强制生成报告避免死循环")
+                .priorityReason(forceReason)
                 .policyReason(triggerReason)
                 .build();
             result.setQuestionPlan(forcedReportPlan);
             result.setPendingSlots(List.of());
             result.setLlmFallbackHistory(appendFallbackHistory(context, true));
+            result.setForceGenerateReport(true);
+            result.setForceGenerateReportReason(forceReason);
             return result;
         }
 
@@ -302,18 +318,23 @@ public class QuestionPlanner {
             : emergencyPlan.getNextSlotsToAsk();
 
         if (emergencySlots.isEmpty()) {
+            String forceReason = emergencyPlan == null
+                ? "LLM 兜底未返回可问槽位"
+                : emergencyPlan.getPriorityReason();
             result.setQuestionPlan(emergencyPlan == null
                 ? QuestionPlan.builder()
                     .nextSlotsToAsk(List.of())
                     .pendingSlots(List.of())
                     .askCount(0)
                     .followUpMode(false)
-                    .priorityReason("LLM 兜底未返回可问槽位")
+                    .priorityReason(forceReason)
                     .policyReason(triggerReason)
                     .build()
                 : emergencyPlan);
             result.setPendingSlots(List.of());
             result.setLlmFallbackHistory(appendFallbackHistory(context, true));
+            result.setForceGenerateReport(true);
+            result.setForceGenerateReportReason(forceReason);
             return result;
         }
 
