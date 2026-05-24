@@ -87,3 +87,20 @@ skills-lock.json
 
 # --- Cursor local workspace state ---
 **/.cursor/
+
+# 原有忽略
+*.iml
+**/node_modules/
+**/dist/
+**/build/
+**/.gradle/
+**/.gradle-home/
+**/.gradle-user-home/
+
+local.properties
+.idea/
+.DS_Store
+build/              # 去掉 /，表示忽略所有叫做 build 的文件夹
+captures/
+.externalNativeBuild/
+.cxx/
