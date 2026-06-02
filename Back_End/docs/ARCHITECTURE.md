@@ -700,9 +700,372 @@ public class Result<T> {
 
 
 
+---
+
+## 9. 数据库设计
+
+Athena 系统采用 MySQL 8.0 作为主数据库，各业务模块按服务拆分独立的数据库表。
+
+### 9.1 数据库设计原则
+
+**垂直拆分：** 按业务模块拆分表，每个服务管理自己的表
+**读写分离：** 支持主从架构（配置在 Nacos）
+**字段冗余：** 适当冗余以减少跨服务查询（如 NoteDO 中的 topicName）
+
+### 9.2 笔记核心表设计
+
+#### 9.2.1 笔记基础表（t_note）
+
+**说明：** 存储笔记的基础信息，是笔记系统的核心表。
+
+| 字段名 | 类型 | 说明 | 备注 |
+|--------|------|------|------|
+| id | BIGINT | 笔记ID（主键） | 雪花算法生成 |
+| title | VARCHAR(100) | 笔记标题 | 非空 |
+| user_id | BIGINT | 作者ID | 外键关联 tb_user.id |
+| topic_id | BIGINT | 话题ID | 外键关联 t_topic.id |
+| topic_name | VARCHAR(50) | 话题名称 | 冗余字段，减少联表查询 |
+| is_top | BOOLEAN | 是否置顶 | 默认 false |
+| type | TINYINT | 笔记类型 | 1-图文，2-视频，3-0~12岁，4-0~12岁视频，5-12~22岁，6-12~22岁视频，7-22~55岁，8-22~55岁视频，9-55+，10-55+视频 |
+| img_urls | TEXT | 图片URL列表 | JSON 数组格式存储 |
+| video_url | VARCHAR(500) | 视频URL | 当 type=2 时有值 |
+| visible | TINYINT | 可见范围 | 0-私密，1-公开 |
+| status | TINYINT | 审核状态 | 0-待审核，1-审核通过，2-审核拒绝 |
+| create_time | DATETIME | 创建时间 | 默认当前时间 |
+| update_time | DATETIME | 更新时间 | 自动更新 |
+
+**索引设计：**
+- PRIMARY KEY (`id`)
+- INDEX `idx_user_id` (`user_id`) - 查询用户笔记列表
+- INDEX `idx_topic_id` (`topic_id`) - 按话题查询
+- INDEX `idx_status_create_time` (`status`, `create_time`) - 广场列表查询（审核通过 + 时间倒序）
+- INDEX `idx_type_status` (`type`, `status`) - 按类型筛选
+
+#### 9.2.2 笔记内容表（t_note_content）
+
+**说明：** 存储笔记的正文内容，采用读写分离设计，提升大文本查询性能。
+
+| 字段名 | 类型 | 说明 | 备注 |
+|--------|------|------|------|
+| content_id | BIGINT | 内容ID（主键） | 自增 |
+| note_id | BIGINT | 笔记ID | 外键关联 t_note.id，唯一索引 |
+| content | TEXT | 笔记正文 | 富文本内容 |
+| create_time | DATETIME | 创建时间 | |
+| update_time | DATETIME | 更新时间 | |
+
+**设计考量：**
+- **垂直拆分**：将大文本字段独立存储，t_note 表只存基础信息，提升列表查询性能
+- **1:1 关系**：一个笔记对应一条内容记录
+
+**索引设计：**
+- PRIMARY KEY (`content_id`)
+- UNIQUE KEY `uk_note_id` (`note_id`) - 保证一对一关系
+
+#### 9.2.3 笔记统计表（t_note_count）
+
+**说明：** 存储笔记的互动统计数据（点赞、收藏、评论数），采用独立表设计支持高并发更新。
+
+| 字段名 | 类型 | 说明 | 备注 |
+|--------|------|------|------|
+| id | BIGINT | 统计ID（主键） | 自增 |
+| note_id | BIGINT | 笔记ID | 外键关联 t_note.id，唯一索引 |
+| like_total | BIGINT | 点赞总数 | 默认 0 |
+| collect_total | BIGINT | 收藏总数 | 默认 0 |
+| comment_total | BIGINT | 评论总数 | 默认 0 |
+
+**设计考量：**
+- **计数器独立表**：避免频繁更新 t_note 表，减少行锁竞争
+- **异步更新**：通过 RocketMQ 异步更新统计数据
+- **最终一致性**：允许短暂的统计延迟
+
+**索引设计：**
+- PRIMARY KEY (`id`)
+- UNIQUE KEY `uk_note_id` (`note_id`)
+
+#### 9.2.4 笔记点赞表（t_note_like）
+
+**说明：** 记录用户对笔记的点赞行为。
+
+| 字段名 | 类型 | 说明 | 备注 |
+|--------|------|------|------|
+| id | BIGINT | 点赞ID（主键） | 自增 |
+| user_id | BIGINT | 用户ID | 外键关联 tb_user.id |
+| note_id | BIGINT | 笔记ID | 外键关联 t_note.id |
+| status | TINYINT | 点赞状态 | 1-已点赞，0-已取消 |
+| create_time | DATETIME | 创建时间 | |
+
+**业务逻辑：**
+- 用户点赞 → status=1
+- 用户取消点赞 → status=0（软删除，保留记录）
+- 同一用户对同一笔记只有一条记录
+
+**索引设计：**
+- PRIMARY KEY (`id`)
+- UNIQUE KEY `uk_user_note` (`user_id`, `note_id`) - 防止重复点赞
+- INDEX `idx_note_id` (`note_id`) - 查询笔记的点赞列表
+
+#### 9.2.5 笔记收藏表（t_note_collection）
+
+**说明：** 记录用户对笔记的收藏行为。
+
+| 字段名 | 类型 | 说明 | 备注 |
+|--------|------|------|------|
+| id | BIGINT | 收藏ID（主键） | 自增 |
+| user_id | BIGINT | 用户ID | 外键关联 tb_user.id |
+| note_id | BIGINT | 笔记ID | 外键关联 t_note.id |
+| status | TINYINT | 收藏状态 | 1-已收藏，0-已取消 |
+| create_time | DATETIME | 创建时间 | |
+
+**索引设计：**
+- PRIMARY KEY (`id`)
+- UNIQUE KEY `uk_user_note` (`user_id`, `note_id`)
+- INDEX `idx_note_id` (`note_id`)
+- INDEX `idx_user_status_time` (`user_id`, `status`, `create_time`) - 用户收藏列表查询
+
+#### 9.2.6 用户浏览记录表（user_view_record）
+
+**说明：** 记录用户浏览笔记的行为数据，用于推荐算法和数据分析。
+
+| 字段名 | 类型 | 说明 | 备注 |
+|--------|------|------|------|
+| id | BIGINT | 记录ID（主键） | 自增 |
+| user_id | BIGINT | 用户ID | 外键关联 tb_user.id |
+| note_id | BIGINT | 笔记ID | 外键关联 t_note.id |
+| first_view_time | DATETIME | 首次浏览时间 | |
+| last_view_time | DATETIME | 最近浏览时间 | |
+| view_count | INT | 浏览次数 | 同一笔记重复浏览累加 |
+| duration | INT | 停留时长（秒） | 累计停留时长 |
+
+**业务逻辑：**
+- 用户浏览笔记 ≥ 3 秒后记录
+- 同一用户重复浏览同一笔记，更新 `last_view_time`、`view_count`、`duration`
+
+**索引设计：**
+- PRIMARY KEY (`id`)
+- UNIQUE KEY `uk_user_note` (`user_id`, `note_id`)
+- INDEX `idx_user_last_view` (`user_id`, `last_view_time`) - 用户浏览历史查询
+- INDEX `idx_note_id` (`note_id`) - 笔记热度统计
+
+### 9.3 评论系统表设计
+
+#### 9.3.1 评论主表（t_comment）
+
+**说明：** 存储评论的基础信息，支持一级评论和二级回复。
+
+| 字段名 | 类型 | 说明 | 备注 |
+|--------|------|------|------|
+| id | BIGINT | 评论ID（主键） | 雪花算法生成 |
+| note_id | BIGINT | 笔记ID | 外键关联 t_note.id |
+| user_id | BIGINT | 评论者ID | 外键关联 tb_user.id |
+| is_content_empty | BOOLEAN | 内容是否为空 | 纯图片评论为 true |
+| image_url | VARCHAR(500) | 图片URL | 可选 |
+| level | INT | 评论层级 | 1-一级评论，2-二级回复 |
+| reply_total | BIGINT | 回复总数 | 仅一级评论有值 |
+| like_total | BIGINT | 点赞总数 | |
+| parent_id | BIGINT | 父评论ID | 二级回复时指向一级评论ID |
+| reply_comment_id | BIGINT | 回复的评论ID | 二级回复时指向被回复的评论ID |
+| reply_user_id | BIGINT | 回复的用户ID | 二级回复时指向被回复的用户ID |
+| is_top | BOOLEAN | 是否置顶 | 默认 false |
+| first_reply_comment_id | BIGINT | 首条回复ID | 一级评论的第一条回复 |
+| heat | BIGINT | 热度值 | 用于排序（点赞数 + 回复数） |
+| create_time | DATETIME | 创建时间 | |
+| update_time | DATETIME | 更新时间 | |
+
+**评论层级设计：**
+```
+一级评论（level=1, parent_id=null）
+  ├─ 二级回复 A（level=2, parent_id=一级评论ID, reply_comment_id=一级评论ID）
+  ├─ 二级回复 B（level=2, parent_id=一级评论ID, reply_comment_id=二级回复A的ID）
+  └─ 二级回复 C（level=2, parent_id=一级评论ID, reply_comment_id=二级回复B的ID）
+```
+
+**索引设计：**
+- PRIMARY KEY (`id`)
+- INDEX `idx_note_level_heat` (`note_id`, `level`, `heat`) - 笔记评论列表（按热度排序）
+- INDEX `idx_parent_time` (`parent_id`, `create_time`) - 二级回复列表（按时间倒序）
+- INDEX `idx_user_id` (`user_id`) - 用户评论列表
+
+#### 9.3.2 评论内容表（t_comment_content）
+
+**说明：** 存储评论的文本内容，垂直拆分设计。
+
+| 字段名 | 类型 | 说明 | 备注 |
+|--------|------|------|------|
+| id | BIGINT | 内容ID（主键） | 自增 |
+| comment_id | BIGINT | 评论ID | 外键关联 t_comment.id，唯一索引 |
+| content | TEXT | 评论内容 | |
+| create_time | DATETIME | 创建时间 | |
+| update_time | DATETIME | 更新时间 | |
+
+**索引设计：**
+- PRIMARY KEY (`id`)
+- UNIQUE KEY `uk_comment_id` (`comment_id`)
+
+### 9.4 用户系统表设计
+
+#### 9.4.1 用户基础表（tb_user）
+
+**说明：** 存储用户的账号信息。
+
+| 字段名 | 类型 | 说明 | 备注 |
+|--------|------|------|------|
+| id | BIGINT | 用户ID（主键） | 自增 |
+| phone | VARCHAR(20) | 手机号 | 唯一索引 |
+| nick_name | VARCHAR(50) | 昵称 | |
+| icon | VARCHAR(500) | 头像URL | |
+| priority | BOOLEAN | 是否VIP | 默认 false |
+| create_time | DATETIME | 创建时间 | |
+| update_time | DATETIME | 更新时间 | |
+
+**索引设计：**
+- PRIMARY KEY (`id`)
+- UNIQUE KEY `uk_phone` (`phone`) - 手机号登录
+
+#### 9.4.2 用户信息表（tb_user_info）
+
+**说明：** 存储用户的扩展信息和统计数据。
+
+| 字段名 | 类型 | 说明 | 备注 |
+|--------|------|------|------|
+| user_id | BIGINT | 用户ID（主键） | 外键关联 tb_user.id |
+| city | VARCHAR(50) | 城市 | |
+| introduction | VARCHAR(500) | 个人简介 | |
+| fans_total | INT | 粉丝总数 | 默认 0 |
+| following_total | INT | 关注总数 | 默认 0 |
+| gender | TINYINT | 性别 | 0-未知，1-男，2-女 |
+| birthday | DATE | 生日 | |
+| credits | INT | 积分 | 默认 0 |
+| level | TINYINT | 等级 | 默认 1 |
+| content_total | BIGINT | 笔记总数 | 默认 0 |
+| like_total | BIGINT | 获赞总数 | 默认 0 |
+| collect_total | BIGINT | 获藏总数 | 默认 0 |
+| create_time | DATETIME | 创建时间 | |
+| update_time | DATETIME | 更新时间 | |
+
+**索引设计：**
+- PRIMARY KEY (`user_id`)
+
+### 9.5 关系系统表设计
+
+#### 9.5.1 关注表（tb_follow）
+
+**说明：** 记录用户之间的关注关系。
+
+| 字段名 | 类型 | 说明 | 备注 |
+|--------|------|------|------|
+| id | BIGINT | 关注ID（主键） | 自增 |
+| user_id | BIGINT | 关注者ID | 我关注了谁 |
+| follow_user_id | BIGINT | 被关注者ID | |
+| create_time | DATETIME | 关注时间 | |
+
+**业务逻辑：**
+- 关注 → 插入记录
+- 取消关注 → 删除记录（物理删除）
+
+**索引设计：**
+- PRIMARY KEY (`id`)
+- UNIQUE KEY `uk_user_follow` (`user_id`, `follow_user_id`) - 防止重复关注
+- INDEX `idx_follow_user` (`follow_user_id`) - 查询粉丝列表
+
+#### 9.5.2 粉丝表（tb_fans）
+
+**说明：** 冗余设计，加速粉丝列表查询。
+
+| 字段名 | 类型 | 说明 | 备注 |
+|--------|------|------|------|
+| id | BIGINT | 粉丝ID（主键） | 自增 |
+| user_id | BIGINT | 被关注者ID | 谁关注了我 |
+| fans_user_id | BIGINT | 关注者ID | |
+| create_time | DATETIME | 关注时间 | |
+
+**设计考量：**
+- tb_follow 和 tb_fans 存储同一关系的两个视角
+- 插入 tb_follow 时同步插入 tb_fans
+- 空间换时间，避免复杂的双向查询
+
+**索引设计：**
+- PRIMARY KEY (`id`)
+- INDEX `idx_user_fans` (`user_id`, `create_time`) - 粉丝列表查询
+
+### 9.6 健康记录表设计
+
+#### 9.6.1 经期周期表（menstruation_cycle）
+
+**说明：** 记录用户的经期周期数据，支持预测功能。
+
+| 字段名 | 类型 | 说明 | 备注 |
+|--------|------|------|------|
+| id | BIGINT | 周期ID（主键） | 自增 |
+| user_id | BIGINT | 用户ID | 外键关联 tb_user.id |
+| start_date | DATE | 经期开始日期 | |
+| end_date | DATE | 经期结束日期 | 可为空（未结束） |
+| duration_days | INT | 经期持续天数 | end_date - start_date + 1 |
+| cycle_length | INT | 周期长度（天） | 距离上次经期的天数 |
+| is_predicted | INT | 是否预测数据 | 0-实际记录，1-预测数据 |
+| create_time | DATETIME | 创建时间 | |
+| update_time | DATETIME | 更新时间 | |
+
+**业务逻辑：**
+- 用户记录经期开始 → 插入记录（end_date=null）
+- 用户记录经期结束 → 更新 end_date 和 duration_days
+- 系统根据历史周期预测未来经期（is_predicted=1）
+
+**索引设计：**
+- PRIMARY KEY (`id`)
+- INDEX `idx_user_start` (`user_id`, `start_date`) - 查询用户经期历史
+
+#### 9.6.2 日常健康记录表（daily_record）
+
+**说明：** 记录用户每日的健康数据（体温、心情、症状等）。
+
+| 字段名 | 类型 | 说明 | 备注 |
+|--------|------|------|------|
+| id | BIGINT | 记录ID（主键） | 自增 |
+| user_id | BIGINT | 用户ID | 外键关联 tb_user.id |
+| record_date | DATE | 记录日期 | |
+| mode_type | INT | 模式类型 | 0-正常模式，1-备孕模式，2-怀孕模式 |
+| record_item_id | INT | 记录项ID | 外键关联数据字典表 |
+| record_value | VARCHAR(500) | 记录值 | JSON 格式存储 |
+
+**设计考量：**
+- 采用 EAV 模型（实体-属性-值）存储灵活的健康数据
+- record_item_id 关联数据字典，定义不同的健康指标
+- record_value 存储 JSON 格式数据，支持复杂结构
+
+**索引设计：**
+- PRIMARY KEY (`id`)
+- INDEX `idx_user_date` (`user_id`, `record_date`) - 查询某日记录
+
+### 9.7 数据库设计要点总结
+
+#### 9.7.1 读写分离设计
+
+- **大文本垂直拆分**：笔记内容、评论内容独立存储
+- **统计数据独立表**：点赞数、收藏数、评论数独立表，减少锁竞争
+
+#### 9.7.2 高并发优化
+
+- **软删除 vs 物理删除**：点赞/收藏采用软删除（status字段），关注采用物理删除
+- **冗余字段**：topic_name 等冗余字段减少联表查询
+- **异步更新**：统计数据通过 RocketMQ 异步更新
+
+#### 9.7.3 索引设计原则
+
+- **唯一索引**：防止重复数据（点赞、收藏、关注）
+- **复合索引**：覆盖常用查询场景（user_id + status + create_time）
+- **外键约束**：代码层面维护，不使用数据库外键约束
+
+#### 9.7.4 数据类型选择
+
+- **主键**：BIGINT（雪花算法生成分布式ID）
+- **时间字段**：DATETIME（MySQL 8.0 性能优化）
+- **状态字段**：TINYINT（节省空间）
+- **JSON 字段**：TEXT + JSON 格式（灵活存储，适合变化频繁的字段）
+
+---
+
 **待补充章节：**
 
-- 各服务详细职责
-- 数据库设计
 - 部署架构
 - 开发规范
+- 监控与运维
