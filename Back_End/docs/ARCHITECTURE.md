@@ -41,7 +41,7 @@ Athena 是一个基于 Spring Boot 3 的后端系统，采用微服务架构来�
 | 数据库 | MySQL | 8.0.32 |
 | ORM 框架 | MyBatis Plus | 3.5.7 |
 | 数据库连接池 | Druid | 1.2.23 |
-| 缓存 | Redis | - |
+| 缓存 | Redis | 5.3.0 |
 | 认证鉴权 | Sa-Token | 1.38.0 |
 | 消息队列 | RocketMQ | 2.2.3 |
 | 工具库 | Hutool | 5.7.17 |
@@ -539,11 +539,9 @@ public interface UserFeignApi {
 
 ---
 
-### 6.8 athena-rag（RAG 智能体）
+### 6.8 athena-rag
 
-**核心职责：** 提供 AI 智能问答与医疗辅助能力
-
-athena-rag 是一个独立的 AI 应用子项目，与主项目通过 HTTP API 集成。
+**核心职责：** 提供 AI 智能问答科普
 
 #### 6.8.1 两大核心系统
 
