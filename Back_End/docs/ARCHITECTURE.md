@@ -714,67 +714,95 @@ Athena 系统采用 MySQL 8.0 作为主数据库，各业务模块按服务拆�
 
 ### 9.2 笔记核心表设计
 
-#### 9.2.1 笔记基础表（t_note）
+#### 9.2.1 笔记基础表（tb_note_basic）
 
-**说明：** 存储笔记的基础信息，是笔记系统的核心表。
+**说明：** 存储笔记的基础信息和审核状态，用于笔记列表查询和审核流程。
 
 | 字段名 | 类型 | 说明 | 备注 |
 |--------|------|------|------|
-| id | BIGINT | 笔记ID（主键） | 雪花算法生成 |
-| title | VARCHAR(100) | 笔记标题 | 非空 |
+| note_id | BIGINT | 笔记ID（主键） | 雪花算法生成 |
 | user_id | BIGINT | 作者ID | 外键关联 tb_user.id |
-| topic_id | BIGINT | 话题ID | 外键关联 t_topic.id |
-| topic_name | VARCHAR(50) | 话题名称 | 冗余字段，减少联表查询 |
-| is_top | BOOLEAN | 是否置顶 | 默认 false |
+| title | VARCHAR(100) | 笔记标题 | 非空 |
+| cover_url | VARCHAR(500) | 封面图URL | 列表展示用 |
 | type | TINYINT | 笔记类型 | 1-图文，2-视频，3-0~12岁，4-0~12岁视频，5-12~22岁，6-12~22岁视频，7-22~55岁，8-22~55岁视频，9-55+，10-55+视频 |
-| img_urls | TEXT | 图片URL列表 | JSON 数组格式存储 |
-| video_url | VARCHAR(500) | 视频URL | 当 type=2 时有值 |
-| visible | TINYINT | 可见范围 | 0-私密，1-公开 |
 | status | TINYINT | 审核状态 | 0-待审核，1-审核通过，2-审核拒绝 |
+| review_remark | VARCHAR(500) | 审核备注 | 审核拒绝时填写原因 |
+| review_time | DATETIME | 审核时间 | |
+| reviewer_id | BIGINT | 审核员ID | 外键关联 tb_user.id |
+| channel_id | INT | 频道ID | 1-健身指南，2-避孕指南，3-个性化护肤，4-科学养护生理期，5-私处护理 |
+| channel_name | VARCHAR(50) | 频道名称 | 冗余字段 |
 | create_time | DATETIME | 创建时间 | 默认当前时间 |
 | update_time | DATETIME | 更新时间 | 自动更新 |
 
 **索引设计：**
-- PRIMARY KEY (`id`)
+- PRIMARY KEY (`note_id`)
 - INDEX `idx_user_id` (`user_id`) - 查询用户笔记列表
-- INDEX `idx_topic_id` (`topic_id`) - 按话题查询
 - INDEX `idx_status_create_time` (`status`, `create_time`) - 广场列表查询（审核通过 + 时间倒序）
+- INDEX `idx_channel_status` (`channel_id`, `status`) - 按频道筛选
 - INDEX `idx_type_status` (`type`, `status`) - 按类型筛选
 
-#### 9.2.2 笔记内容表（t_note_content）
+#### 9.2.2 笔记详细表（tb_note）
+
+**说明：** 存储笔记的详细内容信息，与 tb_note_basic 是 1:1 关系。
+
+| 字段名 | 类型 | 说明 | 备注 |
+|--------|------|------|------|
+| id | BIGINT | 笔记ID（主键） | 与 tb_note_basic.note_id 相同 |
+| title | VARCHAR(100) | 笔记标题 | 冗余字段 |
+| user_id | BIGINT | 作者ID | 冗余字段 |
+| topic_id | BIGINT | 话题ID | 外键关联 tb_topic.id |
+| topic_name | VARCHAR(50) | 话题名称 | 冗余字段，减少联表查询 |
+| is_top | BOOLEAN | 是否置顶 | 默认 false |
+| type | TINYINT | 笔记类型 | 同 tb_note_basic.type |
+| img_urls | TEXT | 图片URL列表 | JSON 数组格式存储 |
+| video_url | VARCHAR(500) | 视频URL | 当类型为视频时有值 |
+| visible | TINYINT | 可见范围 | 0-私密，1-公开 |
+| status | TINYINT | 审核状态 | 冗余字段，同 tb_note_basic.status |
+| create_time | DATETIME | 创建时间 | |
+| update_time | DATETIME | 更新时间 | |
+
+**设计考量：**
+- **双表设计**：tb_note_basic 用于列表查询，tb_note 用于详情查询
+- **字段冗余**：title、user_id、status 等字段在两表都存在，避免联表查询
+
+**索引设计：**
+- PRIMARY KEY (`id`)
+- INDEX `idx_topic_id` (`topic_id`) - 按话题查询
+
+#### 9.2.3 笔记内容表（tb_note_content）
 
 **说明：** 存储笔记的正文内容，采用读写分离设计，提升大文本查询性能。
 
 | 字段名 | 类型 | 说明 | 备注 |
 |--------|------|------|------|
 | content_id | BIGINT | 内容ID（主键） | 自增 |
-| note_id | BIGINT | 笔记ID | 外键关联 t_note.id，唯一索引 |
+| note_id | BIGINT | 笔记ID | 外键关联 tb_note.id，唯一索引 |
 | content | TEXT | 笔记正文 | 富文本内容 |
 | create_time | DATETIME | 创建时间 | |
 | update_time | DATETIME | 更新时间 | |
 
 **设计考量：**
-- **垂直拆分**：将大文本字段独立存储，t_note 表只存基础信息，提升列表查询性能
+- **垂直拆分**：将大文本字段独立存储，tb_note_basic 和 tb_note 只存基础信息，提升列表查询性能
 - **1:1 关系**：一个笔记对应一条内容记录
 
 **索引设计：**
 - PRIMARY KEY (`content_id`)
 - UNIQUE KEY `uk_note_id` (`note_id`) - 保证一对一关系
 
-#### 9.2.3 笔记统计表（t_note_count）
+#### 9.2.4 笔记统计表（tb_note_count）
 
 **说明：** 存储笔记的互动统计数据（点赞、收藏、评论数），采用独立表设计支持高并发更新。
 
 | 字段名 | 类型 | 说明 | 备注 |
 |--------|------|------|------|
 | id | BIGINT | 统计ID（主键） | 自增 |
-| note_id | BIGINT | 笔记ID | 外键关联 t_note.id，唯一索引 |
+| note_id | BIGINT | 笔记ID | 外键关联 tb_note.id，唯一索引 |
 | like_total | BIGINT | 点赞总数 | 默认 0 |
 | collect_total | BIGINT | 收藏总数 | 默认 0 |
 | comment_total | BIGINT | 评论总数 | 默认 0 |
 
 **设计考量：**
-- **计数器独立表**：避免频繁更新 t_note 表，减少行锁竞争
+- **计数器独立表**：避免频繁更新 tb_note 表，减少行锁竞争
 - **异步更新**：通过 RocketMQ 异步更新统计数据
 - **最终一致性**：允许短暂的统计延迟
 
@@ -782,7 +810,7 @@ Athena 系统采用 MySQL 8.0 作为主数据库，各业务模块按服务拆�
 - PRIMARY KEY (`id`)
 - UNIQUE KEY `uk_note_id` (`note_id`)
 
-#### 9.2.4 笔记点赞表（t_note_like）
+#### 9.2.5 笔记点赞表（tb_note_like）
 
 **说明：** 记录用户对笔记的点赞行为。
 
@@ -790,7 +818,7 @@ Athena 系统采用 MySQL 8.0 作为主数据库，各业务模块按服务拆�
 |--------|------|------|------|
 | id | BIGINT | 点赞ID（主键） | 自增 |
 | user_id | BIGINT | 用户ID | 外键关联 tb_user.id |
-| note_id | BIGINT | 笔记ID | 外键关联 t_note.id |
+| note_id | BIGINT | 笔记ID | 外键关联 tb_note.id |
 | status | TINYINT | 点赞状态 | 1-已点赞，0-已取消 |
 | create_time | DATETIME | 创建时间 | |
 
@@ -804,7 +832,7 @@ Athena 系统采用 MySQL 8.0 作为主数据库，各业务模块按服务拆�
 - UNIQUE KEY `uk_user_note` (`user_id`, `note_id`) - 防止重复点赞
 - INDEX `idx_note_id` (`note_id`) - 查询笔记的点赞列表
 
-#### 9.2.5 笔记收藏表（t_note_collection）
+#### 9.2.6 笔记收藏表（tb_note_collection）
 
 **说明：** 记录用户对笔记的收藏行为。
 
@@ -812,7 +840,7 @@ Athena 系统采用 MySQL 8.0 作为主数据库，各业务模块按服务拆�
 |--------|------|------|------|
 | id | BIGINT | 收藏ID（主键） | 自增 |
 | user_id | BIGINT | 用户ID | 外键关联 tb_user.id |
-| note_id | BIGINT | 笔记ID | 外键关联 t_note.id |
+| note_id | BIGINT | 笔记ID | 外键关联 tb_note.id |
 | status | TINYINT | 收藏状态 | 1-已收藏，0-已取消 |
 | create_time | DATETIME | 创建时间 | |
 
@@ -822,7 +850,7 @@ Athena 系统采用 MySQL 8.0 作为主数据库，各业务模块按服务拆�
 - INDEX `idx_note_id` (`note_id`)
 - INDEX `idx_user_status_time` (`user_id`, `status`, `create_time`) - 用户收藏列表查询
 
-#### 9.2.6 用户浏览记录表（user_view_record）
+#### 9.2.7 用户浏览记录表（tb_user_view_record）
 
 **说明：** 记录用户浏览笔记的行为数据，用于推荐算法和数据分析。
 
@@ -830,7 +858,7 @@ Athena 系统采用 MySQL 8.0 作为主数据库，各业务模块按服务拆�
 |--------|------|------|------|
 | id | BIGINT | 记录ID（主键） | 自增 |
 | user_id | BIGINT | 用户ID | 外键关联 tb_user.id |
-| note_id | BIGINT | 笔记ID | 外键关联 t_note.id |
+| note_id | BIGINT | 笔记ID | 外键关联 tb_note.id |
 | first_view_time | DATETIME | 首次浏览时间 | |
 | last_view_time | DATETIME | 最近浏览时间 | |
 | view_count | INT | 浏览次数 | 同一笔记重复浏览累加 |
@@ -848,14 +876,14 @@ Athena 系统采用 MySQL 8.0 作为主数据库，各业务模块按服务拆�
 
 ### 9.3 评论系统表设计
 
-#### 9.3.1 评论主表（t_comment）
+#### 9.3.1 评论主表（tb_comment）
 
 **说明：** 存储评论的基础信息，支持一级评论和二级回复。
 
 | 字段名 | 类型 | 说明 | 备注 |
 |--------|------|------|------|
 | id | BIGINT | 评论ID（主键） | 雪花算法生成 |
-| note_id | BIGINT | 笔记ID | 外键关联 t_note.id |
+| note_id | BIGINT | 笔记ID | 外键关联 tb_note.id |
 | user_id | BIGINT | 评论者ID | 外键关联 tb_user.id |
 | is_content_empty | BOOLEAN | 内容是否为空 | 纯图片评论为 true |
 | image_url | VARCHAR(500) | 图片URL | 可选 |
@@ -885,14 +913,14 @@ Athena 系统采用 MySQL 8.0 作为主数据库，各业务模块按服务拆�
 - INDEX `idx_parent_time` (`parent_id`, `create_time`) - 二级回复列表（按时间倒序）
 - INDEX `idx_user_id` (`user_id`) - 用户评论列表
 
-#### 9.3.2 评论内容表（t_comment_content）
+#### 9.3.2 评论内容表（tb_comment_content）
 
 **说明：** 存储评论的文本内容，垂直拆分设计。
 
 | 字段名 | 类型 | 说明 | 备注 |
 |--------|------|------|------|
 | id | BIGINT | 内容ID（主键） | 自增 |
-| comment_id | BIGINT | 评论ID | 外键关联 t_comment.id，唯一索引 |
+| comment_id | BIGINT | 评论ID | 外键关联 tb_comment.id，唯一索引 |
 | content | TEXT | 评论内容 | |
 | create_time | DATETIME | 创建时间 | |
 | update_time | DATETIME | 更新时间 | |
@@ -989,7 +1017,7 @@ Athena 系统采用 MySQL 8.0 作为主数据库，各业务模块按服务拆�
 
 ### 9.6 健康记录表设计
 
-#### 9.6.1 经期周期表（menstruation_cycle）
+#### 9.6.1 经期周期表（tb_menstruation_cycle）
 
 **说明：** 记录用户的经期周期数据，支持预测功能。
 
@@ -1014,7 +1042,7 @@ Athena 系统采用 MySQL 8.0 作为主数据库，各业务模块按服务拆�
 - PRIMARY KEY (`id`)
 - INDEX `idx_user_start` (`user_id`, `start_date`) - 查询用户经期历史
 
-#### 9.6.2 日常健康记录表（daily_record）
+#### 9.6.2 日常健康记录表（tb_daily_record）
 
 **说明：** 记录用户每日的健康数据（体温、心情、症状等）。
 
