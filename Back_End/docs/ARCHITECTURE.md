@@ -543,9 +543,7 @@ public interface UserFeignApi {
 
 **核心职责：** 提供 AI 智能问答科普
 
-#### 6.8.1 两大核心系统
-
-**1. RAG 问答系统**
+#### 6.8.1 RAG 问答系统**
 
 为用户提供基于知识库的智能问答服务。
 
@@ -802,77 +800,13 @@ Athena 系统采用 MySQL 8.0 作为主数据库，各业务模块按服务拆�
 | comment_total | BIGINT | 评论总数 | 默认 0 |
 
 **设计考量：**
-- **计数器独立表**：避免频繁更新 tb_note 表，减少行锁竞争
+- **计数器独立表**：**避免频繁更新 tb_note 表，减少行锁竞争**
 - **异步更新**：通过 RocketMQ 异步更新统计数据
 - **最终一致性**：允许短暂的统计延迟
 
 **索引设计：**
 - PRIMARY KEY (`id`)
 - UNIQUE KEY `uk_note_id` (`note_id`)
-
-#### 9.2.5 笔记点赞表（tb_note_like）
-
-**说明：** 记录用户对笔记的点赞行为。
-
-| 字段名 | 类型 | 说明 | 备注 |
-|--------|------|------|------|
-| id | BIGINT | 点赞ID（主键） | 自增 |
-| user_id | BIGINT | 用户ID | 外键关联 tb_user.id |
-| note_id | BIGINT | 笔记ID | 外键关联 tb_note.id |
-| status | TINYINT | 点赞状态 | 1-已点赞，0-已取消 |
-| create_time | DATETIME | 创建时间 | |
-
-**业务逻辑：**
-- 用户点赞 → status=1
-- 用户取消点赞 → status=0（软删除，保留记录）
-- 同一用户对同一笔记只有一条记录
-
-**索引设计：**
-- PRIMARY KEY (`id`)
-- UNIQUE KEY `uk_user_note` (`user_id`, `note_id`) - 防止重复点赞
-- INDEX `idx_note_id` (`note_id`) - 查询笔记的点赞列表
-
-#### 9.2.6 笔记收藏表（tb_note_collection）
-
-**说明：** 记录用户对笔记的收藏行为。
-
-| 字段名 | 类型 | 说明 | 备注 |
-|--------|------|------|------|
-| id | BIGINT | 收藏ID（主键） | 自增 |
-| user_id | BIGINT | 用户ID | 外键关联 tb_user.id |
-| note_id | BIGINT | 笔记ID | 外键关联 tb_note.id |
-| status | TINYINT | 收藏状态 | 1-已收藏，0-已取消 |
-| create_time | DATETIME | 创建时间 | |
-
-**索引设计：**
-- PRIMARY KEY (`id`)
-- UNIQUE KEY `uk_user_note` (`user_id`, `note_id`)
-- INDEX `idx_note_id` (`note_id`)
-- INDEX `idx_user_status_time` (`user_id`, `status`, `create_time`) - 用户收藏列表查询
-
-#### 9.2.7 用户浏览记录表（tb_user_view_record）
-
-**说明：** 记录用户浏览笔记的行为数据，用于推荐算法和数据分析。
-
-| 字段名 | 类型 | 说明 | 备注 |
-|--------|------|------|------|
-| id | BIGINT | 记录ID（主键） | 自增 |
-| user_id | BIGINT | 用户ID | 外键关联 tb_user.id |
-| note_id | BIGINT | 笔记ID | 外键关联 tb_note.id |
-| first_view_time | DATETIME | 首次浏览时间 | |
-| last_view_time | DATETIME | 最近浏览时间 | |
-| view_count | INT | 浏览次数 | 同一笔记重复浏览累加 |
-| duration | INT | 停留时长（秒） | 累计停留时长 |
-
-**业务逻辑：**
-- 用户浏览笔记 ≥ 3 秒后记录
-- 同一用户重复浏览同一笔记，更新 `last_view_time`、`view_count`、`duration`
-
-**索引设计：**
-- PRIMARY KEY (`id`)
-- UNIQUE KEY `uk_user_note` (`user_id`, `note_id`)
-- INDEX `idx_user_last_view` (`user_id`, `last_view_time`) - 用户浏览历史查询
-- INDEX `idx_note_id` (`note_id`) - 笔记热度统计
 
 ### 9.3 评论系统表设计
 
@@ -929,53 +863,9 @@ Athena 系统采用 MySQL 8.0 作为主数据库，各业务模块按服务拆�
 - PRIMARY KEY (`id`)
 - UNIQUE KEY `uk_comment_id` (`comment_id`)
 
-### 9.4 用户系统表设计
+### 9.4 关系系统表设计
 
-#### 9.4.1 用户基础表（tb_user）
-
-**说明：** 存储用户的账号信息。
-
-| 字段名 | 类型 | 说明 | 备注 |
-|--------|------|------|------|
-| id | BIGINT | 用户ID（主键） | 自增 |
-| phone | VARCHAR(20) | 手机号 | 唯一索引 |
-| nick_name | VARCHAR(50) | 昵称 | |
-| icon | VARCHAR(500) | 头像URL | |
-| priority | BOOLEAN | 是否VIP | 默认 false |
-| create_time | DATETIME | 创建时间 | |
-| update_time | DATETIME | 更新时间 | |
-
-**索引设计：**
-- PRIMARY KEY (`id`)
-- UNIQUE KEY `uk_phone` (`phone`) - 手机号登录
-
-#### 9.4.2 用户信息表（tb_user_info）
-
-**说明：** 存储用户的扩展信息和统计数据。
-
-| 字段名 | 类型 | 说明 | 备注 |
-|--------|------|------|------|
-| user_id | BIGINT | 用户ID（主键） | 外键关联 tb_user.id |
-| city | VARCHAR(50) | 城市 | |
-| introduction | VARCHAR(500) | 个人简介 | |
-| fans_total | INT | 粉丝总数 | 默认 0 |
-| following_total | INT | 关注总数 | 默认 0 |
-| gender | TINYINT | 性别 | 0-未知，1-男，2-女 |
-| birthday | DATE | 生日 | |
-| credits | INT | 积分 | 默认 0 |
-| level | TINYINT | 等级 | 默认 1 |
-| content_total | BIGINT | 笔记总数 | 默认 0 |
-| like_total | BIGINT | 获赞总数 | 默认 0 |
-| collect_total | BIGINT | 获藏总数 | 默认 0 |
-| create_time | DATETIME | 创建时间 | |
-| update_time | DATETIME | 更新时间 | |
-
-**索引设计：**
-- PRIMARY KEY (`user_id`)
-
-### 9.5 关系系统表设计
-
-#### 9.5.1 关注表（tb_follow）
+#### 9.4.1 关注表（tb_follow）
 
 **说明：** 记录用户之间的关注关系。
 
@@ -995,7 +885,7 @@ Athena 系统采用 MySQL 8.0 作为主数据库，各业务模块按服务拆�
 - UNIQUE KEY `uk_user_follow` (`user_id`, `follow_user_id`) - 防止重复关注
 - INDEX `idx_follow_user` (`follow_user_id`) - 查询粉丝列表
 
-#### 9.5.2 粉丝表（tb_fans）
+#### 9.4.2 粉丝表（tb_fans）
 
 **说明：** 冗余设计，加速粉丝列表查询。
 
@@ -1015,85 +905,20 @@ Athena 系统采用 MySQL 8.0 作为主数据库，各业务模块按服务拆�
 - PRIMARY KEY (`id`)
 - INDEX `idx_user_fans` (`user_id`, `create_time`) - 粉丝列表查询
 
-### 9.6 健康记录表设计
+### 9.5 数据库设计要点总结
 
-#### 9.6.1 经期周期表（tb_menstruation_cycle）
+#### 9.5.1 读写分离设计
 
-**说明：** 记录用户的经期周期数据，支持预测功能。
-
-| 字段名 | 类型 | 说明 | 备注 |
-|--------|------|------|------|
-| id | BIGINT | 周期ID（主键） | 自增 |
-| user_id | BIGINT | 用户ID | 外键关联 tb_user.id |
-| start_date | DATE | 经期开始日期 | |
-| end_date | DATE | 经期结束日期 | 可为空（未结束） |
-| duration_days | INT | 经期持续天数 | end_date - start_date + 1 |
-| cycle_length | INT | 周期长度（天） | 距离上次经期的天数 |
-| is_predicted | INT | 是否预测数据 | 0-实际记录，1-预测数据 |
-| create_time | DATETIME | 创建时间 | |
-| update_time | DATETIME | 更新时间 | |
-
-**业务逻辑：**
-- 用户记录经期开始 → 插入记录（end_date=null）
-- 用户记录经期结束 → 更新 end_date 和 duration_days
-- 系统根据历史周期预测未来经期（is_predicted=1）
-
-**索引设计：**
-- PRIMARY KEY (`id`)
-- INDEX `idx_user_start` (`user_id`, `start_date`) - 查询用户经期历史
-
-#### 9.6.2 日常健康记录表（tb_daily_record）
-
-**说明：** 记录用户每日的健康数据（体温、心情、症状等）。
-
-| 字段名 | 类型 | 说明 | 备注 |
-|--------|------|------|------|
-| id | BIGINT | 记录ID（主键） | 自增 |
-| user_id | BIGINT | 用户ID | 外键关联 tb_user.id |
-| record_date | DATE | 记录日期 | |
-| mode_type | INT | 模式类型 | 0-正常模式，1-备孕模式，2-怀孕模式 |
-| record_item_id | INT | 记录项ID | 外键关联数据字典表 |
-| record_value | VARCHAR(500) | 记录值 | JSON 格式存储 |
-
-**设计考量：**
-- 采用 EAV 模型（实体-属性-值）存储灵活的健康数据
-- record_item_id 关联数据字典，定义不同的健康指标
-- record_value 存储 JSON 格式数据，支持复杂结构
-
-**索引设计：**
-- PRIMARY KEY (`id`)
-- INDEX `idx_user_date` (`user_id`, `record_date`) - 查询某日记录
-
-### 9.7 数据库设计要点总结
-
-#### 9.7.1 读写分离设计
-
-- **大文本垂直拆分**：笔记内容、评论内容独立存储
+- **大文本垂直拆分**：**笔记内容、评论内容独立存储**
 - **统计数据独立表**：点赞数、收藏数、评论数独立表，减少锁竞争
 
-#### 9.7.2 高并发优化
+#### 9.5.2 高并发优化
 
-- **软删除 vs 物理删除**：点赞/收藏采用软删除（status字段），关注采用物理删除
 - **冗余字段**：topic_name 等冗余字段减少联表查询
 - **异步更新**：统计数据通过 RocketMQ 异步更新
 
-#### 9.7.3 索引设计原则
+#### 9.5.3 索引设计原则
 
-- **唯一索引**：防止重复数据（点赞、收藏、关注）
 - **复合索引**：覆盖常用查询场景（user_id + status + create_time）
 - **外键约束**：代码层面维护，不使用数据库外键约束
 
-#### 9.7.4 数据类型选择
-
-- **主键**：BIGINT（雪花算法生成分布式ID）
-- **时间字段**：DATETIME（MySQL 8.0 性能优化）
-- **状态字段**：TINYINT（节省空间）
-- **JSON 字段**：TEXT + JSON 格式（灵活存储，适合变化频繁的字段）
-
----
-
-**待补充章节：**
-
-- 部署架构
-- 开发规范
-- 监控与运维
