@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/navigation_knowledge"
+        android:title="知识" />
+
+    <item
+        android:id="@+id/navigation_square"
+        android:title="广场" />
+
+    <item
+        android:id="@+id/navigation_ai"
+        android:title="AI" />
+
+    <item
+        android:id="@+id/navigation_record"
+        android:title="健康" />
+
+    <item
+        android:id="@+id/navigation_profile"
+        android:title="我的" />
+
+</menu>

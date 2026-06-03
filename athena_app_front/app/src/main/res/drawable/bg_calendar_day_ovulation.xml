@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 排卵期格子：浅紫 #D6C8F9 实心圆角矩形 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/health_ovulation_window" />
+    <corners android:radius="14dp" />
+</shape>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 测胎心图标：心跳波形 + 心形 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp" android:height="28dp"
+    android:viewportWidth="28" android:viewportHeight="28">
+    <!-- 心形 -->
+    <path android:fillColor="#FF7A9A"
+        android:pathData="M14,22 C14,22 4,15 4,9 C4,6.2 6.2,4 9,4 C11,4 12.8,5.2 14,7 C15.2,5.2 17,4 19,4 C21.8,4 24,6.2 24,9 C24,15 14,22 14,22 Z"/>
+    <!-- 心跳波形（白色叠加） -->
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M7,12 L10,12 L11,9 L13,15 L15,10 L16,13 L21,13"/>
+</vector>

@@ -1,0 +1,20 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="20dp"
+    android:height="20dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- 外层淡蓝色圆环（位置不变） -->
+    <path
+        android:pathData="M50,50 m-45,0 a45,45 0 1,1 90,0 a45,45 0 1,1 -90,0"
+        android:strokeWidth="3"
+        android:strokeColor="#ADD8E6"
+        android:fillColor="@android:color/transparent" />
+
+    <!-- 内部上下翻转的V字（倒V形） -->
+    <path
+        android:pathData="M35,30 L50,70 L65,30"
+    android:strokeWidth="8"
+    android:strokeColor="#ADD8E6"
+    android:fillColor="@android:color/transparent" />
+</vector>

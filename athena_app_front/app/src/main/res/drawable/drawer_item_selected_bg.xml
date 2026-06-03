@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 抽屉菜单项：选中态背景 - 浅紫粉圆角底框 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FFF4EE" />
+    <corners android:radius="14dp" />
+</shape>

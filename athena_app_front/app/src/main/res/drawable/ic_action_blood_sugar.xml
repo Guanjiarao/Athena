@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 孕期血糖图标：血糖仪 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp" android:height="28dp"
+    android:viewportWidth="28" android:viewportHeight="28">
+    <!-- 仪器外壳 -->
+    <path android:fillColor="#E5375A"
+        android:pathData="M5,8 C5,6 6,5 8,5 L20,5 C22,5 23,6 23,8 L23,20 C23,22 22,23 20,23 L8,23 C6,23 5,22 5,20 Z"/>
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M6.5,9 L21.5,9 L21.5,21.5 L6.5,21.5 Z"/>
+    <!-- 屏幕数字 -->
+    <path android:strokeColor="#E5375A" android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M9,12 L13,12 M9,15 L13,15 M9,18 L13,18"/>
+    <!-- 血滴 -->
+    <path android:fillColor="#E5375A"
+        android:pathData="M18,11 C18,11 15.5,14 15.5,16 C15.5,17.4 16.6,18.5 18,18.5 C19.4,18.5 20.5,17.4 20.5,16 C20.5,14 18,11 18,11 Z"/>
+</vector>

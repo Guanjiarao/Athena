@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 已点赞：粉色（与标签色一致） -->
+    <item android:color="@color/pink_500" android:state_selected="true"/>
+    <!-- 未点赞：默认二级文本色 -->
+    <item android:color="@color/text_secondary" android:state_selected="false"/>
+</selector>

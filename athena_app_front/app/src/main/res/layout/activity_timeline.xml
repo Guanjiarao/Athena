@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/black">
+
+    <!-- 底层：全屏背景图（随激活卡片切换） -->
+    <ImageView
+        android:id="@+id/iv_timeline_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:contentDescription="背景图" />
+
+    <!-- 半透明黑色遮罩 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#99000000" />
+
+    <!-- 中间贯穿竖线 -->
+    <View
+        android:id="@+id/v_timeline_axis"
+        android:layout_width="1.5dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="center_horizontal"
+        android:background="#66FFFFFF" />
+
+    <!-- 顶层：全屏透明 RecyclerView -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_timeline"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:overScrollMode="never"
+        android:scrollbars="none"
+        android:clipToPadding="false"
+        android:paddingTop="80dp"
+        android:paddingBottom="80dp" />
+
+    <!-- 返回按钮 -->
+    <ImageView
+        android:id="@+id/iv_timeline_back"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="top|start"
+        android:layout_margin="16dp"
+        android:src="@android:drawable/ic_menu_revert"
+        android:background="@drawable/circle_background"
+        android:padding="10dp"
+        android:contentDescription="返回"
+        android:clickable="true"
+        android:focusable="true" />
+
+    <!-- 页面标题 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="22dp"
+        android:text="科普时光轴"
+        android:textColor="#FFFFFFFF"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.05" />
+
+</FrameLayout>

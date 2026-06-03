@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 端侧隐私联邦计算：全屏半透明遮罩 + 居中圆角科技卡片 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#99000000"
+    android:clickable="true"
+    android:focusable="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginStart="28dp"
+        android:layout_marginEnd="28dp"
+        android:background="@drawable/bg_privacy_federated_dialog_card"
+        android:elevation="12dp"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="22dp">
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:indeterminate="true"
+            app:indicatorColor="#4FA0FF"
+            app:indicatorSize="48dp"
+            app:trackCornerRadius="2dp"
+            app:trackThickness="3dp"
+            app:trackColor="#334FA0FF" />
+
+        <TextView
+            android:id="@+id/textFederatedTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:gravity="center"
+            android:letterSpacing="0.04"
+            android:text="@string/privacy_federated_title"
+            android:textColor="#E8F0FF"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/textFederatedSubtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="center"
+            android:text="@string/privacy_federated_subtitle"
+            android:textColor="#88A8CC"
+            android:textSize="11sp" />
+
+        <ScrollView
+            android:id="@+id/scrollFederatedLog"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:layout_marginTop="14dp"
+            android:fadeScrollbars="false"
+            android:fillViewport="false"
+            android:scrollbars="vertical">
+
+            <TextView
+                android:id="@+id/textFederatedLog"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:lineSpacingExtra="4dp"
+                android:textColor="#B8D4FF"
+                android:textSize="11sp" />
+        </ScrollView>
+    </LinearLayout>
+</FrameLayout>

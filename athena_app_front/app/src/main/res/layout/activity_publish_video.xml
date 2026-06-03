@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#FFFFFF">
+
+    <!-- ① 顶部导航栏 -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="20dp"
+        android:background="#FFFFFF"
+        android:elevation="2dp">
+
+        <!-- 关闭按钮 (×) -->
+        <ImageView
+            android:id="@+id/btn_back"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_centerVertical="true"
+            android:layout_marginStart="4dp"
+            android:padding="12dp"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:contentDescription="关闭"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+        <!-- 双 Tab：发布图文 | 发布视频 -->
+        <LinearLayout
+            android:id="@+id/layout_tabs"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tab_publish_image"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="发布图文"
+                android:textSize="16sp"
+                android:textStyle="normal"
+                android:textColor="#999999"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="4dp" />
+
+            <View
+                android:layout_width="1dp"
+                android:layout_height="16dp"
+                android:background="#DDDDDD"
+                android:layout_marginHorizontal="2dp" />
+
+            <TextView
+                android:id="@+id/tab_publish_video"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="发布视频"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#E5375A"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="4dp" />
+
+        </LinearLayout>
+
+        <!-- 发布按钮 -->
+        <TextView
+            android:id="@+id/btn_publish"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:layout_marginEnd="16dp"
+            android:text="发布"
+            android:textColor="#E5375A"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:padding="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+    </RelativeLayout>
+
+    <!-- 顶栏分割线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#EEEEEE" />
+
+    <!-- 可滚动内容区 -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:overScrollMode="never">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="24dp">
+
+            <!-- ② 视频核心占位区 -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/card_video_picker"
+                android:layout_width="match_parent"
+                android:layout_height="256dp"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="16dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="#F5F5F5">
+
+                <!-- 默认占位：+ 图标 + 文字 -->
+                <LinearLayout
+                    android:id="@+id/layout_video_placeholder"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:layout_width="52dp"
+                        android:layout_height="52dp"
+                        android:gravity="center"
+                        android:text="+"
+                        android:textSize="36sp"
+                        android:textColor="#CCCCCC"
+                        android:textStyle="normal"
+                        android:background="@drawable/bg_video_add_circle" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="点击添加视频"
+                        android:textSize="14sp"
+                        android:textColor="#AAAAAA" />
+
+                </LinearLayout>
+
+                <!-- 预留：视频封面图（默认隐藏） -->
+                <ImageView
+                    android:id="@+id/iv_video_cover"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="视频封面"
+                    android:visibility="gone" />
+
+                <!-- 视频预览播放器（选完视频后显示） -->
+                <VideoView
+                    android:id="@+id/video_preview"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="gone" />
+
+                <!-- 预留：右上角删除按钮（默认隐藏） -->
+                <ImageView
+                    android:id="@+id/iv_delete_video"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_gravity="top|end"
+                    android:layout_margin="8dp"
+                    android:padding="4dp"
+                    android:src="@android:drawable/ic_menu_close_clear_cancel"
+                    android:contentDescription="删除视频"
+                    android:background="@drawable/bg_delete_btn"
+                    android:visibility="gone" />
+
+            </androidx.cardview.widget.CardView>
+
+            <!-- ③ 文本输入区 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingTop="20dp">
+
+                <!-- 标题输入框 -->
+                <EditText
+                    android:id="@+id/et_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="填写标题会有更多赞哦~"
+                    android:textColorHint="#CCCCCC"
+                    android:textColor="#1A1A1A"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:background="@null"
+                    android:maxLines="1"
+                    android:inputType="text"
+                    android:imeOptions="actionNext"
+                    android:paddingBottom="10dp" />
+
+                <!-- 标题与正文间距 -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="0.5dp"
+                    android:background="#EEEEEE"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- 正文输入框 -->
+                <EditText
+                    android:id="@+id/et_content"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="100dp"
+                    android:hint="添加描述，跟姐妹们分享你的日常..."
+                    android:textColorHint="#CCCCCC"
+                    android:textColor="#333333"
+                    android:textSize="15sp"
+                    android:background="@null"
+                    android:gravity="top|start"
+                    android:maxLength="5000"
+                    android:inputType="textMultiLine"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="8dp" />
+
+            </LinearLayout>
+
+            <!-- ④ 话题添加区 -->
+
+            <!-- 分割线 0.5dp -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0.5dp"
+                android:layout_marginTop="8dp"
+                android:background="#EEEEEE" />
+
+            <!-- 话题行 -->
+            <LinearLayout
+                android:id="@+id/layout_topic"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground">
+
+                <!-- # 图标（粉色） -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="#"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    android:textColor="#E5375A"
+                    android:paddingEnd="8dp" />
+
+                <!-- 话题输入 / 提示文字 -->
+                <EditText
+                    android:id="@+id/et_topic"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="添加话题（选填）"
+                    android:textColorHint="#BBBBBB"
+                    android:textColor="#333333"
+                    android:textSize="14sp"
+                    android:background="@null"
+                    android:maxLines="1"
+                    android:inputType="text"
+                    android:imeOptions="actionDone" />
+
+                <!-- 右侧箭头 > -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="›"
+                    android:textSize="20sp"
+                    android:textColor="#CCCCCC"
+                    android:paddingStart="8dp" />
+
+            </LinearLayout>
+
+            <!-- 话题行底部分割线 -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0.5dp"
+                android:background="#EEEEEE" />
+
+        </LinearLayout>
+
+    </ScrollView>
+
+</LinearLayout>

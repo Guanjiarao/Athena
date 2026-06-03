@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 孕中期（14-27周）：淡黄背景 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/health_pregnancy_mid" />
+    <corners android:radius="14dp" />
+</shape>

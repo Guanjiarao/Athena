@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp" android:height="28dp"
+    android:viewportWidth="28" android:viewportHeight="28">
+    <!-- 日历主体 -->
+    <path android:fillColor="#E5375A"
+        android:pathData="M5,8 L23,8 L23,24 L5,24 Z"/>
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M6,10 L22,10 L22,23 L6,23 Z"/>
+    <!-- 日历顶部挂钩 -->
+    <path android:fillColor="#E5375A"
+        android:pathData="M9,5 L9,9 L11,9 L11,5 Z M17,5 L17,9 L19,9 L19,5 Z"/>
+    <!-- 对勾/计划标记 -->
+    <path android:strokeColor="#E5375A" android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M9,16 L12,19 L19,13"/>
+</vector>

@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white">
+
+    <LinearLayout
+        android:id="@+id/layout_not_logged_in"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/white"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="Athena"
+            android:textColor="@color/athena_pink"
+            android:textSize="70sp"
+            android:textStyle="bold" />
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1.5" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="Unlock more after login"
+            android:textColor="#333333"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="40dp"
+            android:text="Track health and care for yourself"
+            android:textColor="#999999"
+            android:textSize="14sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_login"
+            android:layout_width="280dp"
+            android:layout_height="52dp"
+            android:layout_marginBottom="60dp"
+            android:text="Log in"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            app:backgroundTint="@color/athena_pink"
+            app:cornerRadius="26dp"
+            app:elevation="4dp" />
+
+    </LinearLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/layout_logged_in"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:overScrollMode="never"
+        android:visibility="visible">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/white">
+
+            <ImageView
+                android:id="@+id/iv_profile_bg"
+                android:layout_width="0dp"
+                android:layout_height="360dp"
+                android:background="@drawable/bg_profile_hero"
+                android:contentDescription="个人主页背景"
+                android:scaleType="centerCrop"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <View
+                android:id="@+id/view_bg_scrim"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/bg_profile_hero_scrim"
+                app:layout_constraintBottom_toBottomOf="@id/iv_profile_bg"
+                app:layout_constraintEnd_toEndOf="@id/iv_profile_bg"
+                app:layout_constraintStart_toStartOf="@id/iv_profile_bg"
+                app:layout_constraintTop_toTopOf="@id/iv_profile_bg" />
+
+            <ImageView
+                android:id="@+id/iv_settings"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_marginTop="52dp"
+                android:layout_marginEnd="20dp"
+                android:background="@drawable/bg_profile_icon_button"
+                android:clickable="true"
+                android:contentDescription="设置按钮"
+                android:focusable="true"
+                android:padding="10dp"
+                android:src="@drawable/ic_settings_gear"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:tint="@android:color/white" />
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/iv_avatar"
+                android:layout_width="92dp"
+                android:layout_height="92dp"
+                android:layout_marginStart="24dp"
+                android:layout_marginTop="112dp"
+                android:background="@drawable/bg_avatar_ring"
+                android:contentDescription="用户头像"
+                android:scaleType="centerCrop"
+                android:src="@android:drawable/ic_menu_myplaces"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:shapeAppearanceOverlay="@style/CircleImageStyle"
+                app:strokeColor="@color/white"
+                app:strokeWidth="3dp" />
+
+            <LinearLayout
+                android:id="@+id/layout_profile_identity"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="18dp"
+                android:layout_marginEnd="20dp"
+                android:layout_marginTop="118dp"
+                android:orientation="vertical"
+                app:layout_constraintEnd_toStartOf="@id/iv_settings"
+                app:layout_constraintStart_toEndOf="@id/iv_avatar"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tv_username"
+                        style="@style/ProfileHeroNameText"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        tools:text="用户昵称" />
+
+                    <TextView
+                        android:id="@+id/btn_data_asset"
+                        style="@style/ProfileAssetPillText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:background="@drawable/bg_asset_button"
+                        android:paddingHorizontal="14dp"
+                        android:paddingVertical="7dp"
+                        android:text="数据资产" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_user_id"
+                    style="@style/ProfileHeroMetaText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    tools:text="ID: 13800138000" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/layout_profile_stats"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="24dp"
+                android:layout_marginTop="28dp"
+                android:layout_marginEnd="24dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/iv_avatar">
+
+                <LinearLayout
+                    android:id="@+id/layout_following"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingVertical="6dp">
+
+                    <TextView
+                        android:id="@+id/tv_following_count"
+                        style="@style/ProfileStatNumberText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        tools:text="193" />
+
+                    <TextView
+                        style="@style/ProfileStatLabelText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:text="关注" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/layout_followers"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="28dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingVertical="6dp">
+
+                    <TextView
+                        android:id="@+id/tv_followers_count"
+                        style="@style/ProfileStatNumberText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        tools:text="35" />
+
+                    <TextView
+                        style="@style/ProfileStatLabelText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:text="粉丝" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/layout_likes"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="28dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingVertical="6dp">
+
+                    <TextView
+                        android:id="@+id/tv_likes_count"
+                        style="@style/ProfileStatNumberText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        tools:text="1" />
+
+                    <TextView
+                        style="@style/ProfileStatLabelText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:text="获赞" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/layout_content_card"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="26dp"
+                android:background="@drawable/bg_profile_content"
+                android:orientation="vertical"
+                android:paddingTop="10dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/layout_profile_stats">
+
+                <com.google.android.material.tabs.TabLayout
+                    android:id="@+id/tab_layout_profile"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:background="@android:color/transparent"
+                    android:paddingHorizontal="8dp"
+                    app:tabGravity="fill"
+                    app:tabIndicatorColor="@color/athena_pink"
+                    app:tabIndicatorFullWidth="false"
+                    app:tabIndicatorHeight="2dp"
+                    app:tabMode="fixed"
+                    app:tabRippleColor="@android:color/transparent"
+                    app:tabSelectedTextAppearance="@style/ProfileTabTextActive"
+                    app:tabSelectedTextColor="@color/text_primary"
+                    app:tabTextAppearance="@style/ProfileTabTextInactive"
+                    app:tabTextColor="@color/profile_tab_inactive" />
+
+                <androidx.viewpager2.widget.ViewPager2
+                    android:id="@+id/vp_profile_content"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:overScrollMode="never" />
+
+            </LinearLayout>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </androidx.core.widget.NestedScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

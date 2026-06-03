@@ -1,0 +1,440 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    爱爱记录底部弹窗
+    ┌─────────────────────────────────────────────────┐
+    │  取消       第1次爱爱记录         确定            │
+    │ ──────────────────────────────────────────────  │
+    │  措施                                           │
+    │  [无措施][避孕套][体外][未射][紧急]             │
+    │  [短效] [长效] [节育环][其他措施]               │
+    │ ──────────────────────────────────────────────  │
+    │  时间                                           │
+    │                [HH] : [mm] 滚轮                 │
+    └─────────────────────────────────────────────────┘
+-->
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/white"
+    android:fillViewport="false">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingBottom="32dp">
+
+        <!-- ══ 顶部操作栏 ════════════════════════════════════════ -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:paddingHorizontal="20dp">
+
+            <TextView
+                android:id="@+id/btn_cancel"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_alignParentStart="true"
+                android:text="取消"
+                android:textSize="15sp"
+                android:textColor="#999999"
+                android:gravity="center_vertical"
+                android:paddingEnd="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackgroundBorderless" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_centerInParent="true"
+                android:text="第1次爱爱记录"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#1A1A1A"
+                android:gravity="center_vertical" />
+
+            <TextView
+                android:id="@+id/btn_confirm"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_alignParentEnd="true"
+                android:text="确定"
+                android:textSize="15sp"
+                android:textColor="@color/athena_pink"
+                android:textStyle="bold"
+                android:gravity="center_vertical"
+                android:paddingStart="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackgroundBorderless" />
+
+        </RelativeLayout>
+
+        <!-- 分割线 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0.5dp"
+            android:background="#E8E8E8" />
+
+        <!-- ══ 措施模块 ══════════════════════════════════════════ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="措施"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="#1A1A1A"
+                android:layout_marginBottom="12dp" />
+
+            <!-- 9 个措施选项，GridLayout 5 列 2 行 -->
+            <GridLayout
+                android:id="@+id/grid_measures"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="5"
+                android:rowCount="2"
+                android:useDefaultMargins="false">
+
+                <!-- 1. 无措施 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless">
+
+                    <ImageView
+                        android:id="@+id/ic_measure_none"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/withoutmethod"
+                        android:scaleType="centerInside"
+                        android:contentDescription="无措施" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="无措施"
+                        android:textSize="11sp"
+                        android:textColor="#555555"
+                        android:gravity="center"
+                        android:maxLines="1" />
+
+                </LinearLayout>
+
+                <!-- 2. 避孕套 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless">
+
+                    <ImageView
+                        android:id="@+id/ic_measure_condom"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/safety"
+                        android:scaleType="centerInside"
+                        android:contentDescription="避孕套" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="避孕套"
+                        android:textSize="11sp"
+                        android:textColor="#555555"
+                        android:gravity="center"
+                        android:maxLines="1" />
+
+                </LinearLayout>
+
+                <!-- 3. 体外排精 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless">
+
+                    <ImageView
+                        android:id="@+id/ic_measure_external"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/out"
+                        android:scaleType="centerInside"
+                        android:contentDescription="体外排精" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="体外排精"
+                        android:textSize="11sp"
+                        android:textColor="#555555"
+                        android:gravity="center"
+                        android:maxLines="1" />
+
+                </LinearLayout>
+
+                <!-- 4. 未射精 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless">
+
+                    <ImageView
+                        android:id="@+id/ic_measure_no_ejac"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/undo"
+                        android:scaleType="centerInside"
+                        android:contentDescription="未射精" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="未射精"
+                        android:textSize="11sp"
+                        android:textColor="#555555"
+                        android:gravity="center"
+                        android:maxLines="1" />
+
+                </LinearLayout>
+
+                <!-- 5. 紧急避孕药 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless">
+
+                    <ImageView
+                        android:id="@+id/ic_measure_emergency"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/medicine"
+                        android:scaleType="centerInside"
+                        android:contentDescription="紧急避孕药" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="紧急避孕药"
+                        android:textSize="10sp"
+                        android:textColor="#555555"
+                        android:gravity="center"
+                        android:maxLines="2" />
+
+                </LinearLayout>
+
+                <!-- 6. 短效避孕药 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless">
+
+                    <ImageView
+                        android:id="@+id/ic_measure_short_pill"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/short_acting"
+                        android:scaleType="centerInside"
+                        android:contentDescription="短效避孕药" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="短效避孕药"
+                        android:textSize="10sp"
+                        android:textColor="#555555"
+                        android:gravity="center"
+                        android:maxLines="2" />
+
+                </LinearLayout>
+
+                <!-- 7. 长效避孕药 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless">
+
+                    <ImageView
+                        android:id="@+id/ic_measure_long_pill"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/long_acting"
+                        android:scaleType="centerInside"
+                        android:contentDescription="长效避孕药" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="长效避孕药"
+                        android:textSize="10sp"
+                        android:textColor="#555555"
+                        android:gravity="center"
+                        android:maxLines="2" />
+
+                </LinearLayout>
+
+                <!-- 8. 节育环 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless">
+
+                    <ImageView
+                        android:id="@+id/ic_measure_iud"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/circle"
+                        android:scaleType="centerInside"
+                        android:contentDescription="节育环" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="节育环"
+                        android:textSize="11sp"
+                        android:textColor="#555555"
+                        android:gravity="center"
+                        android:maxLines="1" />
+
+                </LinearLayout>
+
+                <!-- 9. 其他措施 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless">
+
+                    <ImageView
+                        android:id="@+id/ic_measure_other"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/others"
+                        android:scaleType="centerInside"
+                        android:contentDescription="其他措施" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="其他措施"
+                        android:textSize="11sp"
+                        android:textColor="#555555"
+                        android:gravity="center"
+                        android:maxLines="1" />
+
+                </LinearLayout>
+
+            </GridLayout>
+
+        </LinearLayout>
+
+        <!-- 分割线 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0.5dp"
+            android:layout_marginTop="8dp"
+            android:background="#E8E8E8" />
+
+        <!-- ══ 时间模块 ══════════════════════════════════════════ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="时间"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="#1A1A1A"
+                android:layout_marginBottom="4dp" />
+
+            <!--
+                timePickerMode="spinner"          → 强制小时/分钟滚轮
+                descendantFocusability=blocksDescendants → 防止 TimePicker 在 ScrollView 中抢焦点导致滚动异常
+                is24HourView 由 Java 层动态设置
+            -->
+            <TimePicker
+                android:id="@+id/time_picker"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:timePickerMode="spinner"
+                android:descendantFocusability="blocksDescendants" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>
