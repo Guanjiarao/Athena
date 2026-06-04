@@ -8,4 +8,6 @@ import java.time.LocalDate;
 public class MenstruationStartDTO {
 
     private LocalDate startDate;
+
+    private LocalDate endDate;
 }

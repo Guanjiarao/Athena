@@ -2,8 +2,8 @@ package athena.record.biz.controller;
 
 import athena.athenaframework.result.Result;
 import athena.athenaframework.utils.UserIdHolder;
-import athena.record.biz.domain.dto.MenstruationEndDTO;
 import athena.record.biz.domain.dto.MenstruationStartDTO;
+import athena.record.biz.domain.dto.MenstruationUpdateDTO;
 import athena.record.biz.domain.vo.MenstruationCycleVO;
 import athena.record.biz.domain.vo.MenstruationMonthVO;
 import athena.record.biz.domain.vo.MenstruationPredictionVO;
@@ -11,8 +11,11 @@ import athena.record.biz.domain.vo.MenstruationStatsVO;
 import athena.record.biz.service.MenstruationCycleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -20,10 +23,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 经期记录与周期管理接口
- * 提供经期开始/结束记录、周期查询、统计、月视图、预测等功能
+ * 提供经期周期新增、编辑、删除、查询、统计、月视图、预测等功能
  *
  * @author Athena
- * @date 2025-01-01
+ * @date 2026-01-01
  */
 @Slf4j
 @RestController
@@ -34,10 +37,10 @@ public class MenstruationCycleController {
     private final MenstruationCycleService menstruationCycleService;
 
     /**
-     * 记录经期开始
+     * 新增经期周期记录
      *
-     * @param dto 经期开始信息（开始时间、备注等）
-     * @return 生成/更新后的经期周期信息
+     * @param dto 经期周期信息
+     * @return 生成后的经期周期信息
      */
     @PostMapping("/start")
     public Result<MenstruationCycleVO> startMenstruation(@RequestBody MenstruationStartDTO dto) {
@@ -48,27 +51,49 @@ public class MenstruationCycleController {
         try {
             return Result.ok(menstruationCycleService.startMenstruation(userId, dto));
         } catch (Exception e) {
-            log.error("开始经期失败", e);
+            log.error("新增经期失败", e);
             return Result.fail(e.getMessage());
         }
     }
 
     /**
-     * 记录经期结束
+     * 编辑经期周期记录
      *
-     * @param dto 经期结束信息（结束时间、备注等）
+     * @param id  经期记录 ID
+     * @param dto 经期周期信息
      * @return 更新后的经期周期信息
      */
-    @PostMapping("/end")
-    public Result<MenstruationCycleVO> endMenstruation(@RequestBody MenstruationEndDTO dto) {
+    @PutMapping("/{id}")
+    public Result<MenstruationCycleVO> updateMenstruation(@PathVariable Long id, @RequestBody MenstruationUpdateDTO dto) {
         Long userId = UserIdHolder.getUserId();
         if (userId == null) {
             return Result.fail("用户未登录");
         }
         try {
-            return Result.ok(menstruationCycleService.endMenstruation(userId, dto));
+            return Result.ok(menstruationCycleService.updateMenstruation(userId, id, dto));
         } catch (Exception e) {
-            log.error("结束经期失败", e);
+            log.error("编辑经期失败", e);
+            return Result.fail(e.getMessage());
+        }
+    }
+
+    /**
+     * 删除经期记录
+     *
+     * @param id 经期记录 ID
+     * @return 删除结果
+     */
+    @DeleteMapping("/{id}")
+    public Result<String> deleteMenstruation(@PathVariable Long id) {
+        Long userId = UserIdHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("用户未登录");
+        }
+        try {
+            menstruationCycleService.deleteMenstruation(userId, id);
+            return Result.ok("删除成功");
+        } catch (Exception e) {
+            log.error("删除经期失败", e);
             return Result.fail(e.getMessage());
         }
     }
@@ -76,7 +101,7 @@ public class MenstruationCycleController {
     /**
      * 查询最近一次经期记录
      *
-     * @return 最近一次完整/进行中的经期周期信息
+     * @return 最近一次经期周期信息
      */
     @GetMapping("/latest")
     public Result<MenstruationCycleVO> getLatestCycle() {
