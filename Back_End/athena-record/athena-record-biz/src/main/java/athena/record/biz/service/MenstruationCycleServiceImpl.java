@@ -1,8 +1,8 @@
 package athena.record.biz.service;
 
 import athena.record.biz.domain.dataobject.MenstruationCycle;
-import athena.record.biz.domain.dto.MenstruationEndDTO;
 import athena.record.biz.domain.dto.MenstruationStartDTO;
+import athena.record.biz.domain.dto.MenstruationUpdateDTO;
 import athena.record.biz.domain.mapper.MenstruationCycleMapper;
 import athena.record.biz.domain.vo.MenstruationCycleVO;
 import athena.record.biz.domain.vo.MenstruationMonthVO;
@@ -44,50 +44,43 @@ public class MenstruationCycleServiceImpl implements MenstruationCycleService {
         LocalDate startDate = requireDate(dto == null ? null : dto.getStartDate(), "开始日期不能为空");
         validateUserId(userId);
 
-        MenstruationCycle openCycle = menstruationCycleMapper.selectLatestOpenActualCycle(userId);
-        if (openCycle != null) {
-            throw new IllegalStateException("当前存在未结束的经期，不能重复开始");
-        }
-
-        MenstruationCycle latestActualCycle = menstruationCycleMapper.selectLatestActualCycle(userId);
-        if (latestActualCycle != null && !startDate.isAfter(latestActualCycle.getStartDate())) {
-            throw new IllegalArgumentException("开始日期必须晚于最近一次经期开始日期");
-        }
-
         MenstruationCycle cycle = new MenstruationCycle();
         cycle.setUserId(userId);
-        cycle.setStartDate(startDate);
+        applyCycleDateRange(cycle, startDate, dto == null ? null : dto.getEndDate());
+        assertNoActualCycleOverlap(userId, null, cycle.getStartDate(), cycle.getEndDate());
         cycle.setIsPredicted(ACTUAL_DATA_FLAG);
-        if (latestActualCycle != null) {
-            cycle.setCycleLength((int) ChronoUnit.DAYS.between(latestActualCycle.getStartDate(), startDate));
-        }
         menstruationCycleMapper.insert(cycle);
 
+        recalculateActualCycleLengths(userId);
         refreshPredictedCycle(userId);
         return toCycleVO(menstruationCycleMapper.selectById(cycle.getId()), null, null);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public MenstruationCycleVO endMenstruation(Long userId, MenstruationEndDTO dto) {
-        LocalDate endDate = requireDate(dto == null ? null : dto.getEndDate(), "结束日期不能为空");
+    public MenstruationCycleVO updateMenstruation(Long userId, Long id, MenstruationUpdateDTO dto) {
         validateUserId(userId);
+        MenstruationCycle cycle = getEditableActualCycle(userId, id);
+        LocalDate startDate = requireDate(dto == null ? null : dto.getStartDate(), "开始日期不能为空");
 
-        MenstruationCycle latestActualCycle = menstruationCycleMapper.selectLatestActualCycle(userId);
-        if (latestActualCycle == null) {
-            throw new IllegalStateException("当前没有可结束的经期记录");
-        }
-        if (endDate.isBefore(latestActualCycle.getStartDate())) {
-            throw new IllegalArgumentException("结束日期不能早于开始日期");
-        }
+        applyCycleDateRange(cycle, startDate, dto.getEndDate());
+        assertNoActualCycleOverlap(userId, cycle.getId(), cycle.getStartDate(), cycle.getEndDate());
+        menstruationCycleMapper.updateById(cycle);
 
-        // 结束接口允许重复调用，始终以最新一次提交的结束日期为准进行修正。
-        latestActualCycle.setEndDate(endDate);
-        latestActualCycle.setDurationDays(calculateDurationDays(latestActualCycle.getStartDate(), endDate));
-        menstruationCycleMapper.updateById(latestActualCycle);
-
+        recalculateActualCycleLengths(userId);
         refreshPredictedCycle(userId);
-        return toCycleVO(menstruationCycleMapper.selectById(latestActualCycle.getId()), null, null);
+        return toCycleVO(menstruationCycleMapper.selectById(cycle.getId()), null, null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteMenstruation(Long userId, Long id) {
+        validateUserId(userId);
+        getEditableActualCycle(userId, id);
+
+        menstruationCycleMapper.deleteById(id);
+        recalculateActualCycleLengths(userId);
+        refreshPredictedCycle(userId);
     }
 
     @Override
@@ -162,16 +155,11 @@ public class MenstruationCycleServiceImpl implements MenstruationCycleService {
         queryWrapper.eq(MenstruationCycle::getUserId, userId)
                 .eq(MenstruationCycle::getIsPredicted, ACTUAL_DATA_FLAG)
                 .le(MenstruationCycle::getStartDate, recordDate)
+                .ge(MenstruationCycle::getEndDate, recordDate)
                 .orderByDesc(MenstruationCycle::getStartDate);
 
         List<MenstruationCycle> cycleList = menstruationCycleMapper.selectList(queryWrapper);
-        for (MenstruationCycle cycle : cycleList) {
-            LocalDate displayEndDate = calculateDisplayEndDate(cycle);
-            if (!recordDate.isBefore(cycle.getStartDate()) && !recordDate.isAfter(displayEndDate)) {
-                return cycle;
-            }
-        }
-        return null;
+        return cycleList.isEmpty() ? null : cycleList.get(0);
     }
 
     private void validateUserId(Long userId) {
@@ -187,6 +175,33 @@ public class MenstruationCycleServiceImpl implements MenstruationCycleService {
         return date;
     }
 
+    private MenstruationCycle getEditableActualCycle(Long userId, Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("经期记录ID不能为空");
+        }
+        MenstruationCycle cycle = menstruationCycleMapper.selectById(id);
+        if (cycle == null) {
+            throw new IllegalStateException("经期记录不存在");
+        }
+        if (!userId.equals(cycle.getUserId())) {
+            throw new IllegalStateException("无权操作该经期记录");
+        }
+        if (PREDICTED_DATA_FLAG == cycle.getIsPredicted()) {
+            throw new IllegalArgumentException("不能操作预测经期记录");
+        }
+        return cycle;
+    }
+
+    private void applyCycleDateRange(MenstruationCycle cycle, LocalDate startDate, LocalDate endDate) {
+        LocalDate actualEndDate = endDate == null ? startDate.plusDays(DEFAULT_DURATION_DAYS - 1L) : endDate;
+        if (actualEndDate.isBefore(startDate)) {
+            throw new IllegalArgumentException("结束日期不能早于开始日期");
+        }
+        cycle.setStartDate(startDate);
+        cycle.setEndDate(actualEndDate);
+        cycle.setDurationDays(calculateDurationDays(startDate, actualEndDate));
+    }
+
     private void validateYearMonth(int year, int month) {
         try {
             YearMonth.of(year, month);
@@ -195,11 +210,26 @@ public class MenstruationCycleServiceImpl implements MenstruationCycleService {
         }
     }
 
+    private void assertNoActualCycleOverlap(Long userId, Long excludedCycleId, LocalDate startDate, LocalDate endDate) {
+        LambdaQueryWrapper<MenstruationCycle> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(MenstruationCycle::getUserId, userId)
+                .eq(MenstruationCycle::getIsPredicted, ACTUAL_DATA_FLAG)
+                .le(MenstruationCycle::getStartDate, endDate)
+                .ge(MenstruationCycle::getEndDate, startDate);
+        if (excludedCycleId != null) {
+            queryWrapper.ne(MenstruationCycle::getId, excludedCycleId);
+        }
+        if (menstruationCycleMapper.selectCount(queryWrapper) > 0) {
+            throw new IllegalArgumentException("经期日期不能与已有记录重叠");
+        }
+    }
+
     private List<MenstruationCycleVO> listCyclesForMonth(Long userId, int dataFlag, LocalDate monthStart, LocalDate monthEnd) {
         LambdaQueryWrapper<MenstruationCycle> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(MenstruationCycle::getUserId, userId)
                 .eq(MenstruationCycle::getIsPredicted, dataFlag)
                 .le(MenstruationCycle::getStartDate, monthEnd)
+                .ge(MenstruationCycle::getEndDate, monthStart)
                 .orderByAsc(MenstruationCycle::getStartDate);
 
         return menstruationCycleMapper.selectList(queryWrapper).stream()
@@ -313,6 +343,24 @@ public class MenstruationCycleServiceImpl implements MenstruationCycleService {
                 .predictedStartDate(predictedStartDate)
                 .predictedEndDate(predictedEndDate)
                 .build();
+    }
+
+    private void recalculateActualCycleLengths(Long userId) {
+        LambdaQueryWrapper<MenstruationCycle> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(MenstruationCycle::getUserId, userId)
+                .eq(MenstruationCycle::getIsPredicted, ACTUAL_DATA_FLAG)
+                .orderByAsc(MenstruationCycle::getStartDate);
+
+        List<MenstruationCycle> cycleList = menstruationCycleMapper.selectList(queryWrapper);
+        MenstruationCycle previousCycle = null;
+        for (MenstruationCycle cycle : cycleList) {
+            Integer cycleLength = previousCycle == null
+                    ? null
+                    : (int) ChronoUnit.DAYS.between(previousCycle.getStartDate(), cycle.getStartDate());
+            cycle.setCycleLength(cycleLength);
+            menstruationCycleMapper.updateById(cycle);
+            previousCycle = cycle;
+        }
     }
 
     private void refreshPredictedCycle(Long userId) {
