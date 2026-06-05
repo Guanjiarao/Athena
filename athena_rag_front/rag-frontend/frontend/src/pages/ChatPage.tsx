@@ -80,7 +80,7 @@ export function ChatPage() {
 
   return (
     <MainLayout>
-      <div className="flex h-full flex-col bg-honey-50">
+      <div className="flex h-full flex-col bg-gradient-to-b from-honey-50 to-warm-100">
         <div className="flex-1 min-h-0">
           <MessageList
             messages={messages}
@@ -90,7 +90,7 @@ export function ChatPage() {
           />
         </div>
         {showWelcome ? null : (
-          <div className="relative z-20 bg-gradient-to-t from-honey-50 via-honey-50 to-transparent">
+          <div className="relative z-20 bg-gradient-to-t from-warm-100 via-honey-50 to-transparent">
             <div className="mx-auto max-w-[800px] px-6 pt-1 pb-4">
               <ChatInput />
             </div>
