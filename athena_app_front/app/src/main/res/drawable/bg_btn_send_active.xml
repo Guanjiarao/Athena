@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 发送按钮激活态：蓝粉渐变圆形 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <gradient
+        android:angle="135"
+        android:startColor="#B388FF"
+        android:endColor="#F48FB1"
+        android:type="linear" />
+</shape>

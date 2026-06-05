@@ -1,0 +1,14 @@
+# 原有忽略
+*.iml
+.gradle
+.gradle-home/       # <--- 新增：忽略根目录下的 .gradle-home
+**/.gradle-home/    # <--- 新增：忽略所有子目录（如 athena_app_front）里的 .gradle-home
+
+# 建议把下面这些开头的 "/" 去掉，这样才能忽略子项目（比如 athena_app_front 里面）的这些文件夹
+local.properties
+.idea/
+.DS_Store
+build/              # 去掉 /，表示忽略所有叫做 build 的文件夹
+captures/
+.externalNativeBuild/
+.cxx/

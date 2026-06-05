@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 孕酮图标：分子结构简化 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp" android:height="28dp"
+    android:viewportWidth="28" android:viewportHeight="28">
+    <!-- 六元环骨架 -->
+    <path android:strokeColor="#E5375A" android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M14,5 L20,9 L20,17 L14,21 L8,17 L8,9 Z"/>
+    <!-- 内圆代表激素核心 -->
+    <path android:fillColor="#FF7A9A"
+        android:pathData="M14,11 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0"/>
+    <!-- 侧链 -->
+    <path android:strokeColor="#E5375A" android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M20,9 L24,6 M20,17 L24,20"/>
+</vector>

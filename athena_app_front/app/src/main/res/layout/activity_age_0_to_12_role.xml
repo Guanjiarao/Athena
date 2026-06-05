@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#FFFFFF">
+
+    <!-- 顶部导航栏 -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="8dp"
+        android:background="#FFFFFF"
+        android:elevation="2dp">
+
+        <ImageView
+            android:id="@+id/btn_back"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_centerVertical="true"
+            android:layout_marginStart="4dp"
+            android:padding="12dp"
+            android:src="@drawable/ic_arrow_back"
+            android:contentDescription="返回"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+        <TextView
+            android:id="@+id/tv_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="0~12岁 幼年阶段"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#333333" />
+
+    </RelativeLayout>
+
+    <!-- 顶部分割线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#F0F0F0" />
+
+    <!-- 内容区：整体垂直居中 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:paddingHorizontal="24dp">
+
+        <!-- 引导标题 -->
+        <TextView
+            android:id="@+id/tv_guide_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="请选择你的身份"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#222222" />
+
+        <!-- 引导副标题 -->
+        <TextView
+            android:id="@+id/tv_guide_subtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Athena 将为你提供专属的科普内容"
+            android:textSize="13sp"
+            android:textColor="#999999" />
+
+        <!-- 间距 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="32dp" />
+
+        <!-- 核心大卡片 1：我是小朋友 -->
+        <LinearLayout
+            android:id="@+id/card_child"
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="16dp"
+            android:background="@drawable/bg_role_child"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground">
+
+            <ImageView
+                android:id="@+id/iv_child_icon"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:scaleType="centerCrop"
+                android:src="@drawable/child"
+                android:contentDescription="小朋友"
+                android:background="@drawable/bg_role_icon_circle" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="16dp">
+
+                <TextView
+                    android:id="@+id/tv_child_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="我是小朋友"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="#333333" />
+
+                <TextView
+                    android:id="@+id/tv_child_subtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="认识身体小秘密，学习保护自己哦~"
+                    android:textSize="13sp"
+                    android:textColor="#777777" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- 间距 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="20dp" />
+
+        <!-- 核心大卡片 2：我是家长 -->
+        <LinearLayout
+            android:id="@+id/card_parent"
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="16dp"
+            android:background="@drawable/bg_role_parent"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground">
+
+            <ImageView
+                android:id="@+id/iv_parent_icon"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:scaleType="centerCrop"
+                android:src="@drawable/parents"
+                android:contentDescription="家长"
+                android:background="@drawable/bg_role_icon_circle" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="16dp">
+
+                <TextView
+                    android:id="@+id/tv_parent_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="我是家长"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="#333333" />
+
+                <TextView
+                    android:id="@+id/tv_parent_subtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="科学引导，做孩子成长的专属守护者"
+                    android:textSize="13sp"
+                    android:textColor="#777777" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>
+

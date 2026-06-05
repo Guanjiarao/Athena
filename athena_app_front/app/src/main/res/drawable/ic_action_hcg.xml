@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- hCG 图标：试管 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp" android:height="28dp"
+    android:viewportWidth="28" android:viewportHeight="28">
+    <!-- 试管身 -->
+    <path android:strokeColor="#E5375A" android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M10,3 L10,20 C10,23 18,23 18,20 L18,3"/>
+    <!-- 试管顶口 -->
+    <path android:strokeColor="#E5375A" android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M8,3 L20,3"/>
+    <!-- 液体 -->
+    <path android:fillColor="#FF7A9A"
+        android:pathData="M10,14 L18,14 L18,20 C18,23 10,23 10,20 Z"/>
+    <!-- 文字 H -->
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M11,16 L11,21 M15,16 L15,21 M11,18.5 L15,18.5"/>
+</vector>

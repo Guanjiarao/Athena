@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp" android:height="28dp"
+    android:viewportWidth="28" android:viewportHeight="28">
+    <!-- 胶囊左半 -->
+    <path android:fillColor="#E5375A"
+        android:pathData="M7,10 C7,6.7 9.7,4 13,4 L13,20 C9.7,20 7,17.3 7,14 Z"/>
+    <!-- 胶囊右半 -->
+    <path android:fillColor="#FF7A9A"
+        android:pathData="M13,4 C16.3,4 19,6.7 19,10 L19,14 C19,17.3 16.3,20 13,20 Z"/>
+    <!-- 分界线 -->
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M7,12 L19,12"/>
+    <!-- 小粒维生素 -->
+    <path android:fillColor="#E5375A"
+        android:pathData="M22,18 m-2.5,0 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0"/>
+    <path android:fillColor="#FF7A9A"
+        android:pathData="M5,22 m-2,0 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0"/>
+</vector>

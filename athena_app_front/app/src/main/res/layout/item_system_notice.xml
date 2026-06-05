@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 微信撤回消息风格的系统通知气泡，居中、灰色小字 -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/tv_system_notice"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center"
+    android:layout_marginTop="6dp"
+    android:layout_marginBottom="6dp"
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="4dp"
+    android:background="@drawable/bg_system_notice"
+    android:gravity="center"
+    android:textColor="#999999"
+    android:textSize="11sp" />

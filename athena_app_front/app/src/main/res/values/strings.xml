@@ -1,0 +1,57 @@
+<resources>
+    <string name="app_name">Athena</string>
+    <string name="works">作品</string>
+    <string name="favorites">收藏</string>
+    <string name="edit_profile">编辑资料</string>
+    <string name="username">用户名</string>
+    <string name="change_avatar">更换头像</string>
+
+    <string name="nav_header_title">Athena AI</string>
+    <string name="nav_header_subtitle">您的贴心健康助手</string>
+
+    <string name="menu_sister">温声树洞</string>
+    <string name="menu_pro">专业科普</string>
+    <string name="menu_triage">就医助手</string>
+    <string name="menu_privacy">隐私守护</string>
+    <string name="menu_monitor">生物监测</string>
+
+    <string name="cd_back">返回</string>
+
+    <string name="hint_input">请输入文字</string>
+    <string name="btn_send">发送</string>
+    <string name="btn_clear">清空对话</string>
+
+    <!-- Privacy Guard：端云协同 / 医疗脱敏 -->
+    <string name="privacy_title">🛡️ 隐私脱敏与智能分析</string>
+    <string name="btn_select_image">上传报告/图片 (本地加密)</string>
+    <string name="privacy_image_placeholder_hint">点击选择需要脱敏的病历/报告</string>
+    <string name="privacy_seek_percent_format">%d%%</string>
+    <string name="btn_process_blur">高级虚化 (隐藏隐私)</string>
+    <string name="btn_process_pixel">区块遮罩 (物理脱敏)</string>
+    <string name="btn_save_image">安全上传，开始 AI 分析</string>
+
+    <!-- Privacy：全链路新增文案 -->
+    <string name="btn_auto_anonymize">🤖 本地 AI 一键安全脱敏</string>
+    <string name="privacy_ocr_loading">本地安全计算中…隐私不出境</string>
+    <string name="privacy_ocr_done">隐私已脱敏 (%d 处)，您可继续手动抹除剩余信息</string>
+    <string name="privacy_ocr_no_pii">未检测到明显隐私信息，您可手动涂抹</string>
+    <string name="privacy_ocr_error">本地识别异常：%s</string>
+    <string name="privacy_uploading">上传中…</string>
+    <string name="privacy_analyzing">AI 分析中…</string>
+    <string name="privacy_analysis_title">🩺 AI 医疗报告解读</string>
+
+    <!-- 端侧隐私联邦计算 Loading：log_1/2/4/5/6 由 PrivacyMathEngine 算法阶段触发；log_3 已内联真实签名，此处保留备用 -->
+    <string name="privacy_federated_title">端侧隐私 · 联邦计算引擎</string>
+    <string name="privacy_federated_subtitle">本地特征已脱敏 · 隐私不出境</string>
+    <string name="privacy_federated_log_1">启动本地轻量级视觉模型 · 提取 4096-dim 像素特征…</string>
+    <string name="privacy_federated_log_2">RAP 随机投影 (VLDB 2024) 降维 4096→256…</string>
+    <string name="privacy_federated_log_3">核心集提纯完毕，数据量压缩 80%</string>
+    <string name="privacy_federated_log_4">Model Rake (IJCAI 2025) 注入 Laplace(ε=0.5) 差分隐私噪声…</string>
+    <string name="privacy_federated_log_5">序列化匿名特征 · 通过 Serverless 节点路由…</string>
+    <string name="privacy_federated_log_6">正在呼叫千问医疗大模型进行联合推理…</string>
+
+    <!-- Monitor -->
+    <string name="monitor_title">生物监测沙盒</string>
+    <string name="monitor_hr">心率: %d BPM</string>
+    <string name="monitor_capture">拍摄面部分析</string>
+</resources>

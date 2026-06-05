@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="76dp"
+    android:background="@color/white"
+    android:paddingHorizontal="18dp">
+
+    <ImageView
+        android:id="@+id/action_icon"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:background="@drawable/bg_health_icon_circle"
+        android:contentDescription="icon"
+        android:padding="8dp"
+        android:scaleType="centerInside"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <LinearLayout
+        android:id="@+id/layout_title_area"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/btn_no"
+        app:layout_constraintStart_toEndOf="@id/action_icon"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:id="@+id/action_title"
+            style="@style/HealthActionTitleText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/tv_cycle_settings_entry"
+            style="@style/HealthActionMetaText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:text="&#36755;&#20837;&#26376;&#32463;&#35268;&#24459;"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/btn_no"
+        android:layout_width="56dp"
+        android:layout_height="36dp"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/bg_period_btn_no"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:text="&#21542;"
+        android:textColor="@color/health_text_secondary"
+        android:textSize="14sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/btn_yes"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/btn_yes"
+        android:layout_width="56dp"
+        android:layout_height="36dp"
+        android:background="@drawable/bg_period_btn_yes"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:text="&#26159;"
+        android:textColor="@color/white"
+        android:textSize="14sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <View
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:background="#F3ECE6"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

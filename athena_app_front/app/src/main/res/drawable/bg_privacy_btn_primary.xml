@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 主操作按钮：柔和蓝灰，无品牌紫 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#5B7C99" />
+    <corners android:radius="10dp" />
+</shape>

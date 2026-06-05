@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="science_ai_title">AI 科普助手</string>
+    <string name="science_ai_back">返回</string>
+    <string name="science_ai_send">发送</string>
+    <string name="science_ai_input_hint">请输入你想了解的科普知识...</string>
+    <string name="science_ai_empty_state">输入问题后，AI 回答会展示在这里</string>
+    <string name="science_ai_send_placeholder">AI 科普问答功能正在接入中</string>
+</resources>

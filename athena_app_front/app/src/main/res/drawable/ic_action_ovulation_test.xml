@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp" android:height="28dp"
+    android:viewportWidth="28" android:viewportHeight="28">
+    <!-- 试纸条 -->
+    <path android:fillColor="#E5375A"
+        android:pathData="M11,2 L17,2 L17,22 L11,22 Z"/>
+    <!-- 检测窗口 -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M12.5,5 L15.5,5 L15.5,9 L12.5,9 Z"/>
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M12.5,11 L15.5,11 L15.5,15 L12.5,15 Z"/>
+    <!-- 底部握持区 -->
+    <path android:fillColor="#FF7A9A"
+        android:pathData="M11,22 L17,22 L17,26 L11,26 Z"/>
+</vector>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 输入框药丸背景：高级浅灰，20dp 圆角，无边框 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#F4F5F7" />
+    <corners android:radius="20dp" />
+</shape>

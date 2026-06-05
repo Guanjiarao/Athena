@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="android.permission.BODY_SENSORS" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <queries>
+        <package android:name="com.heytap.market" />
+        <package android:name="com.oppo.market" />
+        <package android:name="com.heytap.health" />
+    </queries>
+
+    <application
+        android:name=".AthenaApplication"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@drawable/athena"
+        android:label="@string/app_name"
+        android:roundIcon="@drawable/athena"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Athena"
+        android:usesCleartextTraffic="true">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".LoginActivity"
+            android:exported="false"
+            android:theme="@style/LoginTheme" />
+        <activity
+            android:name=".RegisterActivity"
+            android:exported="false"
+            android:theme="@style/LoginTheme" />
+        <activity
+            android:name=".AIActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena.NoActionBar" />
+        <activity
+            android:name=".AnalysisReportActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".VideoDetailActivity"
+            android:exported="false"
+            android:screenOrientation="locked"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".NoteDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".PublishActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".PublishVideoActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".Age0To12RoleActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".Age12To22Activity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".MatureStageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".Age55PlusActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".OvulationScanActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".EditProfileActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena"
+            android:windowSoftInputMode="adjustResize" />
+            
+        <activity
+            android:name=".FollowingListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".FollowerListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".SolutionDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".SmartBandActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        
+        <activity
+            android:name=".SearchActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+
+        <activity
+            android:name=".ScienceAISearchActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".SearchResultActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+
+        <activity
+            android:name=".KidsArticleListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".ParentsArticleListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".MenstrualArticleListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".BisexualArticleListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".SkincareArticleListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".PrepareArticleListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".AvoidArticleListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".PreventArticleListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".SignArticleListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".ChannelArticleListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+        <activity
+            android:name=".ArticleDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena" />
+
+        <activity
+            android:name=".PrivateGalleryActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Athena"
+            android:label="私密大肚照" />
+
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <!-- ML Kit 离线文字识别：捆绑拉丁 + 中文模型，不走 GMS 在线下载 -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="ocr_latin,ocr_chinese" />
+
+    </application>
+</manifest>

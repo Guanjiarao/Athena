@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_data_asset_sheet"
+    android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingTop="20dp"
+    android:paddingEnd="24dp"
+    android:paddingBottom="32dp">
+
+    <!-- 拖拽指示条 -->
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="20dp"
+        android:background="#DDDDDD"
+        android:backgroundTint="#DDDDDD" />
+
+    <!-- 标题 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingBottom="4dp"
+        android:text="✨ Athena 数据资产管理中枢"
+        android:textColor="#CC4477AA"
+        android:textSize="17sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingBottom="20dp"
+        android:text="Based on VLDB 2025 · PS-MI 联邦隐私博弈论"
+        android:textColor="#AAAAAA"
+        android:textSize="11sp" />
+
+    <!-- 分割线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginBottom="20dp"
+        android:background="#F0E0E8" />
+
+    <!-- 两列指标卡 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <!-- 左：Shapley 贡献值 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/bg_asset_metric_card_left"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingVertical="16dp"
+            android:paddingHorizontal="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="累计 Shapley 贡献值"
+                android:textColor="#AA6688AA"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/tv_shapley_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="0.0000"
+                android:textColor="#CC3366"
+                android:textSize="28sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="φᵢ"
+                android:textColor="#AAAAAA"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="12dp"
+            android:layout_height="0dp" />
+
+        <!-- 右：AI 联邦健康积分 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/bg_asset_metric_card_right"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingVertical="16dp"
+            android:paddingHorizontal="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AI 联邦健康积分"
+                android:textColor="#AA5599BB"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/tv_athena_points"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="0"
+                android:textColor="#3388CC"
+                android:textSize="28sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="pts"
+                android:textColor="#AAAAAA"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- 平权公益荣誉横幅（有矫正记录时才显示） -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/card_honor_banner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="@android:color/transparent"
+        app:cardCornerRadius="14dp"
+        app:cardElevation="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_honor_banner"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="14dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="🌸"
+                android:textSize="24sp" />
+
+            <TextView
+                android:id="@+id/tv_honor_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="9"
+                android:lineSpacingExtra="3dp"
+                android:text="平权贡献：您已累计参与 0 次 AI 偏见矫正，为构建『无偏见女性大模型』贡献了珍贵的对齐语料！"
+                android:textColor="#7B1FA2"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- 分割线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="12dp"
+        android:background="#F0E0E8" />
+
+    <!-- AI 极客说明 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:lineSpacingExtra="3dp"
+        android:text="* 您的脱敏数据质量分和对联邦医疗大模型的边际贡献率，已通过本地 Monte Carlo 引擎计算完成 (Based on VLDB 2025 PS-MI)。Shapley 值每次上传实时计算并累加，积分 = Shapley × 1000，均存储于本设备本地，不上传任何原始数据。"
+        android:textColor="#AAAAAA"
+        android:textSize="10sp" />
+
+</LinearLayout>

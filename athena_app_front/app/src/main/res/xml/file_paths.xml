@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <external-path name="external_files" path="."/>
+
+    <cache-path name="camera_photos" path="." />
+
+    <!-- 大肚照：应用专属外部文件目录，相机 TakePicture 写入 -->
+    <external-files-path
+        name="belly_private"
+        path="Pictures/belly_private" />
+</paths>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 大肚照图标：相机 + 孕肚轮廓 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp" android:height="28dp"
+    android:viewportWidth="28" android:viewportHeight="28">
+    <!-- 相机外壳 -->
+    <path android:fillColor="#E5375A"
+        android:pathData="M3,9 C3,8 4,7 5,7 L8,7 L9,5 L19,5 L20,7 L23,7 C24,7 25,8 25,9 L25,21 C25,22 24,23 23,23 L5,23 C4,23 3,22 3,21 Z"/>
+    <!-- 镜头 -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M14,13 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0"/>
+    <!-- 孕肚轮廓（镜头内） -->
+    <path android:fillColor="#FF7A9A"
+        android:pathData="M14,13 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0"/>
+    <!-- 闪光灯 -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M20,8 L22,8 L22,10 L20,10 Z"/>
+</vector>

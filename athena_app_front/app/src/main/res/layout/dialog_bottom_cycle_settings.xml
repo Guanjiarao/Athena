@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 月经规律设置底部弹窗 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/white">
+
+    <!-- 顶部导航栏 -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:paddingHorizontal="20dp"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/btn_cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:text="取消"
+            android:textSize="14sp"
+            android:textColor="#999999"
+            android:paddingEnd="12dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_centerInParent="true"
+            android:gravity="center_vertical"
+            android:text="设置生理期规律"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#222222" />
+
+        <TextView
+            android:id="@+id/btn_save"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_alignParentEnd="true"
+            android:gravity="center_vertical"
+            android:text="保存"
+            android:textSize="14sp"
+            android:textColor="@color/athena_pink"
+            android:textStyle="bold"
+            android:paddingStart="12dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+    </RelativeLayout>
+
+    <!-- 顶部分割线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:background="#E8E8E8" />
+
+    <!-- 内容区 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="20dp">
+
+        <!-- 设置项 1：经期时长 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="经期时长"
+                android:textSize="14sp"
+                android:textColor="#333333" />
+
+            <!-- 减号 -->
+            <TextView
+                android:id="@+id/btn_period_minus"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:gravity="center"
+                android:text="−"
+                android:textSize="18sp"
+                android:textColor="#666666"
+                android:background="@drawable/bg_cycle_stepper"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <!-- 数值 -->
+            <TextView
+                android:id="@+id/tv_period_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="8dp"
+                android:text="5 天"
+                android:textSize="14sp"
+                android:textColor="#333333" />
+
+            <!-- 加号 -->
+            <TextView
+                android:id="@+id/btn_period_plus"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:gravity="center"
+                android:text="+"
+                android:textSize="18sp"
+                android:textColor="#666666"
+                android:background="@drawable/bg_cycle_stepper"
+                android:clickable="true"
+                android:focusable="true" />
+
+        </LinearLayout>
+
+        <!-- 设置项 2：月经周期 -->
+        <LinearLayout
+            android:id="@+id/row_cycle_length"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="月经周期"
+                android:textSize="14sp"
+                android:textColor="#333333" />
+
+            <TextView
+                android:id="@+id/btn_cycle_minus"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:gravity="center"
+                android:text="−"
+                android:textSize="18sp"
+                android:textColor="#666666"
+                android:background="@drawable/bg_cycle_stepper"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/tv_cycle_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="8dp"
+                android:text="28 天"
+                android:textSize="14sp"
+                android:textColor="#333333" />
+
+            <TextView
+                android:id="@+id/btn_cycle_plus"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:gravity="center"
+                android:text="+"
+                android:textSize="18sp"
+                android:textColor="#666666"
+                android:background="@drawable/bg_cycle_stepper"
+                android:clickable="true"
+                android:focusable="true" />
+
+        </LinearLayout>
+
+        <!-- 设置项 3：月经不规律 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="月经不规律"
+                android:textSize="14sp"
+                android:textColor="#333333" />
+
+            <Switch
+                android:id="@+id/switch_irregular"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:thumbTint="@color/athena_pink"
+                android:trackTint="#33E5375A" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>
+

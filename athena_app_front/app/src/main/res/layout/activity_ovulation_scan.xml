@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    根布局改为 FrameLayout，使 pb_loading 能以 GONE 浮层方式覆盖整个页面，
+    内层 LinearLayout 承载原有的纵向结构。
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FAFAFA">
+
+    <!-- ══════════════════════════════════════════
+         主体纵向布局
+         ══════════════════════════════════════════ -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- 标题栏：蓝色背景 + 粉色标题 + 白色返回 -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:background="#FF4FA0FF"
+            android:elevation="4dp">
+
+            <ImageView
+                android:id="@+id/btn_back"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_centerVertical="true"
+                android:layout_marginStart="4dp"
+                android:padding="12dp"
+                android:src="@drawable/ic_arrow_back"
+                android:tint="@android:color/white"
+                android:contentDescription="返回"
+                android:background="?attr/selectableItemBackgroundBorderless" />
+
+            <TextView
+                android:id="@+id/tv_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:text="排卵试纸AI扫描"
+                android:textSize="17sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/white"
+                android:letterSpacing="0.02" />
+
+        </RelativeLayout>
+
+        <!-- 标题栏分割线 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#EEF0F4" />
+
+        <!-- 内容区（可滚动），不包含底部固定按钮 -->
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:overScrollMode="never"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="20dp"
+                android:paddingBottom="12dp">
+
+                <!-- 图片占位卡片 -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/card_image_picker"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="18dp"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="#FFFFFF">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="20dp"
+                        android:gravity="center_horizontal">
+
+                        <!-- 虚线圆角边框 + 图标区 -->
+                        <FrameLayout
+                            android:id="@+id/frame_image_container"
+                            android:layout_width="220dp"
+                            android:layout_height="220dp"
+                            android:background="@drawable/bg_dashed_border">
+
+                            <!-- 占位提示（选图前显示） -->
+                            <LinearLayout
+                                android:id="@+id/layout_placeholder"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:orientation="vertical"
+                                android:gravity="center">
+
+                                <ImageView
+                                    android:layout_width="64dp"
+                                    android:layout_height="64dp"
+                                    android:src="@drawable/ic_add"
+                                    android:tint="#FF4FA0FF"
+                                    android:contentDescription="上传图标" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="10dp"
+                                    android:text="点击下方按钮选择试纸图片"
+                                    android:textSize="13sp"
+                                    android:textColor="#FF4FA0FF"
+                                    android:gravity="center" />
+                            </LinearLayout>
+
+                            <!-- 选图后预览图（默认 GONE） -->
+                            <ImageView
+                                android:id="@+id/iv_preview"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:scaleType="centerCrop"
+                                android:visibility="gone"
+                                android:contentDescription="试纸预览" />
+
+                        </FrameLayout>
+
+                        <!-- 提示小字 -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="14dp"
+                            android:text="请确保试纸完整清晰，光线充足"
+                            android:textSize="12sp"
+                            android:textColor="#FF999999" />
+
+                        <!-- 两个操作按钮 -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginTop="16dp">
+
+                            <Button
+                                android:id="@+id/btn_pick_from_gallery"
+                                android:layout_width="0dp"
+                                android:layout_height="40dp"
+                                android:layout_weight="1"
+                                android:text="从相册选择图片"
+                                android:textSize="13sp"
+                                android:textColor="@android:color/white"
+                                android:backgroundTint="#FF4FA0FF"
+                                android:stateListAnimator="@null"
+                                style="@style/Widget.MaterialComponents.Button" />
+
+                            <Space
+                                android:layout_width="12dp"
+                                android:layout_height="match_parent" />
+
+                            <Button
+                                android:id="@+id/btn_scan_from_camera"
+                                android:layout_width="0dp"
+                                android:layout_height="40dp"
+                                android:layout_weight="1"
+                                android:text="拍照扫描"
+                                android:textSize="13sp"
+                                android:textColor="@android:color/white"
+                                android:backgroundTint="#FFFF7599"
+                                android:stateListAnimator="@null"
+                                style="@style/Widget.MaterialComponents.Button" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </androidx.cardview.widget.CardView>
+
+                <!-- 分析报告卡片（默认 GONE，分析完成后显示） -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/cv_analysis_report"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:visibility="gone"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="#FFFFFF">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="18dp">
+
+                        <!-- 报告标题行 -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="12dp">
+
+                            <View
+                                android:layout_width="4dp"
+                                android:layout_height="20dp"
+                                android:background="#FFFF7599"
+                                android:layout_marginEnd="8dp" />
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="分析报告"
+                                android:textSize="16sp"
+                                android:textStyle="bold"
+                                android:textColor="#FFFF7599" />
+
+                        </LinearLayout>
+
+                        <!-- 分割线 -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#FFF0F0F0"
+                            android:layout_marginBottom="12dp" />
+
+                        <!-- AI 返回文本内容 -->
+                        <TextView
+                            android:id="@+id/tv_report_content"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minHeight="100dp"
+                            android:text=""
+                            android:textSize="14sp"
+                            android:textColor="#FF333333"
+                            android:lineSpacingExtra="5dp"
+                            android:lineSpacingMultiplier="1.2" />
+
+                        <!-- Powered by DeepSeek AI -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="end"
+                            android:layout_marginTop="16dp"
+                            android:text="Powered by DeepSeek AI"
+                            android:textSize="10sp"
+                            android:textColor="#FFAAAAAA"
+                            android:fontFamily="sans-serif-light" />
+
+                    </LinearLayout>
+
+                </androidx.cardview.widget.CardView>
+
+            </LinearLayout>
+
+        </ScrollView>
+
+        <!-- 底部常驻大按钮 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#FFFFFF"
+            android:elevation="8dp">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#EEF0F4" />
+
+            <Button
+                android:id="@+id/btn_start_ai"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="16dp"
+                android:text="开始AI分析"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/white"
+                android:enabled="false"
+                android:backgroundTint="#FFFF7599"
+                android:alpha="0.5"
+                android:stateListAnimator="@null"
+                style="@style/Widget.MaterialComponents.Button" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- ══════════════════════════════════════════
+         全屏居中 ProgressBar 浮层（分析时显示，默认 GONE）
+         layout_gravity="center" 使其精确居中于 FrameLayout
+         ══════════════════════════════════════════ -->
+    <FrameLayout
+        android:id="@+id/pb_loading"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#88000000"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/bg_category_cover"
+            android:padding="24dp">
+
+            <ProgressBar
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:indeterminateTint="#FFFF7599" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="AI 分析中，请稍候…"
+                android:textSize="13sp"
+                android:textColor="#FF555555" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+</FrameLayout>

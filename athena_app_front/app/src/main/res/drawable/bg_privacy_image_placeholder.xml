@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 图片预览区：极浅灰、圆角、无描边 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#EDEEF2" />
+    <corners android:radius="12dp" />
+</shape>

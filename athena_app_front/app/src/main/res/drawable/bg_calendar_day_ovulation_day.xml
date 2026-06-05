@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 排卵日格子：偏深紫 #A084E8 实心圆角矩形，文字纯白 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/health_ovulation_day" />
+    <corners android:radius="14dp" />
+</shape>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 措施选项选中态：玫红描边圆 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#FFE4EE" />
+    <stroke android:width="2dp" android:color="#E5375A" />
+</shape>

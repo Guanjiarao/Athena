@@ -1,0 +1,317 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- 隐私联邦加载弹窗：透明窗口，内容自绘遮罩 -->
+    <style name="Theme.PrivacyFederatedDialog" parent="Theme.MaterialComponents.DayNight.Dialog">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
+    <style name="Theme.Athena" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- 极简浅色：白底主色 + 深灰强调（避免默认紫/青） -->
+        <item name="colorPrimary">@color/white</item>
+        <item name="colorPrimaryVariant">@color/white</item>
+        <item name="colorOnPrimary">@color/text_primary</item>
+        <item name="colorAccent">@color/text_secondary</item>
+        <item name="android:colorAccent">@color/text_secondary</item>
+        <item name="colorSecondary">@color/gray</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <!-- 状态栏 / 导航栏：浅色背景 + 深色系统图标 -->
+        <item name="android:statusBarColor">@color/white</item>
+        <item name="android:navigationBarColor">@color/white</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+    </style>
+
+    <style name="Theme.Athena.NoActionBar" parent="Theme.Athena">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:statusBarColor">@android:color/white</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+    </style>
+
+    <!-- 登录 / 注册页：与全站一致的浅色系统栏；控件着色在布局中仍可用 auth_primary -->
+    <style name="LoginTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/white</item>
+        <item name="colorPrimaryVariant">@color/white</item>
+        <item name="colorOnPrimary">@color/text_primary</item>
+        <item name="colorAccent">@color/text_secondary</item>
+        <item name="android:colorAccent">@color/text_secondary</item>
+        <item name="colorControlActivated">@color/text_secondary</item>
+        <item name="colorControlHighlight">@color/gray_light</item>
+        <item name="android:statusBarColor">@color/white</item>
+        <item name="android:navigationBarColor">@color/white</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+    </style>
+
+    <!-- OutlinedBox 输入框：聚焦边框粉色，圆角 12dp -->
+    <style name="AuthInputLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/auth_input_stroke_color</item>
+        <item name="boxStrokeWidth">1.5dp</item>
+        <item name="boxCornerRadiusTopStart">12dp</item>
+        <item name="boxCornerRadiusTopEnd">12dp</item>
+        <item name="boxCornerRadiusBottomStart">12dp</item>
+        <item name="boxCornerRadiusBottomEnd">12dp</item>
+        <item name="hintTextColor">@color/auth_hint</item>
+        <item name="android:textColorHint">@color/auth_hint</item>
+    </style>
+
+
+    <style name="Theme.Athena.Pink" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        <item name="colorPrimary">@color/pink_500</item>
+        <item name="colorPrimaryVariant">@color/pink_700</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/pink_accent</item>
+        <item name="colorSecondaryVariant">@color/pink_700</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="android:statusBarColor" tools:targetApi="l">?attr/colorPrimaryVariant</item>
+    </style>
+
+    <style name="Theme.Athena.Pink.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+    <style name="Theme.Athena.Pink.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
+    <style name="Theme.Athena.Pink.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
+
+    <!-- TabLayout 文字样式 - 选中状态 -->
+    <style name="TabLayoutTextActive" parent="TextAppearance.Design.Tab">
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- TabLayout 文字样式 - 未选中状态 -->
+    <style name="TabLayoutTextInactive" parent="TextAppearance.Design.Tab">
+        <item name="android:textSize">17sp</item>
+    </style>
+
+    <!-- 个人中心 Tab 文字样式 -->
+    <style name="ProfileTabText" parent="TextAppearance.Design.Tab">
+        <item name="android:textSize">14sp</item>
+        <item name="textAllCaps">false</item>
+    </style>
+
+    <style name="ProfileHeroNameText" parent="TextAppearance.AppCompat.Large">
+        <item name="android:textSize">26sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/profile_text_on_hero</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="ProfileHeroMetaText" parent="TextAppearance.AppCompat.Body1">
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/profile_text_on_hero_secondary</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="fontFamily">sans-serif</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="ProfileAssetPillText" parent="TextAppearance.AppCompat.Caption">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/profile_text_on_hero</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.02</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="ProfileStatNumberText" parent="TextAppearance.AppCompat.Body1">
+        <item name="android:textSize">22sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/profile_text_on_hero</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="ProfileStatLabelText" parent="TextAppearance.AppCompat.Body2">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/profile_text_on_hero_secondary</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="fontFamily">sans-serif</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="ProfileTabTextActive" parent="TextAppearance.AppCompat.Body1">
+        <item name="android:textSize">17sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="ProfileTabTextInactive" parent="TextAppearance.AppCompat.Body1">
+        <item name="android:textSize">17sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/profile_tab_inactive</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="fontFamily">sans-serif</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <!-- 底部生日滚轮选择器：低饱和度淡蓝 -->
+    <style name="CustomDatePickerBlue" parent="Theme.AppCompat.Light.Dialog">
+        <item name="colorAccent">#A7C7E7</item>
+        <item name="android:colorAccent">#A7C7E7</item>
+        <item name="android:textColorPrimary">#A7C7E7</item>
+        <item name="android:textColorSecondary">#CCCCCC</item>
+    </style>
+
+    <!-- 圆形头像 ShapeAppearanceOverlay -->
+    <style name="CircleImageStyle" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+
+    <!-- 设置页 Chip 选中样式 -->
+    <style name="PreferenceChip" parent="Widget.MaterialComponents.Chip.Choice">
+        <item name="chipBackgroundColor">@color/chip_bg_selector</item>
+        <item name="chipStrokeColor">@color/chip_stroke_selector</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="android:textColor">@color/chip_text_selector</item>
+        <item name="chipCornerRadius">16dp</item>
+    </style>
+
+    <style name="AiMenuTextStyle" parent="TextAppearance.AppCompat.Body1">
+        <item name="android:textSize">17sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="BottomNavTextAppearance" parent="TextAppearance.AppCompat.Caption">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="SquareTabTextActive" parent="TextAppearance.AppCompat.Body1">
+        <item name="android:textSize">17sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="SquareTabTextInactive" parent="TextAppearance.AppCompat.Body1">
+        <item name="android:textSize">17sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="fontFamily">sans-serif</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="SquareCardTitleText" parent="TextAppearance.AppCompat.Body1">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="SquareCardMetaText" parent="TextAppearance.AppCompat.Caption">
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/square_meta_text</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="HealthTabTextActive" parent="TextAppearance.AppCompat.Body1">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/period_rose</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="HealthTabTextInactive" parent="TextAppearance.AppCompat.Body1">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/health_tab_inactive</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="fontFamily">sans-serif</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="HealthCardTitleText" parent="TextAppearance.AppCompat.Body1">
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/health_text_primary</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="HealthCardSubtitleText" parent="TextAppearance.AppCompat.Body2">
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/health_text_secondary</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="fontFamily">sans-serif</item>
+        <item name="android:lineSpacingExtra">1dp</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="HealthMonthText" parent="TextAppearance.AppCompat.Body1">
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/health_text_primary</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="HealthLegendText" parent="TextAppearance.AppCompat.Caption">
+        <item name="android:textSize">11sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/health_text_secondary</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="HealthActionTitleText" parent="TextAppearance.AppCompat.Body1">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/health_text_primary</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="HealthActionMetaText" parent="TextAppearance.AppCompat.Caption">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/health_text_secondary</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="fontFamily">sans-serif</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+</resources>

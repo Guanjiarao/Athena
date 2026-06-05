@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 孕早期（1-13周）：淡蓝背景 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/health_pregnancy_early" />
+    <corners android:radius="14dp" />
+</shape>
