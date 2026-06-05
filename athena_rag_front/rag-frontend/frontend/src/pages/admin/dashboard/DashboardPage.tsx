@@ -322,17 +322,17 @@ const useHealthStatus = (performance: DashboardPerformance | null, overview: Das
 // ============================================================================
 
 const DashCard = ({ children, className }: { children: ReactNode; className?: string }) => (
-    <div className={cn("rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)]", className)}>
+    <div className={cn("rounded-2xl border border-honey-200 bg-warm-100 p-5 shadow-sm", className)}>
       {children}
     </div>
 );
 
 const CardTitle = ({ children }: { children: ReactNode }) => (
-    <h3 className="mb-4 text-sm font-semibold text-slate-700">{children}</h3>
+    <h3 className="mb-4 text-sm font-semibold text-warm-800">{children}</h3>
 );
 
 const LoadingBlock = ({ className }: { className?: string }) => (
-    <div className={cn("animate-pulse rounded-lg bg-slate-100", className)} />
+    <div className={cn("animate-pulse rounded-lg bg-honey-200", className)} />
 );
 
 // ============================================================================
@@ -363,7 +363,7 @@ const DashboardHeader = ({
       <h1 className="text-4xl font-bold tracking-tight text-slate-900">Dashboard</h1>
 
       <div className="flex items-center gap-3">
-        <div className="inline-flex rounded-lg bg-white p-1 shadow-sm">
+        <div className="inline-flex rounded-lg border border-honey-200 bg-warm-100 p-1 shadow-sm">
           {WINDOW_OPTIONS.map((opt) => (
               <button
                   key={opt.value}
@@ -372,8 +372,8 @@ const DashboardHeader = ({
                   className={cn(
                       "rounded-md px-3 py-1.5 text-sm font-medium transition-all",
                       timeWindow === opt.value
-                          ? "bg-slate-900 text-white"
-                          : "text-slate-500 hover:text-slate-700"
+                          ? "bg-gradient-sunset text-white shadow-warm"
+                          : "text-warm-600 hover:text-warm-800 hover:bg-honey-100"
                   )}
               >
                 {opt.label}
@@ -381,7 +381,7 @@ const DashboardHeader = ({
           ))}
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-slate-400">
+        <div className="flex items-center gap-2 text-sm text-warm-600">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
           <span>{formatLastUpdated(lastUpdated)}</span>
         </div>
@@ -391,7 +391,7 @@ const DashboardHeader = ({
             size="icon"
             onClick={onRefresh}
             disabled={loading}
-            className="h-9 w-9 rounded-lg border-slate-200 bg-white text-slate-500 hover:text-slate-700"
+            className="h-9 w-9 rounded-lg border-honey-200 bg-warm-100 text-warm-600 hover:text-warm-800 hover:bg-honey-100"
         >
           <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
         </Button>
