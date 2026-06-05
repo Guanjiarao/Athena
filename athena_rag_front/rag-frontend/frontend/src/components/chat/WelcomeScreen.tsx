@@ -181,7 +181,7 @@ export function WelcomeScreen() {
                 value={value}
                 onChange={(event) => setValue(event.target.value)}
                 placeholder={deepThinkingEnabled ? "输入需要深度分析的问题..." : "输入你的问题..."}
-                className="max-h-40 min-h-[52px] w-full resize-none border-0 bg-transparent px-2 pt-2 pb-2 text-[15px] text-warm-900 placeholder:text-warm-500 focus:outline-none sm:text-base"
+                className="max-h-40 min-h-[52px] w-full resize-none border-0 bg-transparent px-2 pt-2 pb-2 text-[15px] text-warm-900 placeholder:text-warm-700/60 focus:outline-none sm:text-base"
                 rows={1}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
@@ -299,9 +299,9 @@ export function WelcomeScreen() {
                       <p className="text-xs text-warm-600 mt-0.5">{preset.description}</p>
                     </div>
                   </div>
-                  <div className="mt-3 flex items-center gap-2 text-xs text-warm-500">
-                    <span className="min-w-0 flex-1 truncate font-medium">推荐问法：{preset.prompt}</span>
-                    <ArrowUpRight className="h-3.5 w-3.5 text-honey-400 transition-colors group-hover:text-honey-600" />
+                  <div className="mt-3 flex items-center gap-2 text-xs text-warm-700">
+                    <span className="min-w-0 flex-1 truncate">推荐问法：{preset.prompt}</span>
+                    <ArrowUpRight className="h-3.5 w-3.5 text-honey-600 transition-colors group-hover:text-honey-700" />
                   </div>
                 </button>
               );
