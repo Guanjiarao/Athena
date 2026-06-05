@@ -17,21 +17,21 @@ const PRESET_ICONS = [BookOpen, Check, Lightbulb];
 
 const DEFAULT_PRESETS: PromptPreset[] = [
   {
-    title: "内容总结",
-    description: "提炼 3-5 条关键信息与行动点",
-    prompt: "请帮我总结以下内容，并列出3-5条要点：",
+    title: "月经周期",
+    description: "了解月经周期的变化与健康",
+    prompt: "我想了解月经周期相关的知识",
     icon: BookOpen
   },
   {
-    title: "任务拆解",
-    description: "把目标拆成可执行步骤与优先级",
-    prompt: "请把下面需求拆解为步骤，并给出优先级和里程碑：",
+    title: "备孕指导",
+    description: "获取科学的备孕建议",
+    prompt: "我想咨询备孕相关的建议",
     icon: Check
   },
   {
-    title: "灵感扩展",
-    description: "给出多个方案并比较优缺点",
-    prompt: "围绕以下主题给出5-8个方案，并注明优缺点：",
+    title: "健康咨询",
+    description: "女性健康问题解答",
+    prompt: "我有一些女性健康方面的问题想咨询",
     icon: Lightbulb
   }
 ];
