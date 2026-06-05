@@ -147,9 +147,9 @@ export function ChatInput() {
         </p>
       ) : null}
       <p className="text-center text-xs text-warm-600">
-        <kbd className="rounded bg-white/80 px-1.5 py-0.5 text-warm-700 border border-honey-200">Enter</kbd> 发送
+        <kbd className="rounded border border-honey-200 bg-warm-100 px-1.5 py-0.5 text-warm-800 shadow-sm">Enter</kbd> 发送
         <span className="px-1.5">·</span>
-        <kbd className="rounded bg-white/80 px-1.5 py-0.5 text-warm-700 border border-honey-200">
+        <kbd className="rounded border border-honey-200 bg-warm-100 px-1.5 py-0.5 text-warm-800 shadow-sm">
           Shift + Enter
         </kbd>{" "}
         换行

@@ -198,7 +198,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </div>
               <button
                 type="button"
-                className="mt-2 flex w-full items-center gap-3 rounded-2xl bg-white/90 px-4 py-3 text-left shadow-[0_10px_20px_rgba(15,23,42,0.08)] transition-all hover:-translate-y-[1px] hover:shadow-[0_16px_30px_rgba(15,23,42,0.12)]"
+                className="mt-2 flex w-full items-center gap-3 rounded-2xl border border-honey-200 bg-warm-100 px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-warm"
                 onClick={() => {
                   createSession().catch(() => null);
                   navigate("/chat");
@@ -228,10 +228,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               ) : null}
             </div>
           </div>
-          <div className="rounded-2xl border border-honey-200 bg-white/90 p-3 shadow-sm">
+          <div className="rounded-2xl border border-honey-200 bg-warm-100 p-3 shadow-sm">
             <div className="flex items-center justify-between px-1">
-              <span className="text-[11px] font-semibold text-warm-600">搜索对话</span>
-              <span className="text-[10px] text-warm-400">Ctrl / Cmd + K</span>
+              <span className="text-[11px] font-semibold text-warm-700">搜索对话</span>
+              <span className="text-[10px] text-warm-600">Ctrl / Cmd + K</span>
             </div>
             <div className="mt-2">
               <div className="relative">
