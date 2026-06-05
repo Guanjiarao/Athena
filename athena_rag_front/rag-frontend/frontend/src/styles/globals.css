@@ -351,11 +351,11 @@ select:focus:not(:focus-visible),
   }
 
   .admin-layout .admin-link {
-    @apply inline-flex items-center gap-1 text-indigo-600 font-medium underline-offset-4 transition-colors hover:text-indigo-700 hover:underline;
+    @apply inline-flex items-center gap-1 text-honey-700 font-medium underline-offset-4 transition-colors hover:text-honey-800 hover:underline;
   }
 
   .admin-layout .admin-link:focus-visible {
-    @apply outline-none ring-2 ring-indigo-200 rounded-sm;
+    @apply outline-none ring-2 ring-honey-300 rounded-sm;
   }
 
   .admin-layout .admin-stat-grid {
@@ -575,19 +575,19 @@ select:focus:not(:focus-visible),
   }
 
   .admin-layout .ui-button[data-variant="default"] {
-    @apply bg-indigo-600 text-white hover:bg-indigo-700;
+    @apply bg-gradient-sunset text-white hover:opacity-90 shadow-warm;
   }
 
   .admin-layout .ui-button[data-variant="outline"] {
-    @apply border-slate-200 bg-white text-slate-700 hover:bg-slate-50;
+    @apply border-honey-200 bg-white text-warm-700 hover:bg-honey-50;
   }
 
   .admin-layout .ui-button[data-variant="ghost"] {
-    @apply text-slate-500 hover:bg-slate-100 hover:text-slate-900;
+    @apply text-warm-600 hover:bg-honey-100 hover:text-warm-800;
   }
 
   .admin-layout .ui-button.admin-primary-gradient {
-    @apply bg-gradient-to-r from-[#4F46E5] to-[#7C3AED] text-white hover:from-[#4338CA] hover:to-[#6D28D9];
+    @apply bg-gradient-sunset text-white hover:opacity-90 shadow-warm;
   }
 
   .admin-layout .ui-badge {
@@ -595,7 +595,7 @@ select:focus:not(:focus-visible),
   }
 
   .admin-layout .ui-badge[data-variant="default"] {
-    @apply border-indigo-200 bg-indigo-50 text-indigo-700;
+    @apply border-honey-300 bg-honey-100 text-honey-800;
   }
 
   .admin-layout .ui-badge[data-variant="secondary"] {
