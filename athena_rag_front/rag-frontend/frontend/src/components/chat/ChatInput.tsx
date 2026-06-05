@@ -146,7 +146,7 @@ export function ChatInput() {
           </span>
         </p>
       ) : null}
-      <p className="text-center text-xs text-warm-500">
+      <p className="text-center text-xs text-warm-600">
         <kbd className="rounded bg-white/80 px-1.5 py-0.5 text-warm-700 border border-honey-200">Enter</kbd> 发送
         <span className="px-1.5">·</span>
         <kbd className="rounded bg-white/80 px-1.5 py-0.5 text-warm-700 border border-honey-200">

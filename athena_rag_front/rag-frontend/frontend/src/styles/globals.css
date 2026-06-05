@@ -431,7 +431,7 @@ select:focus:not(:focus-visible),
   }
 
   .admin-layout .admin-sidebar__group-title {
-    @apply px-4 pb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-500;
+    @apply px-4 pb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-600;
   }
 
   .admin-layout .admin-sidebar__item {

@@ -235,12 +235,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
             <div className="mt-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-warm-500" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-warm-600" />
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="搜索对话..."
-                  className="h-10 w-full rounded-xl border border-honey-200 bg-honey-50 pl-9 pr-3 text-sm text-warm-900 placeholder:text-warm-500 focus:border-honey-400 focus:outline-none transition-colors"
+                  className="h-10 w-full rounded-xl border border-honey-200 bg-honey-50 pl-9 pr-3 text-sm text-warm-900 placeholder:text-warm-700/60 focus:border-honey-400 focus:outline-none transition-colors"
                 />
               </div>
             </div>
