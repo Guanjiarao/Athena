@@ -1159,6 +1159,8 @@ select:focus:not(:focus-visible),
   }
 
   .admin-layout .trace-list-stat-icon.is-indigo {
+    @apply bg-honey-100 text-honey-700;
+  }
     background: #eef2ff;
     color: #4f46e5;
   }
@@ -1595,15 +1597,15 @@ select:focus:not(:focus-visible),
   }
 
   .admin-layout .trace-hero-card {
-    @apply relative overflow-hidden rounded-xl border border-cyan-100/80 bg-gradient-to-br from-cyan-50 via-white to-indigo-50 shadow-[0_8px_30px_rgba(15,23,42,0.06)];
+    @apply relative overflow-hidden rounded-xl border border-honey-200/80 bg-gradient-to-br from-honey-50 via-white to-warm-50 shadow-sm;
   }
 
   .admin-layout .trace-hero-card::before {
-    @apply pointer-events-none absolute -top-20 -right-16 h-60 w-60 rounded-full bg-cyan-200/35 blur-3xl content-[''];
+    @apply pointer-events-none absolute -top-20 -right-16 h-60 w-60 rounded-full bg-honey-300/35 blur-3xl content-[''];
   }
 
   .admin-layout .trace-hero-card::after {
-    @apply pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-indigo-200/35 blur-3xl content-[''];
+    @apply pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-warm-300/35 blur-3xl content-[''];
   }
 
   .admin-layout .trace-hero-content {
