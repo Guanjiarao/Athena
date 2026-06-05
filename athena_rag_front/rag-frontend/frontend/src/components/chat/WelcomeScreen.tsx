@@ -159,7 +159,7 @@ export function WelcomeScreen() {
             <span className="bg-gradient-sunset bg-clip-text text-transparent"> 清晰答案</span>
           </h1>
           <p className="mt-5 text-base text-warm-700 sm:text-lg">
-            结构化提问、知识检索与深度思考，一次对话给出可执行方案
+            用专业知识守护你的健康，每个问题都认真解答
           </p>
         </div>
 
