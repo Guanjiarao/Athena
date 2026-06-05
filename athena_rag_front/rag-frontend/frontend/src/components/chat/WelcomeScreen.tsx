@@ -150,8 +150,8 @@ export function WelcomeScreen() {
           className="text-center opacity-0 animate-fade-up"
           style={{ animationFillMode: "both" }}
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-honey-300/60 bg-honey-100/80 px-4 py-1.5 text-xs font-medium text-warm-800 shadow-sm backdrop-blur">
-            <Bot className="h-3.5 w-3.5" />
+          <span className="inline-flex items-center gap-2.5 rounded-full border border-honey-300/60 bg-honey-100/80 px-6 py-2.5 text-sm font-semibold text-warm-800 shadow-sm backdrop-blur">
+            <Bot className="h-4 w-4" />
             女性健康科普系统
           </span>
           <h1 className="mt-6 font-display text-4xl leading-tight tracking-tight text-warm-900 sm:text-5xl md:text-6xl">
