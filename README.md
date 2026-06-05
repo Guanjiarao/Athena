@@ -1,38 +1,63 @@
 # Athena
 
+## 项目介绍
+
+## 系统架构
+
+
 #### 介绍
-Athena
+# Athena 后端
+本仓库包含一个后端端项目：
 
+# Athena 前端项目集合
+ 
+本仓库包含三个前端项目：
 
-#### 软件架构
-软件架构说明
+## 项目结构
 
+### 1. admin_web_front - 管理后台 Web 前端
+- **技术栈**: React + TypeScript + Vite + Tailwind CSS
+- **功能**: 内容管理、文章发布、审核系统
+- **启动命令**: 
+  ```bash
+  cd admin_web_front
+  npm install
+  npm run dev
+  ```
 
-#### 安装教程
+### 2. athena_app_front - Android 移动应用
+- **技术栈**: Kotlin + Android SDK + Gradle
+- **功能**: Android 原生应用前端
+- **构建命令**:
+  ```bash
+  cd athena_app_front
+  ./gradlew build
+  ```
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+### 3. athena_front/rag-frontend - RAG 系统前端
+- **技术栈**: React + TypeScript + Vite
+- **功能**: RAG（检索增强生成）系统交互界面
+- **启动命令**:
+  ```bash
+  cd athena_front/rag-frontend/frontend
+  npm install
+  npm run dev
+  ```
 
-#### 使用说明
+## .gitignore 说明
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+本仓库已配置完善的 .gitignore，排除了以下内容：
+- Node.js 依赖 (node_modules)
+- 构建输出 (dist, build)
+- IDE 配置 (.idea, .vscode)
+- 环境变量文件 (.env, .env.local)
+- Gradle 缓存 (.gradle, .gradle-user)
+- Android 缓存 (.android-user)
+- 日志文件 (*.log)
 
-#### 参与贡献
+## 提交信息
 
-1.  Fork 本仓库
-2.  新建 Feat_xxx 分支
-3.  提交代码
-4.  新建 Pull Request
+- **初始提交**: 包含三个前端项目的完整源代码
+- **文件数量**: 583 个文件
+- **代码行数**: 74,551 行
 
-
-#### 特技
-
-1.  使用 Readme\_XXX.md 来支持不同的语言，例如 Readme\_en.md, Readme\_zh.md
-2.  Gitee 官方博客 [blog.gitee.com](https://blog.gitee.com)
-3.  你可以 [https://gitee.com/explore](https://gitee.com/explore) 这个地址来了解 Gitee 上的优秀开源项目
-4.  [GVP](https://gitee.com/gvp) 全称是 Gitee 最有价值开源项目，是综合评定出的优秀开源项目
-5.  Gitee 官方提供的使用手册 [https://gitee.com/help](https://gitee.com/help)
-6.  Gitee 封面人物是一档用来展示 Gitee 会员风采的栏目 [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
