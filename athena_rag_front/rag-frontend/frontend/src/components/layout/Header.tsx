@@ -16,7 +16,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   );
 
   return (
-    <header className="sticky top-0 z-20 bg-white">
+    <header className="sticky top-0 z-20 bg-[#FFF5E6]/90 backdrop-blur border-b border-[#F5DEB3]">
       <div className="flex h-16 items-center justify-between px-6">
         <div className="flex items-center gap-2">
           <Button
@@ -24,11 +24,11 @@ export function Header({ onToggleSidebar }: HeaderProps) {
             size="icon"
             onClick={onToggleSidebar}
             aria-label="切换侧边栏"
-            className="text-gray-500 hover:bg-gray-100 lg:hidden"
+            className="text-warm-600 hover:bg-honey-100 lg:hidden"
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <p className="text-base font-medium text-gray-900">
+          <p className="text-base font-medium text-warm-900">
             {currentSession?.title || "新对话"}
           </p>
         </div>

@@ -271,7 +271,7 @@ export function WelcomeScreen() {
           className="mt-10 opacity-0 animate-fade-up"
           style={{ animationDelay: "160ms", animationFillMode: "both" }}
         >
-          <div className="flex items-center justify-center gap-2 text-xs uppercase tracking-[0.24em] text-warm-600">
+          <div className="flex items-center justify-center gap-2 text-xs uppercase tracking-[0.24em] text-warm-700 font-medium">
             <span className="h-px w-8 bg-honey-300" />
             试试这些开场
             <span className="h-px w-8 bg-honey-300" />
