@@ -371,11 +371,11 @@ select:focus:not(:focus-visible),
   }
 
   .admin-layout .admin-stat-card {
-    @apply relative flex items-center justify-between rounded-xl border border-honey-200 bg-warm-100 p-4 shadow-sm transition-transform duration-200 hover:-translate-y-0.5;
+    @apply relative flex items-center justify-between rounded-xl border border-honey-300 bg-white p-4 shadow-md transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-lg;
   }
 
   .admin-layout .admin-stat-icon {
-    @apply flex h-10 w-10 items-center justify-center rounded-full bg-honey-200 text-honey-700;
+    @apply flex h-10 w-10 items-center justify-center rounded-full bg-gradient-sunset text-white shadow-warm;
   }
 
   .admin-layout .admin-stat-label {
@@ -491,11 +491,11 @@ select:focus:not(:focus-visible),
   }
 
   .admin-layout .ui-card {
-    @apply rounded-xl border border-honey-200 bg-warm-100 shadow-sm;
+    @apply rounded-xl border border-honey-300 bg-white shadow-md;
   }
 
   .admin-layout .ui-card-header {
-    @apply border-b border-honey-200 px-6 pt-5 pb-4;
+    @apply border-b border-honey-200 px-6 pt-5 pb-4 bg-honey-50;
   }
 
   .admin-layout .ui-card-title {
@@ -511,7 +511,7 @@ select:focus:not(:focus-visible),
   }
 
   .admin-layout .ui-table-wrap {
-    @apply rounded-xl border border-honey-200 bg-warm-100 overflow-x-auto;
+    @apply rounded-xl border border-honey-300 bg-white overflow-x-auto shadow-md;
   }
 
   .admin-layout .ui-card .ui-table-wrap {
@@ -527,7 +527,7 @@ select:focus:not(:focus-visible),
   }
 
   .admin-layout .ui-table-body tr:nth-child(even) {
-    @apply bg-honey-50/40;
+    @apply bg-honey-50/50;
   }
 
   .admin-layout .ui-table-row {

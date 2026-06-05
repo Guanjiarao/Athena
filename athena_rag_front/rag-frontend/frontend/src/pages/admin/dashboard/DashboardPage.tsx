@@ -322,7 +322,7 @@ const useHealthStatus = (performance: DashboardPerformance | null, overview: Das
 // ============================================================================
 
 const DashCard = ({ children, className }: { children: ReactNode; className?: string }) => (
-    <div className={cn("rounded-2xl border border-honey-200 bg-warm-100 p-5 shadow-sm", className)}>
+    <div className={cn("rounded-2xl border border-honey-300 bg-white p-5 shadow-md", className)}>
       {children}
     </div>
 );
