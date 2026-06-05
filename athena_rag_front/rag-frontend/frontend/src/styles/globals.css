@@ -1161,9 +1161,6 @@ select:focus:not(:focus-visible),
   .admin-layout .trace-list-stat-icon.is-indigo {
     @apply bg-honey-100 text-honey-700;
   }
-    background: #eef2ff;
-    color: #4f46e5;
-  }
 
   .admin-layout .trace-list-stat-icon.is-amber {
     background: #fffbeb;
