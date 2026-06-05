@@ -187,7 +187,7 @@ function WaterfallRow({
           <span
               className={cn(
                   "truncate",
-                  isRoot ? "text-sm font-semibold text-indigo-900" : "text-sm text-slate-700"
+                  isRoot ? "text-sm font-semibold text-honey-800" : "text-sm text-slate-700"
               )}
               title={nodeDisplayName}
           >
