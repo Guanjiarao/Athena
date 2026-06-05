@@ -174,7 +174,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <Bot className="h-5 w-5 text-white" />
             </div>
             <div style={{ fontFamily: sessionTitleFont }}>
-              <p className="text-base font-semibold text-warm-900">Ragent AI 智能体</p>
+              <p className="text-base font-semibold text-warm-900">Athena 科普助手小雅</p>
               <p className="text-xs text-warm-600">Powered by AI</p>
             </div>
           </div>
