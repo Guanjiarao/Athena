@@ -1,9 +1,7 @@
 package athena.ground.biz.config;
 
-import athena.ground.biz.constant.NoteInteractionConstants;
 import athena.ground.biz.constant.NoteTopicBuildConstants;
 import athena.ground.biz.constant.ViewRecordConstants;
-import athena.ground.biz.mq.consumer.NoteInteractionConsumer;
 import athena.ground.biz.mq.consumer.NoteTopicBuildConsumer;
 import athena.ground.biz.mq.consumer.ViewRecordConsumer;
 import jakarta.annotation.Resource;
@@ -34,9 +32,6 @@ public class RocketMQConsumerConfig {
     private ViewRecordConsumer viewRecordConsumer;
 
     @Resource
-    private NoteInteractionConsumer noteInteractionConsumer;
-
-    @Resource
     private NoteTopicBuildConsumer noteTopicBuildConsumer;
 
     @Bean(initMethod = "start", destroyMethod = "shutdown")
@@ -64,34 +59,6 @@ public class RocketMQConsumerConfig {
         log.info("[RocketMQ Consumer] 注册成功, group={}, topic={}",
                 ViewRecordConstants.VIEW_RECORD_CONSUMER_GROUP,
                 ViewRecordConstants.VIEW_RECORD_TOPIC);
-        return consumer;
-    }
-
-    @Bean(initMethod = "start", destroyMethod = "shutdown")
-    public DefaultMQPushConsumer noteInteractionPushConsumer() throws Exception {
-        DefaultMQPushConsumer consumer = new DefaultMQPushConsumer(NoteInteractionConstants.NOTE_INTERACTION_CONSUMER_GROUP);
-        consumer.setNamesrvAddr(nameServer);
-        consumer.setVipChannelEnabled(false);
-        consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_LAST_OFFSET);
-        consumer.subscribe(NoteInteractionConstants.NOTE_INTERACTION_TOPIC, "*");
-
-        consumer.registerMessageListener((MessageListenerConcurrently) (msgs, context) -> {
-            for (var msg : msgs) {
-                String body = new String(msg.getBody(), StandardCharsets.UTF_8);
-                log.info("[RocketMQ Interaction Consumer] 收到消息, msgId={}, keys={}, body={}", msg.getMsgId(), msg.getKeys(), body);
-                try {
-                    noteInteractionConsumer.onMessage(body);
-                } catch (Exception e) {
-                    log.error("[RocketMQ Interaction Consumer] 消费失败, msgId={}, keys={}", msg.getMsgId(), msg.getKeys(), e);
-                    return ConsumeConcurrentlyStatus.RECONSUME_LATER;
-                }
-            }
-            return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
-        });
-
-        log.info("[RocketMQ Interaction Consumer] 注册成功, group={}, topic={}",
-                NoteInteractionConstants.NOTE_INTERACTION_CONSUMER_GROUP,
-                NoteInteractionConstants.NOTE_INTERACTION_TOPIC);
         return consumer;
     }
 

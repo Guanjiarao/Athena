@@ -35,6 +35,11 @@
             <groupId>athena</groupId>
             <artifactId>athena-ground-api</artifactId>
         </dependency>
+        <dependency>
+            <groupId>athena</groupId>
+            <artifactId>athena-count-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- Redis 连接池 -->
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -105,6 +110,11 @@
         <dependency>
             <groupId>athena</groupId>
             <artifactId>athena-framework-filter</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>athena</groupId>
+            <artifactId>athena-framework-mq</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
     </dependencies>

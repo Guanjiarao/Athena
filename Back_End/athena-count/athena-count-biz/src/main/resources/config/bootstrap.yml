@@ -1,3 +1,4 @@
+# 应用端口（保持不变）
 server:
   port: 7010
 spring:
@@ -8,6 +9,6 @@ spring:
 rocketmq:
   name-server: 121.41.200.73:9876
   producer:
-    group: athena-count-producer
+    group: athena-xiaoxiaolanfeng
     vip-channel-enabled: false
     send-message-timeout: 100000

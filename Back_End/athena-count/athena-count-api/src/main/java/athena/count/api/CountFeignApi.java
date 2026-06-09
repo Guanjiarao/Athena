@@ -2,6 +2,7 @@ package athena.count.api;
 
 import athena.athenaframework.result.Result;
 import athena.count.api.constant.CountApiConstants;
+import athena.count.api.dto.CounterBatchDeltaDTO;
 import athena.count.api.dto.CounterDeltaDTO;
 import athena.count.api.dto.CounterQueryDTO;
 import athena.count.api.dto.CounterValueDTO;
@@ -20,6 +21,9 @@ public interface CountFeignApi {
 
     @PostMapping(PREFIX + "/delta")
     Result<?> delta(@RequestBody CounterDeltaDTO deltaDTO);
+
+    @PostMapping(PREFIX + "/batch-delta")
+    Result<?> batchDelta(@RequestBody CounterBatchDeltaDTO batchDeltaDTO);
 
     @GetMapping(PREFIX + "/one")
     Result<CounterValueDTO> getOne(@RequestParam String scope, @RequestParam Long targetId);

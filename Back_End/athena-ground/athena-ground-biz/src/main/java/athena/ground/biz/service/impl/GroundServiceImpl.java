@@ -3,6 +3,9 @@ package athena.ground.biz.service.impl;
 import athena.athenaframework.DTO.UserDTO;
 import athena.athenaframework.result.Result;
 import athena.athenaframework.utils.UserIdHolder;
+import athena.count.api.CountFeignApi;
+import athena.count.api.constant.CountCounterConstants;
+import athena.count.api.dto.CounterValueDTO;
 import athena.ground.biz.domain.dataobject.NoteBasicDO;
 import athena.ground.biz.domain.dataobject.NoteContentDO;
 import athena.ground.biz.domain.dataobject.NoteCountDO;
@@ -31,6 +34,7 @@ import athena.ground.biz.service.AthenaNoteDocumentUploadService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -43,6 +47,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -81,6 +87,9 @@ public class GroundServiceImpl implements GroundService {
 
     @Resource
     private UserAuthFeignApi userAuthFeginApi;
+
+    @Resource
+    private CountFeignApi countFeignApi;
 
     @Resource
     private NoteInteractionService noteInteractionService;
@@ -220,7 +229,7 @@ public class GroundServiceImpl implements GroundService {
                 .collect(Collectors.toList());
         Map<Long, UserDTO> userMap = buildUserMap(userIds);
 
-        // 批量查询笔记统计数据
+        // 批量查询笔记统计数据：优先计数中心，失败时 buildNoteCountMap 内部兜底 note_count 表
         List<Long> noteIds = noteBasicDOList.stream()
                 .map(NoteBasicDO::getNoteId)
                 .filter(Objects::nonNull)
@@ -261,6 +270,26 @@ public class GroundServiceImpl implements GroundService {
         if (noteIds == null || noteIds.isEmpty()) {
             return Collections.emptyMap();
         }
+        Map<Long, NoteCountDO> fallbackCountMap = buildFallbackNoteCountMap(noteIds);
+        try {
+            return noteIds.stream()
+                    .distinct()
+                    .collect(Collectors.toMap(
+                            Function.identity(),
+                            noteId -> buildNoteCountDOFromCountCenter(noteId, fallbackCountMap.get(noteId)),
+                            (left, right) -> left,
+                            LinkedHashMap::new
+                    ));
+        } catch (Exception e) {
+            log.warn("[GroundService] 批量读取计数中心失败, fallback DB, noteIds={}", noteIds, e);
+            return fallbackCountMap;
+        }
+    }
+
+    private Map<Long, NoteCountDO> buildFallbackNoteCountMap(List<Long> noteIds) {
+        if (noteIds == null || noteIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
         List<NoteCountDO> countList = noteCountDOMapper.selectByNoteIds(noteIds);
         if (countList == null || countList.isEmpty()) {
             return Collections.emptyMap();
@@ -269,6 +298,45 @@ public class GroundServiceImpl implements GroundService {
                 .filter(Objects::nonNull)
                 .filter(count -> count.getNoteId() != null)
                 .collect(Collectors.toMap(NoteCountDO::getNoteId, Function.identity(), (left, right) -> left));
+    }
+
+    private NoteCountDO buildNoteCountDOFromCountCenter(Long noteId, NoteCountDO fallback) {
+        Result<CounterValueDTO> result = countFeignApi.getOne(CountCounterConstants.SCOPE_NOTE, noteId);
+        if (result == null || result.getData() == null || result.getData().getCounters() == null) {
+            return fallback == null ? emptyNoteCount(noteId) : fallback;
+        }
+        Map<String, Long> counters = result.getData().getCounters();
+        NoteCountDO noteCountDO = new NoteCountDO();
+        noteCountDO.setNoteId(noteId);
+        noteCountDO.setLikeTotal(counters.getOrDefault(CountCounterConstants.LIKE_TOTAL, fallbackValue(fallback, CountCounterConstants.LIKE_TOTAL)));
+        noteCountDO.setCollectTotal(counters.getOrDefault(CountCounterConstants.COLLECT_TOTAL, fallbackValue(fallback, CountCounterConstants.COLLECT_TOTAL)));
+        noteCountDO.setCommentTotal(counters.getOrDefault(CountCounterConstants.COMMENT_TOTAL, fallbackValue(fallback, CountCounterConstants.COMMENT_TOTAL)));
+        return noteCountDO;
+    }
+
+    private NoteCountDO emptyNoteCount(Long noteId) {
+        NoteCountDO noteCountDO = new NoteCountDO();
+        noteCountDO.setNoteId(noteId);
+        noteCountDO.setLikeTotal(0L);
+        noteCountDO.setCollectTotal(0L);
+        noteCountDO.setCommentTotal(0L);
+        return noteCountDO;
+    }
+
+    private Long fallbackValue(NoteCountDO fallback, String counterType) {
+        if (fallback == null) {
+            return 0L;
+        }
+        if (CountCounterConstants.LIKE_TOTAL.equals(counterType)) {
+            return fallback.getLikeTotal() == null ? 0L : fallback.getLikeTotal();
+        }
+        if (CountCounterConstants.COLLECT_TOTAL.equals(counterType)) {
+            return fallback.getCollectTotal() == null ? 0L : fallback.getCollectTotal();
+        }
+        if (CountCounterConstants.COMMENT_TOTAL.equals(counterType)) {
+            return fallback.getCommentTotal() == null ? 0L : fallback.getCommentTotal();
+        }
+        return 0L;
     }
 
     @Override
@@ -286,7 +354,8 @@ public class GroundServiceImpl implements GroundService {
 
         NoteDO noteDO = noteMapper.selectByPrimaryKey(noteId);
         NoteContentDO noteContentDO = noteContentDOMapper.selectByNoteId(noteId);
-        NoteCountDO noteCountDO = noteCountDOMapper.selectByNoteId(noteId);
+        NoteCountDO fallbackNoteCountDO = noteCountDOMapper.selectByNoteId(noteId);
+        NoteCountDO noteCountDO = buildNoteCountDOFromCountCenter(noteId, fallbackNoteCountDO);
         if (noteDO == null) {
             log.warn("博客详情不存在, noteId={}", noteId);
             return Result.fail("博客不存在");

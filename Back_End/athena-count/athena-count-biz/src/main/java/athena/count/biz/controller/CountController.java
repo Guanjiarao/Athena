@@ -2,6 +2,7 @@ package athena.count.biz.controller;
 
 import athena.athenaframework.result.Result;
 import athena.count.api.CountFeignApi;
+import athena.count.api.dto.CounterBatchDeltaDTO;
 import athena.count.api.dto.CounterDeltaDTO;
 import athena.count.api.dto.CounterQueryDTO;
 import athena.count.api.dto.CounterValueDTO;
@@ -20,6 +21,12 @@ public class CountController implements CountFeignApi {
     @Override
     public Result<?> delta(CounterDeltaDTO deltaDTO) {
         countService.delta(deltaDTO);
+        return Result.ok();
+    }
+
+    @Override
+    public Result<?> batchDelta(CounterBatchDeltaDTO batchDeltaDTO) {
+        countService.batchDelta(batchDeltaDTO);
         return Result.ok();
     }
 

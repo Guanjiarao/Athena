@@ -3,6 +3,9 @@ package athena.ground.biz.service.impl;
 import athena.athenaframework.DTO.UserDTO;
 import athena.athenaframework.result.Result;
 import athena.athenaframework.utils.UserIdHolder;
+import athena.count.api.CountFeignApi;
+import athena.count.api.constant.CountCounterConstants;
+import athena.count.api.dto.CounterValueDTO;
 import athena.ground.biz.domain.dataobject.NoteBasicDO;
 import athena.ground.biz.domain.dataobject.NoteCountDO;
 import athena.ground.biz.domain.dto.BlogListDTO;
@@ -33,6 +36,9 @@ public class NoteSearchServiceV1Impl implements NoteSearchService {
 
     @Resource
     private UserAuthFeignApi userAuthFeginApi;
+
+    @Resource
+    private CountFeignApi countFeignApi;
 
     @Override
     public Result searchPublicNotes(String keyword, Integer type, Integer channelId, Integer pageNum, Integer pageSize) {
@@ -105,14 +111,43 @@ public class NoteSearchServiceV1Impl implements NoteSearchService {
         return Math.min(pageSize, 20);
     }
 
+    private Long getCounter(Long noteId, String counterType) {
+        try {
+            Result<CounterValueDTO> result = countFeignApi.getOne(CountCounterConstants.SCOPE_NOTE, noteId);
+            if (result == null || result.getData() == null || result.getData().getCounters() == null) {
+                return fallbackNoteCounter(noteId, counterType);
+            }
+            return result.getData().getCounters().getOrDefault(counterType, fallbackNoteCounter(noteId, counterType));
+        } catch (Exception e) {
+            log.warn("[NoteSearchService] 读取计数中心失败, fallback DB, noteId={}, counterType={}", noteId, counterType, e);
+            return fallbackNoteCounter(noteId, counterType);
+        }
+    }
+
+    private Long fallbackNoteCounter(Long noteId, String counterType) {
+        NoteCountDO noteCountDO = noteCountDOMapper.selectByNoteId(noteId);
+        if (noteCountDO == null) {
+            return 0L;
+        }
+        if (CountCounterConstants.LIKE_TOTAL.equals(counterType)) {
+            return noteCountDO.getLikeTotal() == null ? 0L : noteCountDO.getLikeTotal();
+        }
+        if (CountCounterConstants.COLLECT_TOTAL.equals(counterType)) {
+            return noteCountDO.getCollectTotal() == null ? 0L : noteCountDO.getCollectTotal();
+        }
+        if (CountCounterConstants.COMMENT_TOTAL.equals(counterType)) {
+            return noteCountDO.getCommentTotal() == null ? 0L : noteCountDO.getCommentTotal();
+        }
+        return 0L;
+    }
+
     private List<BlogListDTO> toBlogList(List<NoteBasicDO> noteBasicDOList) {
         return noteBasicDOList.stream()
                 .map(noteBasicDO -> {
                     BlogListDTO dto = new BlogListDTO();
                     BeanUtils.copyProperties(noteBasicDO, dto);
                     dto.setBlogId(noteBasicDO.getNoteId());
-                    NoteCountDO noteCountDO = noteCountDOMapper.selectByNoteId(noteBasicDO.getNoteId());
-                    dto.setLikeTotal(noteCountDO == null ? 0L : noteCountDO.getLikeTotal());
+                    dto.setLikeTotal(getCounter(noteBasicDO.getNoteId(), CountCounterConstants.LIKE_TOTAL));
                     UserDTO byUserId = userAuthFeginApi.findByUserId(noteBasicDO.getUserId());
                     dto.setUserDTO(byUserId);
                     return dto;

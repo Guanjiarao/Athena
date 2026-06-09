@@ -57,6 +57,11 @@
             <groupId>athena</groupId>
             <artifactId>athena-insight-api</artifactId>
         </dependency>
+        <dependency>
+            <groupId>athena</groupId>
+            <artifactId>athena-count-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- Redis 连接池 -->
         <dependency>
             <groupId>org.apache.commons</groupId>

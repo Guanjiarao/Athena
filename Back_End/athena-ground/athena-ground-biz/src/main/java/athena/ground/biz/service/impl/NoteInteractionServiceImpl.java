@@ -3,7 +3,11 @@ package athena.ground.biz.service.impl;
 import athena.athenaframework.DTO.UserDTO;
 import athena.athenaframework.result.Result;
 import athena.athenaframework.utils.UserIdHolder;
-import athena.ground.biz.constant.NoteInteractionConstants;
+import athena.athenaframework.mq.producer.MessageQueueProducer;
+import athena.count.api.CountFeignApi;
+import athena.count.api.constant.CountCounterConstants;
+import athena.count.api.dto.CounterDeltaDTO;
+import athena.count.api.dto.CounterValueDTO;
 import athena.ground.biz.domain.dataobject.NoteBasicDO;
 import athena.ground.biz.domain.dataobject.NoteCollectionDO;
 import athena.ground.biz.domain.dataobject.NoteCountDO;
@@ -13,8 +17,7 @@ import athena.ground.biz.domain.mapper.NoteBasicDOMapper;
 import athena.ground.biz.domain.mapper.NoteCollectionDOMapper;
 import athena.ground.biz.domain.mapper.NoteCountDOMapper;
 import athena.ground.biz.domain.mapper.NoteLikeDOMapper;
-import athena.ground.biz.mq.event.NoteInteractionEvent;
-import athena.ground.biz.mq.producer.NoteInteractionProducer;
+
 import athena.ground.biz.rpc.UserAuthFeignApi;
 import athena.ground.biz.service.NoteInteractionService;
 import jakarta.annotation.Resource;
@@ -51,7 +54,10 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
     private UserAuthFeignApi userAuthFeignApi;
 
     @Resource
-    private NoteInteractionProducer noteInteractionProducer;
+    private MessageQueueProducer messageQueueProducer;
+
+    @Resource
+    private CountFeignApi countFeignApi;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -73,7 +79,7 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
                     log.warn("用户 {} 取消点赞未命中有效记录 blogId={}", userId, blogId);
                     return Result.fail("取消点赞失败");
                 }
-                sendInteractionEvent(userId, blogId, NoteInteractionConstants.ACTION_UNLIKE, -1L);
+                sendCounterDelta(CountCounterConstants.SCOPE_NOTE, blogId, CountCounterConstants.LIKE_TOTAL, -1L);
                 log.info("用户 {} 取消点赞 blogId={}", userId, blogId);
                 return Result.ok("取消点赞成功");
             }
@@ -82,7 +88,7 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
             noteLikeDO.setUserId(userId);
             noteLikeDO.setNoteId(blogId);
             noteLikeDOMapper.saveOrUpdateLike(noteLikeDO);
-            sendInteractionEvent(userId, blogId, NoteInteractionConstants.ACTION_LIKE, 1L);
+            sendCounterDelta(CountCounterConstants.SCOPE_NOTE, blogId, CountCounterConstants.LIKE_TOTAL, 1L);
             log.info("用户 {} 点赞 blogId={}", userId, blogId);
             return Result.ok("点赞成功");
         } catch (Exception e) {
@@ -111,7 +117,7 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
                     return Result.fail("取消收藏失败");
                 }
                 log.info("用户 {} 取消收藏 blogId={}", userId, blogId);
-                sendInteractionEvent(userId, blogId, NoteInteractionConstants.ACTION_UNCOLLECT, -1L);
+                sendCounterDelta(CountCounterConstants.SCOPE_NOTE, blogId, CountCounterConstants.COLLECT_TOTAL, -1L);
                 return Result.ok("取消收藏成功");
             }
 
@@ -119,7 +125,7 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
             noteCollectionDO.setUserId(userId);
             noteCollectionDO.setNoteId(blogId);
             noteCollectionDOMapper.saveOrUpdateCollection(noteCollectionDO);
-            sendInteractionEvent(userId, blogId, NoteInteractionConstants.ACTION_COLLECT, 1L);
+            sendCounterDelta(CountCounterConstants.SCOPE_NOTE, blogId, CountCounterConstants.COLLECT_TOTAL, 1L);
             log.info("用户 {} 收藏 blogId={}", userId, blogId);
             return Result.ok("收藏成功");
         } catch (Exception e) {
@@ -216,11 +222,8 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
                 return Result.fail("参数错误：笔记ID不能为空，增加数量不能为负数");
             }
 
-            int affected = noteCountDOMapper.incrementLikeTotal(noteId, num);
-            if (affected > 0) {
-                return Result.ok("点赞数增加成功");
-            }
-            return Result.fail("点赞数增加失败");
+            sendCounterDelta(CountCounterConstants.SCOPE_NOTE, noteId, CountCounterConstants.LIKE_TOTAL, num);
+            return Result.ok("点赞数增加成功");
         } catch (Exception e) {
             log.error("增加点赞数失败: ", e);
             return Result.fail("系统异常：" + e.getMessage());
@@ -235,11 +238,8 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
                 return Result.fail("参数错误：笔记ID不能为空，增加数量不能为负数");
             }
 
-            int affected = noteCountDOMapper.incrementCollectTotal(noteId, num);
-            if (affected > 0) {
-                return Result.ok("收藏数增加成功");
-            }
-            return Result.fail("收藏数增加失败");
+            sendCounterDelta(CountCounterConstants.SCOPE_NOTE, noteId, CountCounterConstants.COLLECT_TOTAL, num);
+            return Result.ok("收藏数增加成功");
         } catch (Exception e) {
             log.error("增加收藏数失败: ", e);
             return Result.fail("系统异常：" + e.getMessage());
@@ -254,26 +254,53 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
                 return Result.fail("参数错误：笔记ID不能为空，增加数量不能为负数");
             }
 
-            int affected = noteCountDOMapper.incrementCommentTotal(noteId, num);
-            if (affected > 0) {
-                return Result.ok("评论数增加成功");
-            }
-            return Result.fail("评论数增加失败");
+            sendCounterDelta(CountCounterConstants.SCOPE_NOTE, noteId, CountCounterConstants.COMMENT_TOTAL, num);
+            return Result.ok("评论数增加成功");
         } catch (Exception e) {
             log.error("增加评论数失败: ", e);
             return Result.fail("系统异常：" + e.getMessage());
         }
     }
 
-    private void sendInteractionEvent(Long userId, Long blogId, String actionType, Long delta) {
-        NoteInteractionEvent event = NoteInteractionEvent.builder()
-                .eventId(UUID.randomUUID().toString())
-                .userId(userId)
-                .noteId(blogId)
-                .actionType(actionType)
-                .delta(delta)
-                .build();
-        noteInteractionProducer.send(event);
+    private void sendCounterDelta(String scope, Long targetId, String counterType, Long delta) {
+        CounterDeltaDTO deltaDTO = new CounterDeltaDTO();
+        deltaDTO.setScope(scope);
+        deltaDTO.setTargetId(targetId);
+        deltaDTO.setCounterType(counterType);
+        deltaDTO.setDelta(delta);
+        deltaDTO.setEventId(UUID.randomUUID().toString());
+        messageQueueProducer.send(CountCounterConstants.EVENT_TOPIC, deltaDTO.getEventId(), CountCounterConstants.EVENT_BIZ_DESC, deltaDTO);
+    }
+
+    private Long getCounter(String scope, Long targetId, String counterType) {
+        try {
+            Result<CounterValueDTO> result = countFeignApi.getOne(scope, targetId);
+            if (result == null || result.getData() == null || result.getData().getCounters() == null) {
+                return fallbackNoteCounter(targetId, counterType);
+            }
+            return result.getData().getCounters().getOrDefault(counterType, fallbackNoteCounter(targetId, counterType));
+        } catch (Exception e) {
+            log.warn("[NoteInteractionService] 读取计数中心失败, fallback DB, scope={}, targetId={}, counterType={}",
+                    scope, targetId, counterType, e);
+            return fallbackNoteCounter(targetId, counterType);
+        }
+    }
+
+    private Long fallbackNoteCounter(Long noteId, String counterType) {
+        NoteCountDO noteCountDO = noteCountDOMapper.selectByNoteId(noteId);
+        if (noteCountDO == null) {
+            return 0L;
+        }
+        if (CountCounterConstants.LIKE_TOTAL.equals(counterType)) {
+            return noteCountDO.getLikeTotal() == null ? 0L : noteCountDO.getLikeTotal();
+        }
+        if (CountCounterConstants.COLLECT_TOTAL.equals(counterType)) {
+            return noteCountDO.getCollectTotal() == null ? 0L : noteCountDO.getCollectTotal();
+        }
+        if (CountCounterConstants.COMMENT_TOTAL.equals(counterType)) {
+            return noteCountDO.getCommentTotal() == null ? 0L : noteCountDO.getCommentTotal();
+        }
+        return 0L;
     }
 
     private List<BlogListDTO> noteIdsToBlogListDTO(List<Long> noteIdList) {
@@ -290,8 +317,7 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
                     Long noteId = noteDO.getNoteId();
                     Long userId = noteDO.getUserId();
                     UserDTO byUserId = userAuthFeignApi.findByUserId(userId);
-                    NoteCountDO noteCountDO = noteCountDOMapper.selectByNoteId(noteId);
-                    dto.setLikeTotal(noteCountDO != null ? noteCountDO.getLikeTotal() : 0L);
+                    dto.setLikeTotal(getCounter(CountCounterConstants.SCOPE_NOTE, noteId, CountCounterConstants.LIKE_TOTAL));
                     BeanUtils.copyProperties(noteDO, dto);
                     dto.setBlogId(noteDO.getNoteId());
                     dto.setUserDTO(byUserId);

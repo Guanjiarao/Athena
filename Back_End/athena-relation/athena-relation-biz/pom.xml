@@ -29,7 +29,17 @@
         </dependency>
         <dependency>
             <groupId>athena</groupId>
+            <artifactId>athena-framework-mq</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>athena</groupId>
             <artifactId>athena-userauth.api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>athena</groupId>
+            <artifactId>athena-count-api</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>

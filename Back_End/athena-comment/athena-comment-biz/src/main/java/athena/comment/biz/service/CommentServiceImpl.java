@@ -3,6 +3,7 @@ package athena.comment.biz.service;
 import athena.athenaframework.DTO.UserDTO;
 import athena.athenaframework.result.Result;
 import athena.athenaframework.utils.UserIdHolder;
+import athena.athenaframework.mq.producer.MessageQueueProducer;
 import athena.comment.biz.domain.dataobject.CommentDO;
 import athena.comment.biz.domain.dataobject.CommentLikeDO;
 import athena.comment.biz.domain.dto.CommentBasicDTO;
@@ -12,7 +13,10 @@ import athena.comment.biz.domain.mapper.CommentDOMapper;
 import athena.comment.biz.domain.mapper.CommentLikeDOMapper;
 import athena.comment.biz.domain.vo.PublishCommentVO;
 import athena.comment.biz.rpc.UserAuthFeignApi;
-import athena.comment.biz.rpc.GroundFeignApi;
+import athena.count.api.CountFeignApi;
+import athena.count.api.constant.CountCounterConstants;
+import athena.count.api.dto.CounterDeltaDTO;
+import athena.count.api.dto.CounterValueDTO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -24,6 +28,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -63,7 +68,10 @@ public class CommentServiceImpl implements CommentService {
     private UserAuthFeignApi userAuthFeignApi;
 
     @Resource
-    private GroundFeignApi groundFeignApi;
+    private CountFeignApi countFeignApi;
+
+    @Resource
+    private MessageQueueProducer messageQueueProducer;
 
 
 
@@ -175,8 +183,8 @@ public class CommentServiceImpl implements CommentService {
                 log.info("【关联更新】更新一级评论回复数：一级评论ID={}，新增二级评论ID={}",
                         publishCommentVO.getReplyCommentId(), commentDO.getId());
             }
-            //如果是一级评论增加笔记评论计数
-            groundFeignApi.commentAdd(publishCommentVO.getBlogId(), 1L);
+            // 评论发布成功后交给计数中心异步聚合，评论服务不再同步改笔记计数字段
+            sendCounterDelta(CountCounterConstants.SCOPE_NOTE, publishCommentVO.getBlogId(), CountCounterConstants.COMMENT_TOTAL, 1L);
 
             log.info("【发布评论接口】执行成功：最终生成评论ID={}", commentDO.getId());
             return Result.ok("发布成功");
@@ -246,6 +254,7 @@ public class CommentServiceImpl implements CommentService {
                 newLike.setCreateTime(LocalDateTime.now());
                 newLike.setStatus(1); // 1=点赞，0=取消点赞
                 commentLikeDOMapper.insert(newLike);
+                sendCounterDelta(CountCounterConstants.SCOPE_COMMENT, commentId, CountCounterConstants.LIKE_TOTAL, 1L);
 
                 return Result.ok("点赞成功");
             } else {
@@ -253,6 +262,7 @@ public class CommentServiceImpl implements CommentService {
                 Integer currentStatus = commentLikeDO.getStatus();
                 Integer newStatus = currentStatus == 1 ? 0 : 1;
                 commentLikeDOMapper.updateStatusById(commentLikeDO.getId(), newStatus);
+                sendCounterDelta(CountCounterConstants.SCOPE_COMMENT, commentId, CountCounterConstants.LIKE_TOTAL, newStatus == 1 ? 1L : -1L);
 
                 String msg = newStatus == 1 ? "点赞成功" : "取消点赞成功";
                 return Result.ok(msg);
@@ -260,6 +270,30 @@ public class CommentServiceImpl implements CommentService {
         } catch (Exception e) {
             e.printStackTrace();
             return Result.fail("操作失败：" + e.getMessage());
+        }
+    }
+
+    private void sendCounterDelta(String scope, Long targetId, String counterType, Long delta) {
+        CounterDeltaDTO deltaDTO = new CounterDeltaDTO();
+        deltaDTO.setScope(scope);
+        deltaDTO.setTargetId(targetId);
+        deltaDTO.setCounterType(counterType);
+        deltaDTO.setDelta(delta);
+        deltaDTO.setEventId(UUID.randomUUID().toString());
+        messageQueueProducer.send(CountCounterConstants.EVENT_TOPIC, deltaDTO.getEventId(), CountCounterConstants.EVENT_BIZ_DESC, deltaDTO);
+    }
+
+    private Long getCounter(String scope, Long targetId, String counterType, Long fallbackValue) {
+        try {
+            Result<CounterValueDTO> result = countFeignApi.getOne(scope, targetId);
+            if (result == null || result.getData() == null || result.getData().getCounters() == null) {
+                return fallbackValue == null ? 0L : fallbackValue;
+            }
+            return result.getData().getCounters().getOrDefault(counterType, fallbackValue == null ? 0L : fallbackValue);
+        } catch (Exception e) {
+            log.warn("[CommentService] 读取计数中心失败, fallback DB, scope={}, targetId={}, counterType={}",
+                    scope, targetId, counterType, e);
+            return fallbackValue == null ? 0L : fallbackValue;
         }
     }
 
@@ -365,7 +399,7 @@ public class CommentServiceImpl implements CommentService {
                     content,
                     c.getImageUrl(),
                     c.getCreateTime(),
-                    c.getLikeTotal(),
+                    getCounter(CountCounterConstants.SCOPE_COMMENT, commentId, CountCounterConstants.LIKE_TOTAL, c.getLikeTotal()),
                     c.getReplyTotal(),
                     c.getIsTop(),
                     c.getHeat(),
@@ -420,6 +454,7 @@ public class CommentServiceImpl implements CommentService {
                     .parentId(commentDO.getParentId())        // 父评论ID
                     .replyUserId(commentDO.getReplyUserId())  // 回复的用户ID
                     .createTime(commentDO.getCreateTime())
+                    .likeTotal(getCounter(CountCounterConstants.SCOPE_COMMENT, commentId, CountCounterConstants.LIKE_TOTAL, commentDO.getLikeTotal()))
                     .userDTO(userDTO)                         // 发布者用户信息
                     .replyUserName(replyUser == null ? null : replyUser.getNickName()) // 被回复者昵称
                     .imageUrl(commentDO.getImageUrl())        // 图片URL

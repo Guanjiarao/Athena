@@ -1,5 +1,6 @@
 package athena.count.biz.service.impl;
 
+import athena.count.api.dto.CounterBatchDeltaDTO;
 import athena.count.api.dto.CounterDeltaDTO;
 import athena.count.api.dto.CounterQueryDTO;
 import athena.count.api.dto.CounterValueDTO;
@@ -37,6 +38,16 @@ public class RedisCountServiceImpl implements CountService {
             deltaDTO.setEventId(UUID.randomUUID().toString());
         }
         countDeltaProducer.send(deltaDTO);
+    }
+
+    @Override
+    public void batchDelta(CounterBatchDeltaDTO batchDeltaDTO) {
+        if (batchDeltaDTO == null || CollectionUtils.isEmpty(batchDeltaDTO.getDeltas())) {
+            return;
+        }
+        batchDeltaDTO.getDeltas().stream()
+                .filter(Objects::nonNull)
+                .forEach(this::delta);
     }
 
     @Override
@@ -124,7 +135,7 @@ public class RedisCountServiceImpl implements CountService {
         if (!StringUtils.hasText(scope) || targetId == null || !StringUtils.hasText(counterType)) {
             throw new IllegalArgumentException("scope、targetId 和 counterType 不能为空");
         }
-        Set<String> supportedScopes = Set.of(CountConstants.SCOPE_NOTE, CountConstants.SCOPE_USER);
+        Set<String> supportedScopes = Set.of(CountConstants.SCOPE_NOTE, CountConstants.SCOPE_COMMENT, CountConstants.SCOPE_USER);
         if (!supportedScopes.contains(scope)) {
             throw new IllegalArgumentException("不支持的计数域: " + scope);
         }
