@@ -109,6 +109,10 @@ public class GroundServiceImpl implements GroundService {
     @Resource
     private AthenaNoteDocumentUploadService athenaNoteDocumentUploadService;
 
+    @Resource
+    @Qualifier("noteDetailExecutor")
+    private Executor noteDetailExecutor;
+
     @Override
     public Result getBlogListPage(Integer pageNum, Integer pageSize) {
         log.info("开始查询广场博客列表，页码: {}，每页大小: {}", pageNum, pageSize);
@@ -301,17 +305,22 @@ public class GroundServiceImpl implements GroundService {
     }
 
     private NoteCountDO buildNoteCountDOFromCountCenter(Long noteId, NoteCountDO fallback) {
-        Result<CounterValueDTO> result = countFeignApi.getOne(CountCounterConstants.SCOPE_NOTE, noteId);
-        if (result == null || result.getData() == null || result.getData().getCounters() == null) {
+        try {
+            Result<CounterValueDTO> result = countFeignApi.getOne(CountCounterConstants.SCOPE_NOTE, noteId);
+            if (result == null || result.getData() == null || result.getData().getCounters() == null) {
+                return fallback == null ? emptyNoteCount(noteId) : fallback;
+            }
+            Map<String, Long> counters = result.getData().getCounters();
+            NoteCountDO noteCountDO = new NoteCountDO();
+            noteCountDO.setNoteId(noteId);
+            noteCountDO.setLikeTotal(counters.getOrDefault(CountCounterConstants.LIKE_TOTAL, fallbackValue(fallback, CountCounterConstants.LIKE_TOTAL)));
+            noteCountDO.setCollectTotal(counters.getOrDefault(CountCounterConstants.COLLECT_TOTAL, fallbackValue(fallback, CountCounterConstants.COLLECT_TOTAL)));
+            noteCountDO.setCommentTotal(counters.getOrDefault(CountCounterConstants.COMMENT_TOTAL, fallbackValue(fallback, CountCounterConstants.COMMENT_TOTAL)));
+            return noteCountDO;
+        } catch (Exception e) {
+            log.warn("[GroundService] 读取计数中心失败, fallback DB, noteId={}", noteId, e);
             return fallback == null ? emptyNoteCount(noteId) : fallback;
         }
-        Map<String, Long> counters = result.getData().getCounters();
-        NoteCountDO noteCountDO = new NoteCountDO();
-        noteCountDO.setNoteId(noteId);
-        noteCountDO.setLikeTotal(counters.getOrDefault(CountCounterConstants.LIKE_TOTAL, fallbackValue(fallback, CountCounterConstants.LIKE_TOTAL)));
-        noteCountDO.setCollectTotal(counters.getOrDefault(CountCounterConstants.COLLECT_TOTAL, fallbackValue(fallback, CountCounterConstants.COLLECT_TOTAL)));
-        noteCountDO.setCommentTotal(counters.getOrDefault(CountCounterConstants.COMMENT_TOTAL, fallbackValue(fallback, CountCounterConstants.COMMENT_TOTAL)));
-        return noteCountDO;
     }
 
     private NoteCountDO emptyNoteCount(Long noteId) {
@@ -352,30 +361,57 @@ public class GroundServiceImpl implements GroundService {
             return Result.fail("博客不存在或未通过审核");
         }
 
-        NoteDO noteDO = noteMapper.selectByPrimaryKey(noteId);
-        NoteContentDO noteContentDO = noteContentDOMapper.selectByNoteId(noteId);
-        NoteCountDO fallbackNoteCountDO = noteCountDOMapper.selectByNoteId(noteId);
-        NoteCountDO noteCountDO = buildNoteCountDOFromCountCenter(noteId, fallbackNoteCountDO);
-        if (noteDO == null) {
-            log.warn("博客详情不存在, noteId={}", noteId);
-            return Result.fail("博客不存在");
-        }
+        try {
+            CompletableFuture<NoteDO> noteFuture = CompletableFuture.supplyAsync(
+                    () -> noteMapper.selectByPrimaryKey(noteId), noteDetailExecutor);
+            CompletableFuture<NoteContentDO> contentFuture = CompletableFuture.supplyAsync(
+                    () -> noteContentDOMapper.selectByNoteId(noteId), noteDetailExecutor);
+            CompletableFuture<NoteCountDO> fallbackCountFuture = CompletableFuture.supplyAsync(
+                    () -> noteCountDOMapper.selectByNoteId(noteId), noteDetailExecutor);
+            CompletableFuture<NoteCountDO> countFuture = fallbackCountFuture.thenApplyAsync(
+                    fallbackNoteCountDO -> buildNoteCountDOFromCountCenter(noteId, fallbackNoteCountDO), noteDetailExecutor);
+            CompletableFuture<UserDTO> userFuture = noteFuture.thenApplyAsync(noteDO -> {
+                if (noteDO == null || noteDO.getUserId() == null) {
+                    return null;
+                }
+                try {
+                    return userAuthFeginApi.findByUserId(noteDO.getUserId());
+                } catch (Exception e) {
+                    log.warn("[GroundService] 查询用户信息失败, userId={}", noteDO.getUserId(), e);
+                    return null;
+                }
+            }, noteDetailExecutor);
 
-        log.info("查询到博客详情: {}", noteDO);
-        UserDTO byUserId = userAuthFeginApi.findByUserId(noteDO.getUserId());
-        BlogDetailDTO dto = new BlogDetailDTO();
-        BeanUtils.copyProperties(noteDO, dto);
-        BeanUtils.copyProperties(noteBasicDO, dto);
-        if (noteContentDO != null) {
-            BeanUtils.copyProperties(noteContentDO, dto);
+            CompletableFuture.allOf(noteFuture, contentFuture, countFuture, userFuture).join();
+
+            NoteDO noteDO = noteFuture.join();
+            if (noteDO == null) {
+                log.warn("博客详情不存在, noteId={}", noteId);
+                return Result.fail("博客不存在");
+            }
+
+            NoteContentDO noteContentDO = contentFuture.join();
+            NoteCountDO noteCountDO = countFuture.join();
+            UserDTO byUserId = userFuture.join();
+
+            log.info("查询到博客详情: {}", noteDO);
+            BlogDetailDTO dto = new BlogDetailDTO();
+            BeanUtils.copyProperties(noteDO, dto);
+            BeanUtils.copyProperties(noteBasicDO, dto);
+            if (noteContentDO != null) {
+                BeanUtils.copyProperties(noteContentDO, dto);
+            }
+            if (noteCountDO != null) {
+                BeanUtils.copyProperties(noteCountDO, dto);
+            }
+            dto.setStatus(noteBasicDO.getStatus() == null ? STATUS_APPROVED : noteBasicDO.getStatus());
+            dto.setId(noteId);
+            dto.setUserDTO(byUserId);
+            return Result.ok(dto);
+        } catch (Exception e) {
+            log.error("异步查询博客详情失败, noteId={}", noteId, e);
+            return Result.fail("查询博客详情失败：" + e.getMessage());
         }
-        if (noteCountDO != null) {
-            BeanUtils.copyProperties(noteCountDO, dto);
-        }
-        dto.setStatus(noteBasicDO.getStatus() == null ? STATUS_APPROVED : noteBasicDO.getStatus());
-        dto.setId(noteId);
-        dto.setUserDTO(byUserId);
-        return Result.ok(dto);
     }
 
     @Override
