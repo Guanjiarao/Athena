@@ -27,6 +27,7 @@
         <module>athena-relation</module>
         <module>athena-comment</module>
         <module>athena-record</module>
+        <module>athena-count</module>
         <module>athena-gateway</module>
         <module>athena-insight</module>
     </modules>
@@ -208,6 +209,11 @@
             <dependency>
                 <groupId>athena</groupId>
                 <artifactId>athena-insight-api</artifactId>
+                <version>0.0.1-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>athena</groupId>
+                <artifactId>athena-count-api</artifactId>
                 <version>0.0.1-SNAPSHOT</version>
             </dependency>
             <dependency>

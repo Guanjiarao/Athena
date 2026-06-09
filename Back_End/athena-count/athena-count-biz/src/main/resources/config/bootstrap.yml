@@ -1,0 +1,13 @@
+server:
+  port: 7010
+spring:
+  profiles:
+    active: dev
+  application:
+    name: athena-count
+rocketmq:
+  name-server: 121.41.200.73:9876
+  producer:
+    group: athena-count-producer
+    vip-channel-enabled: false
+    send-message-timeout: 100000
