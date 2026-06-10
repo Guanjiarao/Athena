@@ -3,6 +3,8 @@ package athena.comment.biz.domain.mapper;
 import athena.comment.biz.domain.dataobject.CommentLikeDO;
 import org.apache.ibatis.annotations.*;
 
+import java.util.List;
+
 @Mapper
 public interface CommentLikeDOMapper {
 
@@ -23,4 +25,12 @@ public interface CommentLikeDOMapper {
      */
     @Update("UPDATE tb_comment_like SET status = #{status} WHERE id = #{id}")
     int updateStatusById(@Param("id") Long id, @Param("status") Integer status);
+
+    @Delete({"<script>",
+            "DELETE FROM tb_comment_like WHERE comment_id IN",
+            "<foreach collection='commentIds' item='commentId' open='(' separator=',' close=')'>",
+            "#{commentId}",
+            "</foreach>",
+            "</script>"})
+    int deleteByCommentIds(@Param("commentIds") List<Long> commentIds);
 }

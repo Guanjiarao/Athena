@@ -24,6 +24,7 @@ import athena.ground.biz.domain.mapper.NoteTopicRelationMapper;
 import athena.ground.biz.domain.mapper.UserViewRecordMapper;
 import athena.ground.biz.mq.event.NoteTopicBuildEvent;
 import athena.ground.biz.mq.producer.NoteTopicBuildProducer;
+import athena.ground.biz.rpc.CommentFeignApi;
 import athena.ground.biz.rpc.UserAuthFeignApi;
 import athena.ground.biz.service.BlogAskService;
 import athena.ground.biz.service.GroundService;
@@ -90,6 +91,9 @@ public class GroundServiceImpl implements GroundService {
 
     @Resource
     private CountFeignApi countFeignApi;
+
+    @Resource
+    private CommentFeignApi commentFeignApi;
 
     @Resource
     private NoteInteractionService noteInteractionService;
@@ -501,9 +505,9 @@ public class GroundServiceImpl implements GroundService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Result deleteNote(Long noteId) {
-        Long userId = UserIdHolder.getUserId();
-        if (userId == null) {
+    public Result adminDeleteNote(Long noteId) {
+        Long operatorId = UserIdHolder.getUserId();
+        if (operatorId == null) {
             return Result.fail("用户未登录");
         }
         if (noteId == null) {
@@ -512,15 +516,17 @@ public class GroundServiceImpl implements GroundService {
 
         NoteBasicDO noteBasicDO = noteBasicMapper.selectByNoteId(noteId);
         if (noteBasicDO == null) {
-            return Result.fail("笔记不存在");
+            return Result.ok();
         }
 
-
+        Long authorId = noteBasicDO.getUserId() == null ? operatorId : noteBasicDO.getUserId();
         try {
             athenaInsightNoteFeatureService.deleteByNoteId(noteId);
             if (shouldSyncRag(noteBasicDO.getType())) {
-                athenaNoteDocumentUploadService.deleteByNoteId(noteId, noteBasicDO.getType(), userId);
+                athenaNoteDocumentUploadService.deleteByNoteId(noteId, noteBasicDO.getType(), authorId);
             }
+            deleteCommentByNoteId(noteId);
+            deleteNoteCounter(noteId);
             noteTopicRelationMapper.deleteByNoteId(noteId);
             noteLikeDOMapper.deleteByNoteId(noteId);
             noteCollectionDOMapper.deleteByNoteId(noteId);
@@ -531,8 +537,22 @@ public class GroundServiceImpl implements GroundService {
             noteBasicMapper.deleteByPrimaryKey(noteId);
             return Result.ok();
         } catch (Exception e) {
-            log.error("删除笔记失败, noteId={}, userId={}", noteId, userId, e);
+            log.error("管理员删除笔记失败, noteId={}, operatorId={}", noteId, operatorId, e);
             return Result.fail("删除笔记失败：" + e.getMessage());
+        }
+    }
+
+    private void deleteCommentByNoteId(Long noteId) {
+        Result<?> result = commentFeignApi.deleteByNoteId(noteId);
+        if (result == null || result.getCode() != 200) {
+            throw new RuntimeException("调用评论删除接口失败：" + (result == null ? "返回为空" : result.getMessage()));
+        }
+    }
+
+    private void deleteNoteCounter(Long noteId) {
+        Result<?> result = countFeignApi.deleteTarget(CountCounterConstants.SCOPE_NOTE, noteId);
+        if (result == null || result.getCode() != 200) {
+            throw new RuntimeException("调用计数中心删除接口失败：" + (result == null ? "返回为空" : result.getMessage()));
         }
     }
 

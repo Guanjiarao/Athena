@@ -17,4 +17,6 @@ public interface CommentService {
     Result commentLike(Long commentId);
 
     Result isCommentLike(Long commentId);
+
+    Result deleteByNoteId(Long noteId);
 }

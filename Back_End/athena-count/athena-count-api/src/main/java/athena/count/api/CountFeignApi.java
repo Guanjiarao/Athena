@@ -7,6 +7,7 @@ import athena.count.api.dto.CounterDeltaDTO;
 import athena.count.api.dto.CounterQueryDTO;
 import athena.count.api.dto.CounterValueDTO;
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,4 +31,7 @@ public interface CountFeignApi {
 
     @PostMapping(PREFIX + "/batch")
     Result<List<CounterValueDTO>> batchGet(@RequestBody CounterQueryDTO queryDTO);
+
+    @DeleteMapping(PREFIX + "/target")
+    Result<?> deleteTarget(@RequestParam String scope, @RequestParam Long targetId);
 }

@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -273,6 +274,29 @@ public class CommentServiceImpl implements CommentService {
         }
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Result deleteByNoteId(Long noteId) {
+        if (noteId == null) {
+            return Result.fail("noteId不能为空");
+        }
+        try {
+            List<Long> commentIds = commentDOMapper.selectIdsByNoteId(noteId);
+            if (!CollectionUtils.isEmpty(commentIds)) {
+                commentLikeDOMapper.deleteByCommentIds(commentIds);
+                commentContentDOMapper.deleteByCommentIds(commentIds);
+                for (Long commentId : commentIds) {
+                    deleteCounter(CountCounterConstants.SCOPE_COMMENT, commentId);
+                }
+            }
+            commentDOMapper.deleteByNoteId(noteId);
+            return Result.ok();
+        } catch (Exception e) {
+            log.error("删除笔记评论失败, noteId={}", noteId, e);
+            return Result.fail("删除笔记评论失败：" + e.getMessage());
+        }
+    }
+
     private void sendCounterDelta(String scope, Long targetId, String counterType, Long delta) {
         CounterDeltaDTO deltaDTO = new CounterDeltaDTO();
         deltaDTO.setScope(scope);
@@ -281,6 +305,14 @@ public class CommentServiceImpl implements CommentService {
         deltaDTO.setDelta(delta);
         deltaDTO.setEventId(UUID.randomUUID().toString());
         messageQueueProducer.send(CountCounterConstants.EVENT_TOPIC, deltaDTO.getEventId(), CountCounterConstants.EVENT_BIZ_DESC, deltaDTO);
+    }
+
+    private void deleteCounter(String scope, Long targetId) {
+        try {
+            countFeignApi.deleteTarget(scope, targetId);
+        } catch (Exception e) {
+            log.warn("[CommentService] 删除计数中心失败, scope={}, targetId={}", scope, targetId, e);
+        }
     }
 
     private Long getCounter(String scope, Long targetId, String counterType, Long fallbackValue) {

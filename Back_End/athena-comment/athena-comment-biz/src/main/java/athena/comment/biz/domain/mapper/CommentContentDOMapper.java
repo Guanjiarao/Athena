@@ -1,9 +1,12 @@
 package athena.comment.biz.domain.mapper;
 
 import athena.comment.biz.domain.dataobject.CommentContentDO;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
 
 public interface CommentContentDOMapper {
     int deleteByPrimaryKey(Long id);
@@ -37,4 +40,12 @@ public interface CommentContentDOMapper {
     @Insert("INSERT INTO tb_comment_content (comment_id, content, create_time, update_time) " +
             "VALUES (#{commentId}, #{content}, NOW(), NOW())")
     int insertCommentContent(@Param("commentId") Long commentId, @Param("content") String content);
+
+    @Delete({"<script>",
+            "DELETE FROM tb_comment_content WHERE comment_id IN",
+            "<foreach collection='commentIds' item='commentId' open='(' separator=',' close=')'>",
+            "#{commentId}",
+            "</foreach>",
+            "</script>"})
+    int deleteByCommentIds(@Param("commentIds") List<Long> commentIds);
 }

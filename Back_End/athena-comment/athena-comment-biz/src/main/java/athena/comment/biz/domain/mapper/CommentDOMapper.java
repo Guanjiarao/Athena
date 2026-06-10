@@ -93,5 +93,11 @@ public interface CommentDOMapper {
     @Select("SELECT * FROM tb_comment WHERE id = #{commentId}")
     CommentDO selectAllById(@Param("commentId") Long commentId);
 
+    @Select("SELECT id FROM tb_comment WHERE note_id = #{noteId}")
+    List<Long> selectIdsByNoteId(@Param("noteId") Long noteId);
+
+    @Delete("DELETE FROM tb_comment WHERE note_id = #{noteId}")
+    int deleteByNoteId(@Param("noteId") Long noteId);
+
 
 }

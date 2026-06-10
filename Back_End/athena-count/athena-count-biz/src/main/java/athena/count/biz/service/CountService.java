@@ -18,4 +18,6 @@ public interface CountService {
     CounterValueDTO getOne(String scope, Long targetId);
 
     List<CounterValueDTO> batchGet(CounterQueryDTO queryDTO);
+
+    void deleteTarget(String scope, Long targetId);
 }

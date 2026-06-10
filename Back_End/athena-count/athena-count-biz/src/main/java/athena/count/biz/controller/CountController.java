@@ -39,4 +39,10 @@ public class CountController implements CountFeignApi {
     public Result<List<CounterValueDTO>> batchGet(CounterQueryDTO queryDTO) {
         return Result.ok(countService.batchGet(queryDTO));
     }
+
+    @Override
+    public Result<?> deleteTarget(String scope, Long targetId) {
+        countService.deleteTarget(scope, targetId);
+        return Result.ok();
+    }
 }

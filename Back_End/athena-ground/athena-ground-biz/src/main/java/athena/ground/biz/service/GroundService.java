@@ -15,7 +15,7 @@ public interface GroundService {
 
     Result submitNote(NoteSubmitDTO noteSubmitDTO);
 
-    Result deleteNote(Long noteId);
+    Result adminDeleteNote(Long noteId);
 
     Result likeNote(Long blogId);
 

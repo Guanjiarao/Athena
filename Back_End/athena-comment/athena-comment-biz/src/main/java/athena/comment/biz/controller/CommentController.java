@@ -48,4 +48,9 @@ public class CommentController {
     public Result isCommentLike(@RequestParam("commentId") Long commentId) {
         return commentService.isCommentLike(commentId);
     }
+
+    @DeleteMapping("/by-note")
+    public Result deleteByNoteId(@RequestParam("noteId") Long noteId) {
+        return commentService.deleteByNoteId(noteId);
+    }
 }

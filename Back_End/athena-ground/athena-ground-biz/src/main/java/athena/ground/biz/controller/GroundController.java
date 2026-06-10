@@ -80,11 +80,11 @@ public class GroundController {
     }
 
     /**
-     * 删除我的笔记
+     * 管理员删除笔记
      */
-    @DeleteMapping("/{noteId}")
-    public Result deleteNote(@PathVariable("noteId") Long noteId) {
-        return groundService.deleteNote(noteId);
+    @DeleteMapping("/admin/{noteId}")
+    public Result adminDeleteNote(@PathVariable("noteId") Long noteId) {
+        return groundService.adminDeleteNote(noteId);
     }
 
     /**

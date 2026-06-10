@@ -86,6 +86,14 @@ public class RedisCountServiceImpl implements CountService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public void deleteTarget(String scope, Long targetId) {
+        validateTarget(scope, targetId);
+        String key = buildCounterKey(scope, targetId);
+        stringRedisTemplate.delete(key);
+        stringRedisTemplate.opsForSet().remove(CountConstants.COUNTER_DIRTY_SET_KEY, key);
+    }
+
     private CounterValueDTO getCounterValue(String scope, Long targetId, List<String> counterTypes) {
         String key = buildCounterKey(scope, targetId);
         Map<String, Long> counters;
@@ -128,6 +136,16 @@ public class RedisCountServiceImpl implements CountService {
         validate(deltaDTO.getScope(), deltaDTO.getTargetId(), deltaDTO.getCounterType());
         if (deltaDTO.getDelta() == null) {
             throw new IllegalArgumentException("delta 不能为空");
+        }
+    }
+
+    private void validateTarget(String scope, Long targetId) {
+        if (!StringUtils.hasText(scope) || targetId == null) {
+            throw new IllegalArgumentException("scope 和 targetId 不能为空");
+        }
+        Set<String> supportedScopes = Set.of(CountConstants.SCOPE_NOTE, CountConstants.SCOPE_COMMENT, CountConstants.SCOPE_USER);
+        if (!supportedScopes.contains(scope)) {
+            throw new IllegalArgumentException("不支持的计数域: " + scope);
         }
     }
 
