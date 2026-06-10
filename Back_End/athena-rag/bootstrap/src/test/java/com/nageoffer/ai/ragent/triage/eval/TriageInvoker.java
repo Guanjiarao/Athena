@@ -182,14 +182,20 @@ public class TriageInvoker {
                 ObjectMapper mapper = new ObjectMapper();
                 TriageClarificationData data = mapper.convertValue(response.getData(), TriageClarificationData.class);
 
-                if (data.getOptions() != null && !data.getOptions().isEmpty()) {
+                if (data.getQuestions() != null && !data.getQuestions().isEmpty()) {
                     conversationLog.append("选项：[");
-                    for (int i = 0; i < data.getOptions().size(); i++) {
-                        TriageClarificationData.QuestionOption option = data.getOptions().get(i);
-                        if (i > 0) {
-                            conversationLog.append(", ");
+                    boolean appended = false;
+                    for (TriageClarificationData.ClarificationQuestion question : data.getQuestions()) {
+                        if (question.getOptions() == null || question.getOptions().isEmpty()) {
+                            continue;
                         }
-                        conversationLog.append(option.getLabel());
+                        for (TriageClarificationData.QuestionOption option : question.getOptions()) {
+                            if (appended) {
+                                conversationLog.append(", ");
+                            }
+                            conversationLog.append(option.getLabel());
+                            appended = true;
+                        }
                     }
                     conversationLog.append("]\n");
                 }

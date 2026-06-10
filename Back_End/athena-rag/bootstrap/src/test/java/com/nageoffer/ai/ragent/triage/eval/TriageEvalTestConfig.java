@@ -4,9 +4,9 @@ package com.nageoffer.ai.ragent.triage.eval;
 
 import cn.hutool.core.util.StrUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nageoffer.ai.ragent.triage.config.TriageSessionProperties;
 import com.nageoffer.ai.ragent.triage.model.TriageContext;
-import com.nageoffer.ai.ragent.triage.service.TriageSessionManager;
+import com.nageoffer.ai.ragent.triage.session.TriageSessionManager;
+import com.nageoffer.ai.ragent.triage.session.TriageSessionProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.test.context.TestConfiguration;

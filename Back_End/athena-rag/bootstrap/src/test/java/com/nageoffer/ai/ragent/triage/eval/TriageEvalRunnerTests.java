@@ -4,8 +4,8 @@ package com.nageoffer.ai.ragent.triage.eval;
 
 import com.nageoffer.ai.ragent.framework.distributedid.SnowflakeIdInitializer;
 import com.nageoffer.ai.ragent.knowledge.config.SemaphoreInitializer;
-import com.nageoffer.ai.ragent.rag.aop.ChatQueueLimiter;
 import com.nageoffer.ai.ragent.rag.service.handler.StreamTaskManager;
+import com.nageoffer.ai.ragent.rag.service.ratelimit.ChatQueueLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
@@ -46,7 +46,7 @@ public class TriageEvalRunnerTests {
 
     // Mock 分诊会话记录 Mapper，避免数据库依赖
     @MockBean
-    private com.nageoffer.ai.ragent.triage.dao.mapper.TriageSessionRecordMapper triageSessionRecordMapper;
+    private com.nageoffer.ai.ragent.triage.session.dao.TriageSessionRecordMapper triageSessionRecordMapper;
 
     private final TriageCaseLoader caseLoader;
     private final TriageInvoker invoker;
