@@ -32,6 +32,7 @@ import com.nageoffer.ai.ragent.ingestion.engine.IngestionEngine;
 import com.nageoffer.ai.ragent.ingestion.service.IngestionPipelineService;
 import com.nageoffer.ai.ragent.knowledge.config.KnowledgeScheduleProperties;
 import com.nageoffer.ai.ragent.knowledge.controller.request.KnowledgeChunkCreateRequest;
+import com.nageoffer.ai.ragent.knowledge.controller.request.KnowledgeDocumentMetadataQueryRequest;
 import com.nageoffer.ai.ragent.knowledge.controller.request.KnowledgeDocumentPageRequest;
 import com.nageoffer.ai.ragent.knowledge.controller.request.KnowledgeDocumentUpdateRequest;
 import com.nageoffer.ai.ragent.knowledge.controller.request.KnowledgeDocumentUploadRequest;
@@ -589,6 +590,42 @@ public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
             record.setKbName(nameMap.get(record.getKbId()));
         }
         return records;
+    }
+
+    @Override
+    public List<KnowledgeDocumentVO> listByMetadata(KnowledgeDocumentMetadataQueryRequest requestParam) {
+        Assert.notNull(requestParam, () -> new ClientException("metadata 查询参数不能为空"));
+        if (!StringUtils.hasText(requestParam.getSource()) && requestParam.getNoteId() == null
+                && requestParam.getType() == null && requestParam.getAuthorId() == null) {
+            throw new ClientException("至少需要一个 metadata 查询条件");
+        }
+
+        int limit = requestParam.getLimit() == null ? 20 : requestParam.getLimit();
+        limit = Math.min(Math.max(limit, 1), 100);
+
+        LambdaQueryWrapper<KnowledgeDocumentDO> queryWrapper = Wrappers.lambdaQuery(KnowledgeDocumentDO.class)
+                .eq(KnowledgeDocumentDO::getDeleted, 0)
+                .last("LIMIT " + limit)
+                .orderByDesc(KnowledgeDocumentDO::getCreateTime);
+
+        applyJsonbMetadataCondition(queryWrapper, "source", requestParam.getSource());
+        applyJsonbMetadataCondition(queryWrapper, "noteId", requestParam.getNoteId());
+        applyJsonbMetadataCondition(queryWrapper, "type", requestParam.getType());
+        applyJsonbMetadataCondition(queryWrapper, "authorId", requestParam.getAuthorId());
+
+        return documentMapper.selectList(queryWrapper).stream()
+                .map(each -> BeanUtil.toBean(each, KnowledgeDocumentVO.class))
+                .toList();
+    }
+
+    private void applyJsonbMetadataCondition(LambdaQueryWrapper<KnowledgeDocumentDO> queryWrapper, String key, Object value) {
+        if (value == null) {
+            return;
+        }
+        if (value instanceof String str && !StringUtils.hasText(str)) {
+            return;
+        }
+        queryWrapper.apply("metadata ->> {0} = {1}", key, String.valueOf(value));
     }
 
     @Override

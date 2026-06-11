@@ -4,6 +4,7 @@ package com.nageoffer.ai.ragent.knowledge.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.nageoffer.ai.ragent.knowledge.controller.request.KnowledgeDocumentMetadataQueryRequest;
 import com.nageoffer.ai.ragent.knowledge.controller.request.KnowledgeDocumentPageRequest;
 import com.nageoffer.ai.ragent.knowledge.controller.request.KnowledgeDocumentUploadRequest;
 import com.nageoffer.ai.ragent.knowledge.controller.request.KnowledgeDocumentUpdateRequest;
@@ -104,6 +105,14 @@ public class KnowledgeDocumentController {
     public Result<List<KnowledgeDocumentSearchVO>> search(@RequestParam(value = "keyword", required = false) String keyword,
                                                           @RequestParam(value = "limit", defaultValue = "8") int limit) {
         return Results.success(documentService.search(keyword, limit));
+    }
+
+    /**
+     * 按 metadata 查询文档，用于外部系统幂等对账。
+     */
+    @PostMapping("/knowledge-base/docs/metadata/query")
+    public Result<List<KnowledgeDocumentVO>> listByMetadata(@RequestBody KnowledgeDocumentMetadataQueryRequest requestParam) {
+        return Results.success(documentService.listByMetadata(requestParam));
     }
 
     /**

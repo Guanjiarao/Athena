@@ -96,6 +96,11 @@ public class KnowledgeDocumentVO {
     private String pipelineId;
 
     /**
+     * 文档元数据（JSON）
+     */
+    private String metadata;
+
+    /**
      * 状态（如：解析中、已解析、解析失败等）
      */
     private String status;

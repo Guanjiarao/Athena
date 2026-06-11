@@ -4,6 +4,7 @@ package com.nageoffer.ai.ragent.knowledge.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.nageoffer.ai.ragent.knowledge.controller.request.KnowledgeDocumentMetadataQueryRequest;
 import com.nageoffer.ai.ragent.knowledge.controller.request.KnowledgeDocumentPageRequest;
 import com.nageoffer.ai.ragent.knowledge.controller.request.KnowledgeDocumentUploadRequest;
 import com.nageoffer.ai.ragent.knowledge.controller.request.KnowledgeDocumentUpdateRequest;
@@ -92,6 +93,14 @@ public interface KnowledgeDocumentService {
      * @return 文档列表
      */
     List<KnowledgeDocumentSearchVO> search(String keyword, int limit);
+
+    /**
+     * 按 metadata 查询文档，用于外部系统幂等对账。
+     *
+     * @param requestParam metadata 查询参数
+     * @return 文档列表
+     */
+    List<KnowledgeDocumentVO> listByMetadata(KnowledgeDocumentMetadataQueryRequest requestParam);
 
     /**
      * 查询文档分块日志
