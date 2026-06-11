@@ -107,4 +107,18 @@ public interface NoteBasicDOMapper {
                                         @Param("channelId") Integer channelId,
                                         @Param("offset") Integer offset,
                                         @Param("pageSize") Integer pageSize);
+
+    @Select({"<script>",
+            "SELECT user_id, note_id, type, status, review_remark, cover_url, title, channel_id, channel_name, create_time, update_time, review_time, reviewer_id",
+            "FROM tb_note_basic",
+            "WHERE status = 1",
+            "AND type IS NOT NULL",
+            "AND type NOT IN (0, 1, 2)",
+            "<if test='noteId != null'> AND note_id = #{noteId}</if>",
+            "<if test='type != null'> AND type = #{type}</if>",
+            "ORDER BY review_time ASC, note_id ASC LIMIT #{limit}",
+            "</script>"})
+    List<NoteBasicDO> selectApprovedRagSyncCandidates(@Param("noteId") Long noteId,
+                                                      @Param("type") Byte type,
+                                                      @Param("limit") Integer limit);
 }

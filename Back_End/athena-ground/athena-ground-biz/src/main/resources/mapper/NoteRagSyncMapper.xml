@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="athena.ground.biz.domain.mapper.NoteRagSyncMapper">
+    <resultMap id="BaseResultMap" type="athena.ground.biz.domain.dataobject.NoteRagSyncDO">
+        <id column="id" jdbcType="BIGINT" property="id" />
+        <result column="note_id" jdbcType="BIGINT" property="noteId" />
+        <result column="note_type" jdbcType="TINYINT" property="noteType" />
+        <result column="author_id" jdbcType="BIGINT" property="authorId" />
+        <result column="title" jdbcType="VARCHAR" property="title" />
+        <result column="kb_id" jdbcType="VARCHAR" property="kbId" />
+        <result column="kb_code" jdbcType="VARCHAR" property="kbCode" />
+        <result column="doc_id" jdbcType="VARCHAR" property="docId" />
+        <result column="doc_name" jdbcType="VARCHAR" property="docName" />
+        <result column="source_type" jdbcType="VARCHAR" property="sourceType" />
+        <result column="process_mode" jdbcType="VARCHAR" property="processMode" />
+        <result column="pipeline_id" jdbcType="VARCHAR" property="pipelineId" />
+        <result column="metadata" jdbcType="LONGVARCHAR" property="metadata" />
+        <result column="content_hash" jdbcType="VARCHAR" property="contentHash" />
+        <result column="sync_version" jdbcType="INTEGER" property="syncVersion" />
+        <result column="sync_status" jdbcType="VARCHAR" property="syncStatus" />
+        <result column="rag_status" jdbcType="VARCHAR" property="ragStatus" />
+        <result column="chunk_count" jdbcType="INTEGER" property="chunkCount" />
+        <result column="enabled" jdbcType="TINYINT" property="enabled" />
+        <result column="deleted" jdbcType="TINYINT" property="deleted" />
+        <result column="retry_count" jdbcType="INTEGER" property="retryCount" />
+        <result column="last_action" jdbcType="VARCHAR" property="lastAction" />
+        <result column="last_error" jdbcType="LONGVARCHAR" property="lastError" />
+        <result column="last_sync_time" jdbcType="TIMESTAMP" property="lastSyncTime" />
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+        <result column="update_time" jdbcType="TIMESTAMP" property="updateTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, note_id, note_type, author_id, title, kb_id, kb_code, doc_id, doc_name,
+        source_type, process_mode, pipeline_id, metadata, content_hash, sync_version,
+        sync_status, rag_status, chunk_count, enabled, deleted, retry_count,
+        last_action, last_error, last_sync_time, create_time, update_time
+    </sql>
+
+    <select id="selectByNoteId" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM tb_note_rag_sync
+        WHERE note_id = #{noteId,jdbcType=BIGINT}
+        AND deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectRefreshCandidates" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM tb_note_rag_sync
+        WHERE deleted = 0
+        <if test="noteId != null">AND note_id = #{noteId,jdbcType=BIGINT}</if>
+        <if test="noteId == null">
+            AND sync_status IN ('uploading', 'uploaded', 'chunking', 'failed', 'pending')
+        </if>
+        ORDER BY update_time DESC
+        LIMIT #{limit,jdbcType=INTEGER}
+    </select>
+
+    <insert id="insert" parameterType="athena.ground.biz.domain.dataobject.NoteRagSyncDO"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO tb_note_rag_sync (
+            note_id, note_type, author_id, title, kb_id, kb_code, doc_id, doc_name,
+            source_type, process_mode, pipeline_id, metadata, content_hash, sync_version,
+            sync_status, rag_status, chunk_count, enabled, deleted, retry_count,
+            last_action, last_error, last_sync_time, create_time, update_time
+        ) VALUES (
+            #{noteId,jdbcType=BIGINT}, #{noteType,jdbcType=TINYINT}, #{authorId,jdbcType=BIGINT}, #{title,jdbcType=VARCHAR},
+            #{kbId,jdbcType=VARCHAR}, #{kbCode,jdbcType=VARCHAR}, #{docId,jdbcType=VARCHAR}, #{docName,jdbcType=VARCHAR},
+            #{sourceType,jdbcType=VARCHAR}, #{processMode,jdbcType=VARCHAR}, #{pipelineId,jdbcType=VARCHAR}, #{metadata,jdbcType=LONGVARCHAR},
+            #{contentHash,jdbcType=VARCHAR}, #{syncVersion,jdbcType=INTEGER}, #{syncStatus,jdbcType=VARCHAR}, #{ragStatus,jdbcType=VARCHAR},
+            #{chunkCount,jdbcType=INTEGER}, #{enabled,jdbcType=TINYINT}, 0, COALESCE(#{retryCount,jdbcType=INTEGER}, 0),
+            #{lastAction,jdbcType=VARCHAR}, #{lastError,jdbcType=LONGVARCHAR}, #{lastSyncTime,jdbcType=TIMESTAMP}, NOW(), NOW()
+        )
+    </insert>
+
+    <update id="updateByNoteIdSelective" parameterType="athena.ground.biz.domain.dataobject.NoteRagSyncDO">
+        UPDATE tb_note_rag_sync
+        <set>
+            <if test="noteType != null">note_type = #{noteType,jdbcType=TINYINT},</if>
+            <if test="authorId != null">author_id = #{authorId,jdbcType=BIGINT},</if>
+            <if test="title != null">title = #{title,jdbcType=VARCHAR},</if>
+            <if test="kbId != null">kb_id = #{kbId,jdbcType=VARCHAR},</if>
+            <if test="kbCode != null">kb_code = #{kbCode,jdbcType=VARCHAR},</if>
+            <if test="docId != null">doc_id = #{docId,jdbcType=VARCHAR},</if>
+            <if test="docName != null">doc_name = #{docName,jdbcType=VARCHAR},</if>
+            <if test="sourceType != null">source_type = #{sourceType,jdbcType=VARCHAR},</if>
+            <if test="processMode != null">process_mode = #{processMode,jdbcType=VARCHAR},</if>
+            <if test="pipelineId != null">pipeline_id = #{pipelineId,jdbcType=VARCHAR},</if>
+            <if test="metadata != null">metadata = #{metadata,jdbcType=LONGVARCHAR},</if>
+            <if test="contentHash != null">content_hash = #{contentHash,jdbcType=VARCHAR},</if>
+            <if test="syncVersion != null">sync_version = #{syncVersion,jdbcType=INTEGER},</if>
+            <if test="syncStatus != null">sync_status = #{syncStatus,jdbcType=VARCHAR},</if>
+            <if test="ragStatus != null">rag_status = #{ragStatus,jdbcType=VARCHAR},</if>
+            <if test="chunkCount != null">chunk_count = #{chunkCount,jdbcType=INTEGER},</if>
+            <if test="enabled != null">enabled = #{enabled,jdbcType=TINYINT},</if>
+            <if test="lastAction != null">last_action = #{lastAction,jdbcType=VARCHAR},</if>
+            <if test="lastError != null">last_error = #{lastError,jdbcType=LONGVARCHAR},</if>
+            <if test="lastSyncTime != null">last_sync_time = #{lastSyncTime,jdbcType=TIMESTAMP},</if>
+            update_time = NOW()
+        </set>
+        WHERE note_id = #{noteId,jdbcType=BIGINT}
+        AND deleted = 0
+    </update>
+
+    <update id="increaseRetryCount">
+        UPDATE tb_note_rag_sync
+        SET retry_count = retry_count + 1,
+            update_time = NOW()
+        WHERE note_id = #{noteId,jdbcType=BIGINT}
+        AND deleted = 0
+    </update>
+</mapper>

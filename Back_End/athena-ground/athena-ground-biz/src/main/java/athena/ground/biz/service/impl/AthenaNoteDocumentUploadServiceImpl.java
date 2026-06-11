@@ -3,6 +3,7 @@ package athena.ground.biz.service.impl;
 import athena.athenaframework.utils.GlobalConstants;
 import athena.athenaframework.utils.JsonUtils;
 import athena.ground.biz.config.AthenaNoteDocumentRoutingProperties;
+import athena.ground.biz.domain.dto.AthenaNoteDocumentUploadResult;
 import athena.ground.biz.service.AthenaKnowledgeRouteService;
 import athena.ground.biz.service.AthenaNoteDocumentUploadService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -23,7 +24,10 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -37,13 +41,14 @@ import java.util.Objects;
 public class AthenaNoteDocumentUploadServiceImpl implements AthenaNoteDocumentUploadService {
 
     private static final String RAG_SUCCESS_CODE = "0";
+    public static final int SYNC_VERSION = 1;
 
     private final RestTemplate restTemplate;
     private final AthenaKnowledgeRouteService knowledgeRouteService;
     private final AthenaNoteDocumentRoutingProperties routingProperties;
 
     @Override
-    public void upload(Long noteId, String title, String contentHtml, Byte type, Long authorId) {
+    public AthenaNoteDocumentUploadResult upload(Long noteId, String title, String contentHtml, Byte type, Long authorId) {
         validateRequest(noteId, title, contentHtml, type, authorId);
 
         AthenaKnowledgeRouteService.KnowledgeTarget target = knowledgeRouteService.resolveTarget(Integer.valueOf(type));
@@ -60,8 +65,9 @@ public class AthenaNoteDocumentUploadServiceImpl implements AthenaNoteDocumentUp
         Resource fileResource = new NamedByteArrayResource(contentHtml.getBytes(StandardCharsets.UTF_8), fileName);
         HttpEntity<Resource> fileEntity = new HttpEntity<>(fileResource, fileHeaders);
 
+        String contentHash = buildContentHash(title, contentHtml, type, authorId);
         // 构建 metadata JSON
-        String metadataJson = buildMetadataJson(noteId, title, type, authorId);
+        String metadataJson = buildMetadataJson(noteId, title, type, authorId, contentHash);
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", fileEntity);
@@ -99,6 +105,22 @@ public class AthenaNoteDocumentUploadServiceImpl implements AthenaNoteDocumentUp
 
         log.info("[AthenaNoteUpload] 上传并触发分块成功, noteId={}, authorId={}, kbCode={}, kbId={}, pipelineId={}, docId={}",
                 noteId, authorId, target.kbCode(), target.kbId(), target.pipelineId(), docId);
+        return AthenaNoteDocumentUploadResult.builder()
+                .noteId(noteId)
+                .kbId(target.kbId())
+                .kbCode(target.kbCode())
+                .pipelineId(target.pipelineId())
+                .docId(docId)
+                .docName(fileName)
+                .sourceType("file")
+                .processMode("pipeline")
+                .metadata(metadataJson)
+                .contentHash(contentHash)
+                .syncVersion(SYNC_VERSION)
+                .ragStatus("running")
+                .chunkCount(0)
+                .enabled(1)
+                .build();
     }
 
     @Override
@@ -237,18 +259,35 @@ public class AthenaNoteDocumentUploadServiceImpl implements AthenaNoteDocumentUp
     /**
      * 构建 metadata JSON 字符串
      */
-    private String buildMetadataJson(Long noteId, String title, Byte type, Long authorId) {
+    private String buildMetadataJson(Long noteId, String title, Byte type, Long authorId, String contentHash) {
         Map<String, Object> metadata = new java.util.HashMap<>();
         metadata.put("noteId", noteId);
         metadata.put("title", title);
         metadata.put("type", type);
         metadata.put("authorId", authorId);
         metadata.put("source", "athena-note");
+        metadata.put("contentHash", contentHash);
+        metadata.put("syncVersion", SYNC_VERSION);
         try {
             return JsonUtils.toJsonString(metadata);
         } catch (Exception e) {
             log.error("构建 metadata JSON 失败", e);
             return "{}";
+        }
+    }
+
+    public static String buildContentHash(String title, String contentHtml, Byte type, Long authorId) {
+        String raw = String.join("\n",
+                title == null ? "" : title,
+                contentHtml == null ? "" : contentHtml,
+                type == null ? "" : String.valueOf(type),
+                authorId == null ? "" : String.valueOf(authorId)
+        );
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(raw.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("当前 JDK 不支持 SHA-256", e);
         }
     }
 
