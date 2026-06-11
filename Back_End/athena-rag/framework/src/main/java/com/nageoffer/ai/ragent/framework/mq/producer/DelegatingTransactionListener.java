@@ -2,6 +2,7 @@
 
 package com.nageoffer.ai.ragent.framework.mq.producer;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nageoffer.ai.ragent.framework.mq.MessageWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.annotation.RocketMQTransactionListener;
@@ -12,6 +13,8 @@ import org.springframework.messaging.Message;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
@@ -38,6 +41,9 @@ public class DelegatingTransactionListener implements RocketMQLocalTransactionLi
 
     @Autowired
     private PlatformTransactionManager transactionManager;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     public void registerLocalTransaction(String txId, Consumer<Object> localTransaction) {
         localTransactionMap.put(txId, localTransaction);
@@ -73,7 +79,7 @@ public class DelegatingTransactionListener implements RocketMQLocalTransactionLi
             return RocketMQLocalTransactionState.ROLLBACK;
         }
         try {
-            MessageWrapper<?> wrapper = (MessageWrapper<?>) message.getPayload();
+            MessageWrapper<?> wrapper = resolveMessageWrapper(message.getPayload());
             boolean committed = checker.check(wrapper);
             RocketMQLocalTransactionState state = committed
                     ? RocketMQLocalTransactionState.COMMIT
@@ -84,5 +90,22 @@ public class DelegatingTransactionListener implements RocketMQLocalTransactionLi
             log.error("[事务消息] 回查异常, topic={}", topic, e);
             return RocketMQLocalTransactionState.UNKNOWN;
         }
+    }
+
+    private MessageWrapper<?> resolveMessageWrapper(Object payload) throws Exception {
+        if (payload instanceof MessageWrapper<?> wrapper) {
+            return wrapper;
+        }
+        if (payload instanceof byte[] bytes) {
+            return objectMapper.readValue(bytes, MessageWrapper.class);
+        }
+        if (payload instanceof String text) {
+            return objectMapper.readValue(text, MessageWrapper.class);
+        }
+        if (payload instanceof Map<?, ?> map) {
+            return objectMapper.convertValue(map, MessageWrapper.class);
+        }
+        throw new IllegalArgumentException("不支持的事务消息 payload 类型: "
+                + (payload == null ? "null" : payload.getClass().getName()));
     }
 }

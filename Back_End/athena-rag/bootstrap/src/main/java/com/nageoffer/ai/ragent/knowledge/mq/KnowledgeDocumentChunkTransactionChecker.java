@@ -3,6 +3,7 @@
 package com.nageoffer.ai.ragent.knowledge.mq;
 
 import cn.hutool.json.JSONUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nageoffer.ai.ragent.framework.mq.MessageWrapper;
 import com.nageoffer.ai.ragent.framework.mq.producer.DelegatingTransactionListener;
 import com.nageoffer.ai.ragent.framework.mq.producer.TransactionChecker;
@@ -28,6 +29,7 @@ public class KnowledgeDocumentChunkTransactionChecker implements TransactionChec
 
     private final KnowledgeDocumentMapper documentMapper;
     private final DelegatingTransactionListener transactionListener;
+    private final ObjectMapper objectMapper;
 
     @Value("knowledge-document-chunk_topic${unique-name:}")
     private String chunkTopic;
@@ -41,11 +43,18 @@ public class KnowledgeDocumentChunkTransactionChecker implements TransactionChec
     public boolean check(MessageWrapper<?> message) {
         log.info("[事务回查] 文档分块，消息体：{}", JSONUtil.toJsonStr(message));
 
-        KnowledgeDocumentChunkEvent event = (KnowledgeDocumentChunkEvent) message.getBody();
+        KnowledgeDocumentChunkEvent event = resolveEvent(message.getBody());
         String docId = event.getDocId();
         KnowledgeDocumentDO documentDO = documentMapper.selectById(docId);
 
         return documentDO != null
                 && DocumentStatus.RUNNING.getCode().equals(documentDO.getStatus());
+    }
+
+    private KnowledgeDocumentChunkEvent resolveEvent(Object body) {
+        if (body instanceof KnowledgeDocumentChunkEvent event) {
+            return event;
+        }
+        return objectMapper.convertValue(body, KnowledgeDocumentChunkEvent.class);
     }
 }
