@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="athena.ground.biz.domain.mapper.NoteBasicDOMapper">
+    <resultMap id="BaseResultMap" type="athena.ground.biz.domain.dataobject.NoteBasicDO">
+        <id column="note_id" jdbcType="BIGINT" property="noteId" />
+        <result column="user_id" jdbcType="BIGINT" property="userId" />
+        <result column="title" jdbcType="VARCHAR" property="title" />
+        <result column="cover_url" jdbcType="VARCHAR" property="coverUrl" />
+        <result column="type" jdbcType="TINYINT" property="type" />
+        <result column="status" jdbcType="TINYINT" property="status" />
+        <result column="review_remark" jdbcType="VARCHAR" property="reviewRemark" />
+        <result column="review_time" jdbcType="TIMESTAMP" property="reviewTime" />
+        <result column="reviewer_id" jdbcType="BIGINT" property="reviewerId" />
+        <result column="channel_id" jdbcType="INTEGER" property="channelId" />
+        <result column="channel_name" jdbcType="VARCHAR" property="channelName" />
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+        <result column="update_time" jdbcType="TIMESTAMP" property="updateTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        note_id, user_id, title, cover_url, `type`, `status`,
+        review_remark, review_time, reviewer_id,
+        channel_id, channel_name, create_time, update_time
+    </sql>
+
+    <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from tb_note_basic
+        where note_id = #{noteId,jdbcType=BIGINT}
+    </select>
+
+    <delete id="deleteByPrimaryKey" parameterType="java.lang.Long">
+        delete from tb_note_basic
+        where note_id = #{noteId,jdbcType=BIGINT}
+    </delete>
+
+    <insert id="insert" parameterType="athena.ground.biz.domain.dataobject.NoteBasicDO"
+            useGeneratedKeys="true" keyProperty="noteId" keyColumn="note_id">
+        insert into tb_note_basic (user_id, title, cover_url, `type`, `status`,
+                                   review_remark, review_time, reviewer_id,
+                                   channel_id, channel_name, create_time, update_time)
+        values (#{userId,jdbcType=BIGINT}, #{title,jdbcType=VARCHAR}, #{coverUrl,jdbcType=VARCHAR}, #{type,jdbcType=TINYINT}, #{status,jdbcType=TINYINT},
+                #{reviewRemark,jdbcType=VARCHAR}, #{reviewTime,jdbcType=TIMESTAMP}, #{reviewerId,jdbcType=BIGINT},
+                #{channelId,jdbcType=INTEGER}, #{channelName,jdbcType=VARCHAR}, NOW(), NOW())
+    </insert>
+
+    <insert id="insertSelective" parameterType="athena.ground.biz.domain.dataobject.NoteBasicDO"
+            useGeneratedKeys="true" keyProperty="noteId" keyColumn="note_id">
+        insert into tb_note_basic
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="title != null">title,</if>
+            <if test="coverUrl != null">cover_url,</if>
+            <if test="type != null">`type`,</if>
+            <if test="status != null">`status`,</if>
+            <if test="reviewRemark != null">review_remark,</if>
+            <if test="reviewTime != null">review_time,</if>
+            <if test="reviewerId != null">reviewer_id,</if>
+            <if test="channelId != null">channel_id,</if>
+            <if test="channelName != null">channel_name,</if>
+            create_time,
+            update_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId,jdbcType=BIGINT},</if>
+            <if test="title != null">#{title,jdbcType=VARCHAR},</if>
+            <if test="coverUrl != null">#{coverUrl,jdbcType=VARCHAR},</if>
+            <if test="type != null">#{type,jdbcType=TINYINT},</if>
+            <if test="status != null">#{status,jdbcType=TINYINT},</if>
+            <if test="reviewRemark != null">#{reviewRemark,jdbcType=VARCHAR},</if>
+            <if test="reviewTime != null">#{reviewTime,jdbcType=TIMESTAMP},</if>
+            <if test="reviewerId != null">#{reviewerId,jdbcType=BIGINT},</if>
+            <if test="channelId != null">#{channelId,jdbcType=INTEGER},</if>
+            <if test="channelName != null">#{channelName,jdbcType=VARCHAR},</if>
+            NOW(),
+            NOW(),
+        </trim>
+    </insert>
+
+    <update id="updateByPrimaryKeySelective" parameterType="athena.ground.biz.domain.dataobject.NoteBasicDO">
+        update tb_note_basic
+        <set>
+            <if test="userId != null">user_id = #{userId,jdbcType=BIGINT},</if>
+            <if test="title != null">title = #{title,jdbcType=VARCHAR},</if>
+            <if test="coverUrl != null">cover_url = #{coverUrl,jdbcType=VARCHAR},</if>
+            <if test="type != null">`type` = #{type,jdbcType=TINYINT},</if>
+            <if test="status != null">`status` = #{status,jdbcType=TINYINT},</if>
+            <if test="reviewRemark != null">review_remark = #{reviewRemark,jdbcType=VARCHAR},</if>
+            <if test="reviewTime != null">review_time = #{reviewTime,jdbcType=TIMESTAMP},</if>
+            <if test="reviewerId != null">reviewer_id = #{reviewerId,jdbcType=BIGINT},</if>
+            <if test="channelId != null">channel_id = #{channelId,jdbcType=INTEGER},</if>
+            <if test="channelName != null">channel_name = #{channelName,jdbcType=VARCHAR},</if>
+            update_time = NOW(),
+            <if test="createTime != null">create_time = #{createTime,jdbcType=TIMESTAMP},</if>
+        </set>
+        where note_id = #{noteId,jdbcType=BIGINT}
+    </update>
+
+    <update id="updateByPrimaryKey" parameterType="athena.ground.biz.domain.dataobject.NoteBasicDO">
+        update tb_note_basic
+        set user_id = #{userId,jdbcType=BIGINT},
+            title = #{title,jdbcType=VARCHAR},
+            cover_url = #{coverUrl,jdbcType=VARCHAR},
+            `type` = #{type,jdbcType=TINYINT},
+            `status` = #{status,jdbcType=TINYINT},
+            review_remark = #{reviewRemark,jdbcType=VARCHAR},
+            review_time = #{reviewTime,jdbcType=TIMESTAMP},
+            reviewer_id = #{reviewerId,jdbcType=BIGINT},
+            channel_id = #{channelId,jdbcType=INTEGER},
+            channel_name = #{channelName,jdbcType=VARCHAR},
+            create_time = #{createTime,jdbcType=TIMESTAMP},
+            update_time = NOW()
+        where note_id = #{noteId,jdbcType=BIGINT}
+    </update>
+</mapper>

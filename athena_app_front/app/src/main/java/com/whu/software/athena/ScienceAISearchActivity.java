@@ -1,5 +1,7 @@
 package com.whu.software.athena;
 
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextUtils;
@@ -31,6 +33,7 @@ import java.util.List;
 public class ScienceAISearchActivity extends AppCompatActivity {
 
     private static final String TAG = "ScienceAISearchActivity";
+    public static final String EXTRA_PREFILL_QUESTION = "prefill_question";
     private static final String DEFAULT_TITLE = "AI \u79D1\u666E\u52A9\u624B";
     private static final String DEFAULT_HINT =
             "\u8BF7\u8F93\u5165\u4F60\u60F3\u4E86\u89E3\u7684\u79D1\u666E\u95EE\u9898...";
@@ -76,6 +79,16 @@ public class ScienceAISearchActivity extends AppCompatActivity {
     private String currentConversationId;
     private String currentConversationTitle;
 
+    public static void start(Context context) {
+        context.startActivity(new Intent(context, ScienceAISearchActivity.class));
+    }
+
+    public static void startWithPrefill(Context context, String question) {
+        Intent intent = new Intent(context, ScienceAISearchActivity.class);
+        intent.putExtra(EXTRA_PREFILL_QUESTION, question);
+        context.startActivity(intent);
+    }
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -86,6 +99,7 @@ public class ScienceAISearchActivity extends AppCompatActivity {
         initData();
         bindListeners();
         applyStaticCopy();
+        applyIntentPrefill();
         loadConversationList(true, false, null);
         updateSendButtonState();
         updateEmptyState();
@@ -173,6 +187,15 @@ public class ScienceAISearchActivity extends AppCompatActivity {
         etQuestion.setHint(DEFAULT_HINT);
         btnNewConversation.setText(LABEL_NEW_CONVERSATION);
         btnHistory.setText(LABEL_HISTORY);
+    }
+
+    private void applyIntentPrefill() {
+        String prefill = getIntent().getStringExtra(EXTRA_PREFILL_QUESTION);
+        if (TextUtils.isEmpty(prefill)) {
+            return;
+        }
+        etQuestion.setText(prefill);
+        etQuestion.setSelection(etQuestion.getText().length());
     }
 
     private void submitQuestion() {

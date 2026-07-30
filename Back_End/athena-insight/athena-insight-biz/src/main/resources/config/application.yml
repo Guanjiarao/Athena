@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: athena-insight
+  datasource:
+    druid:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+  jackson:
+    default-property-inclusion: non_null
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+
+athena:
+  ai:
+    report:
+      enabled: true
+      url: "https://api.siliconflow.cn/v1/chat/completions"
+      api-key: "${ATHENA_AI_REPORT_API_KEY:}"
+      model: "Pro/zai-org/GLM-4.7"
+      connect-timeout-ms: 3000
+      read-timeout-ms: 30000
+      temperature: 0.7
+      max-tokens: 280
+      append-disclaimer: true
+      disclaimer: "以上内容仅作健康管理参考，不替代专业医生建议。"
+
+logging:
+  level:
+    athena.insight: info
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+  production: false
+  cors: true
+  basic:
+    enable: false
+    username: admin
+    password: 123456

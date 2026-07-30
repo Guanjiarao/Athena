@@ -82,5 +82,10 @@ public class ApiConfig {
 
     public static final String API_QWEN_VL =
             "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
-    public static final String QWEN_API_KEY = "sk-dc65179484174c2494d247185601f167";
+    public static final String QWEN_API_KEY = getEnvOrEmpty("ATHENA_QWEN_API_KEY");
+
+    private static String getEnvOrEmpty(String name) {
+        String value = System.getenv(name);
+        return value == null ? "" : value;
+    }
 }

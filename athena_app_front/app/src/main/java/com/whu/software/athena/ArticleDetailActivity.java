@@ -54,13 +54,16 @@ public class ArticleDetailActivity extends AppCompatActivity {
         btnBack.setOnClickListener(v -> finish());
 
         String title = getIntent().getStringExtra("title");
-        String blogId = getIntent().getStringExtra("blog_id");
+        String blogId = resolveBlogId(getIntent());
         int noteId = getIntent().getIntExtra("noteId", 0);
+        if (noteId <= 0) {
+            long noteIdLong = getIntent().getLongExtra("noteId", -1L);
+            if (noteIdLong > 0 && noteIdLong <= Integer.MAX_VALUE) {
+                noteId = (int) noteIdLong;
+            }
+        }
         String prefetchedContent = getIntent().getStringExtra("article_content_html");
         String prefetchedAuthorName = getIntent().getStringExtra("article_author_name");
-        if (TextUtils.isEmpty(blogId) && noteId > 0) {
-            blogId = String.valueOf(noteId);
-        }
         int type = getIntent().getIntExtra("type", -1);
         if (type < 0) {
             type = getIntent().getIntExtra("article_type", 100);
@@ -90,6 +93,31 @@ public class ArticleDetailActivity extends AppCompatActivity {
                     + " extras=" + getIntent().getExtras());
             Toast.makeText(this, "文章ID无效", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    @NonNull
+    private String resolveBlogId(@NonNull android.content.Intent intent) {
+        String blogId = intent.getStringExtra("blog_id");
+        if (!TextUtils.isEmpty(blogId)) {
+            return blogId;
+        }
+        blogId = intent.getStringExtra("blogId");
+        if (!TextUtils.isEmpty(blogId)) {
+            return blogId;
+        }
+        blogId = intent.getStringExtra("id");
+        if (!TextUtils.isEmpty(blogId)) {
+            return blogId;
+        }
+        int noteId = intent.getIntExtra("noteId", 0);
+        if (noteId > 0) {
+            return String.valueOf(noteId);
+        }
+        long noteIdLong = intent.getLongExtra("noteId", -1L);
+        if (noteIdLong > 0) {
+            return String.valueOf(noteIdLong);
+        }
+        return "";
     }
 
     private void fetchArticleDetail(@NonNull String blogId, int type) {

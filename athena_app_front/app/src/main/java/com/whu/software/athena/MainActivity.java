@@ -1,6 +1,5 @@
 package com.whu.software.athena;
 
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
@@ -44,9 +43,6 @@ public class MainActivity extends AppCompatActivity {
                         .replace(R.id.nav_host_fragment, new SquareFragment())
                         .commit();
                 return true;
-            } else if (itemId == R.id.navigation_ai) {
-                startActivity(new Intent(MainActivity.this, AIActivity.class));
-                return false;
             } else if (itemId == R.id.navigation_record) {
                 getSupportFragmentManager().beginTransaction()
                         .replace(R.id.nav_host_fragment, new RecordFragment())
@@ -61,6 +57,8 @@ public class MainActivity extends AppCompatActivity {
 
             return false;
         });
+
+        getSupportFragmentManager().addOnBackStackChangedListener(this::syncBottomNavigationState);
 
         boolean hasToken = hasLocalToken();
         if (savedInstanceState == null) {
@@ -80,6 +78,8 @@ public class MainActivity extends AppCompatActivity {
         } else {
             setBottomNavigationVisible(hasToken);
         }
+
+        syncBottomNavigationState();
     }
 
     public void setBottomNavigationVisible(boolean visible) {
@@ -115,6 +115,15 @@ public class MainActivity extends AppCompatActivity {
         if (navView != null) {
             navView.setSelectedItemId(R.id.navigation_knowledge);
         }
+    }
+
+    private void syncBottomNavigationState() {
+        if (navView == null) {
+            return;
+        }
+        boolean show = hasLocalToken()
+                && getSupportFragmentManager().getBackStackEntryCount() == 0;
+        setBottomNavigationVisible(show);
     }
 
     private boolean hasLocalToken() {

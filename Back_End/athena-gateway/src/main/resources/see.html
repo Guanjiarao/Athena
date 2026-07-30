@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Athena RAG SSE Test</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121933;
+      --panel-2: #1a2347;
+      --text: #eaf0ff;
+      --muted: #9fb0e0;
+      --line: #2a376d;
+      --accent: #6ea8ff;
+      --accent-2: #4de2c5;
+      --danger: #ff6b7a;
+      --warn: #ffca6a;
+      --ok: #55d38a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(77, 226, 197, 0.12), transparent 25%),
+        radial-gradient(circle at top left, rgba(110, 168, 255, 0.15), transparent 30%),
+        var(--bg);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 16px;
+      font-size: 28px;
+    }
+
+    .desc {
+      margin-bottom: 20px;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 20px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+    }
+
+    .card h2 {
+      margin: 0 0 14px;
+      font-size: 18px;
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .field input,
+    .field textarea,
+    .field select {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #0e1530;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .field textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .row > * {
+      flex: 1;
+    }
+
+    .btns {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: var(--accent);
+      color: #081225;
+    }
+
+    .danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--line);
+    }
+
+    .status {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .panel {
+      min-height: 220px;
+    }
+
+    .panel.full {
+      grid-column: 1 / -1;
+    }
+
+    .panel h3 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      color: var(--muted);
+    }
+
+    .output {
+      width: 100%;
+      min-height: 180px;
+      max-height: 280px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #0a1026;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .answer { color: var(--text); }
+    .thinking { color: var(--warn); }
+    .meta { color: var(--accent-2); }
+    .log { color: #c8d5ff; }
+
+    .tips {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    @media (max-width: 960px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      .panels {
+        grid-template-columns: 1fr;
+      }
+      .panel.full {
+        grid-column: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Athena RAG SSE 联调页</h1>
+  <div class="desc">用于验证网关 -> ragent 的 SSE 是否正常，后端路径不改，直接走你现有网关规则。</div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>请求参数</h2>
+
+      <div class="field">
+        <label for="baseUrl">网关基地址</label>
+        <input id="baseUrl" value="http://localhost:8080" />
+      </div>
+
+      <div class="field">
+        <label for="token">Bearer Token</label>
+        <textarea id="token" placeholder="只填 token 本体，不要手动加 Bearer 前缀"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="question">问题</label>
+        <textarea id="question">肚子疼是什么原因，应该怎么办？</textarea>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="conversationId">conversationId（可空）</label>
+          <input id="conversationId" placeholder="首次可留空" />
+        </div>
+        <div class="field">
+          <label for="deepThinking">deepThinking</label>
+          <select id="deepThinking">
+            <option value="false" selected>false</option>
+            <option value="true">true</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="btns">
+        <button class="primary" id="startBtn">开始 SSE</button>
+        <button class="danger" id="stopBtn">停止</button>
+        <button class="ghost" id="clearBtn">清空输出</button>
+      </div>
+
+      <div class="status" id="status">状态：未开始</div>
+
+      <div class="tips">
+        <div>1. SSE 地址会请求：`/athena/rag/rag/v3/chat`</div>
+        <div>2. 停止接口会请求：`/athena/rag/rag/v3/stop?taskId=...`</div>
+        <div>3. 必须带 `Authorization: Bearer xxx`，否则网关注不进 `userId`。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>流式输出</h2>
+
+      <div class="panels">
+        <div class="panel">
+          <h3>Meta</h3>
+          <div class="output meta" id="metaBox"></div>
+        </div>
+
+        <div class="panel">
+          <h3>Thinking</h3>
+          <div class="output thinking" id="thinkingBox"></div>
+        </div>
+
+        <div class="panel full">
+          <h3>Answer</h3>
+          <div class="output answer" id="answerBox"></div>
+        </div>
+
+        <div class="panel full">
+          <h3>Raw Event Log</h3>
+          <div class="output log" id="logBox"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const els = {
+    baseUrl: document.getElementById("baseUrl"),
+    token: document.getElementById("token"),
+    question: document.getElementById("question"),
+    conversationId: document.getElementById("conversationId"),
+    deepThinking: document.getElementById("deepThinking"),
+    startBtn: document.getElementById("startBtn"),
+    stopBtn: document.getElementById("stopBtn"),
+    clearBtn: document.getElementById("clearBtn"),
+    status: document.getElementById("status"),
+    metaBox: document.getElementById("metaBox"),
+    thinkingBox: document.getElementById("thinkingBox"),
+    answerBox: document.getElementById("answerBox"),
+    logBox: document.getElementById("logBox"),
+  };
+
+  let currentTaskId = "";
+  let currentConversationId = "";
+  let abortController = null;
+  let thinkingText = "";
+  let answerText = "";
+
+  function setStatus(text) {
+    els.status.textContent = "状态：" + text;
+  }
+
+  function appendLog(text) {
+    els.logBox.textContent += text + "\n";
+    els.logBox.scrollTop = els.logBox.scrollHeight;
+  }
+
+  function setMeta(obj) {
+    els.metaBox.textContent = JSON.stringify(obj, null, 2);
+  }
+
+  function renderThinking() {
+    els.thinkingBox.textContent = thinkingText;
+    els.thinkingBox.scrollTop = els.thinkingBox.scrollHeight;
+  }
+
+  function renderAnswer() {
+    els.answerBox.textContent = answerText;
+    els.answerBox.scrollTop = els.answerBox.scrollHeight;
+  }
+
+  function clearOutputs() {
+    currentTaskId = "";
+    thinkingText = "";
+    answerText = "";
+    els.metaBox.textContent = "";
+    els.thinkingBox.textContent = "";
+    els.answerBox.textContent = "";
+    els.logBox.textContent = "";
+    setStatus("已清空");
+  }
+
+  function buildChatUrl() {
+    const baseUrl = els.baseUrl.value.trim().replace(/\/+$/, "");
+    const url = new URL(baseUrl + "/athena/rag/rag/v3/chat");
+    url.searchParams.set("question", els.question.value.trim());
+    if (els.conversationId.value.trim()) {
+      url.searchParams.set("conversationId", els.conversationId.value.trim());
+    }
+    url.searchParams.set("deepThinking", els.deepThinking.value);
+    return url.toString();
+  }
+
+  function parseEventBlock(block) {
+    const lines = block.split(/\r?\n/);
+    let eventName = "message";
+    const dataLines = [];
+
+    for (const line of lines) {
+      if (line.startsWith("event:")) {
+        eventName = line.slice(6).trim();
+      } else if (line.startsWith("data:")) {
+        dataLines.push(line.slice(5).trim());
+      }
+    }
+
+    const rawData = dataLines.join("\n");
+    let data = rawData;
+
+    try {
+      data = rawData ? JSON.parse(rawData) : null;
+    } catch (_) {
+      data = rawData;
+    }
+
+    return { eventName, data, rawData };
+  }
+
+  async function startSSE() {
+    const token = els.token.value.trim();
+    const question = els.question.value.trim();
+
+    if (!token) {
+      alert("请先填写 token");
+      return;
+    }
+    if (!question) {
+      alert("请先填写问题");
+      return;
+    }
+
+    if (abortController) {
+      abortController.abort();
+    }
+
+    thinkingText = "";
+    answerText = "";
+    renderThinking();
+    renderAnswer();
+
+    abortController = new AbortController();
+    const url = buildChatUrl();
+
+    appendLog(">>> 请求地址: " + url);
+    setStatus("请求中...");
+
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Accept": "text/event-stream",
+          "Authorization": "Bearer " + token
+        },
+        signal: abortController.signal
+      });
+
+      appendLog("<<< HTTP Status: " + response.status);
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => "");
+        appendLog("<<< Error Body: " + text);
+        setStatus("请求失败: " + response.status);
+        return;
+      }
+
+      if (!response.body) {
+        setStatus("浏览器不支持流式读取");
+        return;
+      }
+
+      setStatus("连接成功，开始接收流...");
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          appendLog("<<< stream closed");
+          setStatus("流已结束");
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+
+        let idx;
+        while ((idx = buffer.indexOf("\n\n")) >= 0) {
+          const block = buffer.slice(0, idx).trim();
+          buffer = buffer.slice(idx + 2);
+
+          if (!block) continue;
+
+          const { eventName, data, rawData } = parseEventBlock(block);
+          appendLog(`[event=${eventName}] ${rawData}`);
+
+          switch (eventName) {
+            case "meta":
+              setMeta(data);
+              currentTaskId = data?.taskId || "";
+              currentConversationId = data?.conversationId || "";
+              if (currentConversationId) {
+                els.conversationId.value = currentConversationId;
+              }
+              setStatus("已收到 meta，taskId=" + currentTaskId);
+              break;
+
+            case "message":
+              if (data?.type === "think") {
+                thinkingText += data.delta || "";
+                renderThinking();
+              } else {
+                answerText += data.delta || "";
+                renderAnswer();
+              }
+              break;
+
+            case "finish":
+              setStatus("收到 finish");
+              break;
+
+            case "cancel":
+              setStatus("收到 cancel");
+              break;
+
+            case "reject":
+              setStatus("收到 reject");
+              break;
+
+            case "done":
+              setStatus("收到 done");
+              break;
+
+            default:
+              break;
+          }
+        }
+      }
+    } catch (err) {
+      if (err && err.name === "AbortError") {
+        appendLog("<<< 请求已被前端中止");
+        setStatus("前端已中止连接");
+      } else {
+        console.error(err);
+        appendLog("<<< 异常: " + (err?.message || String(err)));
+        setStatus("发生异常");
+      }
+    }
+  }
+
+  async function stopSSE() {
+    const baseUrl = els.baseUrl.value.trim().replace(/\/+$/, "");
+    const token = els.token.value.trim();
+
+    if (!currentTaskId) {
+      alert("当前没有 taskId，无法停止。请先开始一次 SSE。");
+      return;
+    }
+
+    const stopUrl = `${baseUrl}/athena/rag/rag/v3/stop?taskId=${encodeURIComponent(currentTaskId)}`;
+    appendLog(">>> stop url: " + stopUrl);
+
+    try {
+      const resp = await fetch(stopUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + token
+        }
+      });
+
+      const text = await resp.text().catch(() => "");
+      appendLog(`<<< stop response: ${resp.status} ${text}`);
+      setStatus("已请求停止 taskId=" + currentTaskId);
+    } catch (err) {
+      appendLog("<<< stop 异常: " + (err?.message || String(err)));
+      setStatus("停止失败");
+    }
+  }
+
+  els.startBtn.addEventListener("click", startSSE);
+  els.stopBtn.addEventListener("click", stopSSE);
+  els.clearBtn.addEventListener("click", clearOutputs);
+</script>
+</body>
+</html>

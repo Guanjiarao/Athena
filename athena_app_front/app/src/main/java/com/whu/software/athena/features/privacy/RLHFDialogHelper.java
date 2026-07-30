@@ -190,7 +190,7 @@ public final class RLHFDialogHelper {
         // 5. 回到主线程 Toast (这里用 finalShapley，Java 编译器绝对绿灯放行！)
         MAIN.post(() -> {
             Toast.makeText(appCtx,
-                    String.format("🌸 感谢！高价值纠偏语料已录入，Shapley 贡献值 +%.4f (暴击 x5)！", finalShapley),
+                    String.format("🌸 感谢您的反馈", finalShapley),
                     Toast.LENGTH_LONG).show();
             if (onSuccess != null) onSuccess.run();
         });

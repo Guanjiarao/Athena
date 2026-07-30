@@ -1,0 +1,37 @@
+-- Athena note 同步 RAG 状态表
+-- 执行前建议先备份相关表
+
+CREATE TABLE IF NOT EXISTS tb_note_rag_sync (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    note_id BIGINT NOT NULL COMMENT 'Athena 笔记 ID',
+    note_type TINYINT NULL COMMENT 'Athena 笔记类型，对应 tb_note_basic.type',
+    author_id BIGINT NULL COMMENT '作者 ID，对应 tb_note_basic.user_id',
+    title VARCHAR(255) NULL COMMENT '同步时的标题快照',
+    kb_id VARCHAR(64) NULL COMMENT 'RAG 知识库 ID，对应 t_knowledge_document.kb_id',
+    kb_code VARCHAR(64) NULL COMMENT 'Athena 业务知识库编码',
+    doc_id VARCHAR(64) NULL COMMENT 'RAG 文档 ID，对应 t_knowledge_document.id',
+    doc_name VARCHAR(512) NULL COMMENT 'RAG 文档名称，对应 t_knowledge_document.doc_name',
+    source_type VARCHAR(32) NULL COMMENT 'RAG 来源类型，对应 t_knowledge_document.source_type',
+    process_mode VARCHAR(32) NULL COMMENT 'RAG 处理模式，对应 t_knowledge_document.process_mode',
+    pipeline_id VARCHAR(64) NULL COMMENT 'RAG Pipeline ID，对应 t_knowledge_document.pipeline_id',
+    metadata TEXT NULL COMMENT '上传给 RAG 的 metadata JSON',
+    content_hash VARCHAR(64) NULL COMMENT '内容指纹，对应 metadata.contentHash',
+    sync_version INT NOT NULL DEFAULT 1 COMMENT '同步协议版本，对应 metadata.syncVersion',
+    sync_status VARCHAR(32) NOT NULL DEFAULT 'pending' COMMENT 'Athena 同步状态：pending/uploading/uploaded/chunking/success/failed/skipped/manual_check',
+    rag_status VARCHAR(32) NULL COMMENT 'RAG 文档状态：pending/running/failed/success',
+    chunk_count INT NOT NULL DEFAULT 0 COMMENT 'RAG 分块数，对应 t_knowledge_document.chunk_count',
+    enabled TINYINT NULL COMMENT 'RAG 文档启用状态，对应 t_knowledge_document.enabled',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '同步记录是否删除：0正常 1删除',
+    retry_count INT NOT NULL DEFAULT 0 COMMENT '同步重试次数',
+    last_action VARCHAR(64) NULL COMMENT '最近同步动作',
+    last_error TEXT NULL COMMENT '最近错误信息',
+    last_sync_time DATETIME NULL COMMENT '最近同步时间',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_note_id (note_id),
+    KEY idx_doc_id (doc_id),
+    KEY idx_sync_status (sync_status),
+    KEY idx_rag_status (rag_status),
+    KEY idx_content_hash (content_hash),
+    KEY idx_update_time (update_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Athena note 同步 RAG 状态表';

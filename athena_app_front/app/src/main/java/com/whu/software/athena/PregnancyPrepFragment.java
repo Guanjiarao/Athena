@@ -26,6 +26,7 @@ import com.whu.software.athena.entity.HealthRecordEntity;
 import com.whu.software.athena.utils.CycleDataManager;
 import com.whu.software.athena.utils.CycleApiService;
 import com.whu.software.athena.utils.HealthSyncManager;
+import com.whu.software.athena.utils.HealthRecordModeMapper;
 import com.whu.software.athena.utils.HealthRecordSaver;
 import com.whu.software.athena.utils.PeriodCalculator;
 import com.whu.software.athena.utils.RecordActionExtraBinder;
@@ -69,6 +70,12 @@ public class PregnancyPrepFragment extends Fragment {
     private RecyclerView       rvCalendar;
     private CalendarDayAdapter calendarAdapter;
     private LinearLayout       actionListContainer;
+    private TextView tvHealthStatusKicker;
+    private TextView tvHealthStatusBadge;
+    private TextView tvHealthStatusTitle;
+    private TextView tvHealthStatusSubtitle;
+    private TextView tvHealthStatusHint;
+    private View viewHealthStatusMarker;
 
     private TextView btnPeriodYes;
     private TextView btnPeriodNo;
@@ -114,6 +121,7 @@ public class PregnancyPrepFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         initTodayInfo();
         initTopTabs(view);
+        initHealthStatusCard(view);
         initTitleToItemIdMap();
         initCalendar(view);
         initActionList(view);
@@ -156,6 +164,12 @@ public class PregnancyPrepFragment extends Fragment {
             periodNetworkRunnable = null;
         }
         rvCalendar = null; calendarAdapter = null; actionListContainer = null;
+        tvHealthStatusKicker = null;
+        tvHealthStatusBadge = null;
+        tvHealthStatusTitle = null;
+        tvHealthStatusSubtitle = null;
+        tvHealthStatusHint = null;
+        viewHealthStatusMarker = null;
         actionTitleViews.clear();
         actionBaseTitles.clear();
     }
@@ -464,12 +478,38 @@ public class PregnancyPrepFragment extends Fragment {
 
     // ── Action 列表 ─────────────────────────────────────────────────────────────
 
+    private void initHealthStatusCard(View root) {
+        tvHealthStatusKicker = root.findViewById(R.id.tv_health_status_kicker);
+        tvHealthStatusBadge = root.findViewById(R.id.tv_health_status_badge);
+        tvHealthStatusTitle = root.findViewById(R.id.tv_health_status_title);
+        tvHealthStatusSubtitle = root.findViewById(R.id.tv_health_status_subtitle);
+        tvHealthStatusHint = root.findViewById(R.id.tv_health_status_hint);
+        viewHealthStatusMarker = root.findViewById(R.id.view_health_status_marker);
+        refreshHealthStatusCard();
+    }
+
     private void initActionList(View root) {
         actionListContainer = root.findViewById(R.id.action_list_container);
+        if (actionListContainer == null) return;
+        actionListContainer.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(requireContext());
+        addActionSectionHeader("今日优先记录");
         for (ActionRow row : buildActionRows()) {
+            if ("我怀孕了".equals(row.title)) {
+                addActionSectionHeader("更多记录");
+            }
             actionListContainer.addView(inflateRow(inflater, row));
         }
+    }
+
+    private void addActionSectionHeader(String title) {
+        TextView header = new TextView(requireContext());
+        header.setText(title);
+        header.setTextColor(0xFF80766F);
+        header.setTextSize(12f);
+        header.setLetterSpacing(0.08f);
+        header.setPadding(dpToPx(18), dpToPx(16), dpToPx(18), dpToPx(6));
+        actionListContainer.addView(header);
     }
 
     private View inflateRow(LayoutInflater inflater, ActionRow row) {
@@ -596,18 +636,18 @@ public class PregnancyPrepFragment extends Fragment {
 
     private List<ActionRow> buildActionRows() {
         List<ActionRow> list = new ArrayList<>();
-        list.add(new ActionRow(R.drawable.ic_action_pregnant,       "我怀孕了",  RowType.ARROW));
         list.add(new ActionRow(R.drawable.ic_blood_drop,            "月经来了",  RowType.YESNO));
-        list.add(new ActionRow(R.drawable.ic_action_sex,            "爱爱",      RowType.ADD));
         list.add(new ActionRow(R.drawable.ic_action_ovulation_test, "排卵试纸",  RowType.ARROW));
         list.add(new ActionRow(R.drawable.ic_action_temp,           "基础体温",  RowType.ADD));
-        list.add(new ActionRow(R.drawable.ic_action_discharge,      "白带",      RowType.ADD));
-        list.add(new ActionRow(R.drawable.ic_action_follicle,       "卵泡监测",  RowType.ADD));
+        list.add(new ActionRow(R.drawable.ic_action_sex,            "爱爱",      RowType.ADD));
         list.add(new ActionRow(R.drawable.ic_action_symptom,        "症状",      RowType.ADD));
         list.add(new ActionRow(R.drawable.ic_action_mood,           "心情",      RowType.MOOD));
+        list.add(new ActionRow(R.drawable.ic_action_diary,          "日记",      RowType.ARROW));
+        list.add(new ActionRow(R.drawable.ic_action_pregnant,       "我怀孕了",  RowType.ARROW));
+        list.add(new ActionRow(R.drawable.ic_action_discharge,      "白带",      RowType.ADD));
+        list.add(new ActionRow(R.drawable.ic_action_follicle,       "卵泡监测",  RowType.ADD));
         list.add(new ActionRow(R.drawable.ic_action_nutrition,      "营养补充",  RowType.ADD));
         list.add(new ActionRow(R.drawable.ic_action_weight,         "体重",      RowType.ADD));
-        list.add(new ActionRow(R.drawable.ic_action_diary,          "日记",      RowType.ARROW));
         list.add(new ActionRow(R.drawable.ic_action_habit,          "好习惯",    RowType.HABIT));
         list.add(new ActionRow(R.drawable.ic_action_poop,           "便便",      RowType.ADD));
         list.add(new ActionRow(R.drawable.ic_action_plan,           "计划",      RowType.ADD));
@@ -615,6 +655,94 @@ public class PregnancyPrepFragment extends Fragment {
     }
 
     // ── 经期"是/否"乐观更新 ─────────────────────────────────────────────────────────────
+
+    private void refreshHealthStatusCard() {
+        if (tvHealthStatusKicker == null
+                || tvHealthStatusBadge == null
+                || tvHealthStatusTitle == null
+                || tvHealthStatusSubtitle == null
+                || tvHealthStatusHint == null) {
+            return;
+        }
+
+        tvHealthStatusKicker.setText("备孕状态");
+        tvHealthStatusBadge.setText("备孕模式");
+
+        if (hasOngoingPeriodCycle()) {
+            tvHealthStatusTitle.setText("经期进行中");
+            tvHealthStatusSubtitle.setText("当前先关注身体恢复和舒适度");
+            tvHealthStatusHint.setText("经期结束后，可以继续记录基础体温和排卵试纸。");
+            updateHealthStatusMarker(0f);
+            return;
+        }
+
+        int cycleDay = resolveCurrentCycleDay();
+        if (cycleDay > 0) {
+            int daysToOvulation = resolveEstimatedDaysToOvulation(cycleDay);
+            int cycleDays = Math.max(1, CycleDataManager.getCycleDays(requireContext()));
+            updateHealthStatusMarker((cycleDay - 1f) / Math.max(1, cycleDays - 1));
+            tvHealthStatusTitle.setText(daysToOvulation <= 2 ? "接近易孕窗口" : "周期第 " + cycleDay + " 天");
+            if (daysToOvulation >= 0) {
+                tvHealthStatusSubtitle.setText("预计 " + daysToOvulation + " 天后排卵");
+            } else {
+                tvHealthStatusSubtitle.setText("本周期排卵窗口可能已过");
+            }
+            tvHealthStatusHint.setText("今天优先记录基础体温、排卵试纸和同房情况。");
+        } else {
+            updateHealthStatusMarker(0.5f);
+            tvHealthStatusTitle.setText("准备建立备孕节律");
+            tvHealthStatusSubtitle.setText("先记录最近一次月经开始日");
+            tvHealthStatusHint.setText("记录 2-3 个周期后，Athena 会帮你整理易孕窗口。");
+        }
+    }
+
+    private void updateHealthStatusMarker(float progress) {
+        if (viewHealthStatusMarker == null) {
+            return;
+        }
+        viewHealthStatusMarker.post(() -> {
+            View parent = (View) viewHealthStatusMarker.getParent();
+            if (parent == null) {
+                return;
+            }
+            int travel = parent.getWidth() - viewHealthStatusMarker.getWidth();
+            if (travel <= 0) {
+                return;
+            }
+            float safeProgress = Math.max(0f, Math.min(1f, progress));
+            viewHealthStatusMarker.animate()
+                    .translationX((safeProgress - 0.5f) * travel)
+                    .setDuration(360L)
+                    .start();
+        });
+    }
+
+    private int resolveCurrentCycleDay() {
+        if (!isAdded()) {
+            return -1;
+        }
+        LocalDate startDate = latestCycleState != null && latestCycleState.startDate != null
+                ? latestCycleState.startDate
+                : CycleDataManager.getLastPeriodStart(requireContext());
+        if (startDate == null) {
+            return -1;
+        }
+        long elapsed = ChronoUnit.DAYS.between(startDate, LocalDate.now());
+        if (elapsed < 0) {
+            return -1;
+        }
+        int cycleDays = Math.max(1, CycleDataManager.getCycleDays(requireContext()));
+        return (int) (elapsed % cycleDays) + 1;
+    }
+
+    private int resolveEstimatedDaysToOvulation(int cycleDay) {
+        if (!isAdded() || cycleDay <= 0) {
+            return -1;
+        }
+        int cycleDays = Math.max(1, CycleDataManager.getCycleDays(requireContext()));
+        int ovulationDay = Math.max(1, cycleDays - 14);
+        return ovulationDay - cycleDay;
+    }
 
     private boolean hasOngoingPeriodCycle() {
         if (!isAdded()) {
@@ -678,6 +806,7 @@ public class PregnancyPrepFragment extends Fragment {
     }
 
     private void refreshPeriodCardUi() {
+        refreshHealthStatusCard();
         if (tvPeriodTitle == null || tvPeriodMeta == null || btnPeriodYes == null || btnPeriodNo == null) {
             return;
         }
@@ -1126,8 +1255,12 @@ public class PregnancyPrepFragment extends Fragment {
                 if (dataArr != null) {
                     Gson gson = new Gson();
                     for (int i = 0; i < dataArr.length(); i++) {
-                        records.add(gson.fromJson(
-                                dataArr.getJSONObject(i).toString(), HealthRecordEntity.class));
+                        HealthRecordEntity record = gson.fromJson(
+                                dataArr.getJSONObject(i).toString(), HealthRecordEntity.class);
+                        if (record != null) {
+                            record.setModeType(HealthRecordModeMapper.toUiModeType(record.getModeType()));
+                            records.add(record);
+                        }
                     }
                 }
 

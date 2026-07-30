@@ -1,0 +1,76 @@
+@startuml Athena微服务架构图-简化版
+
+!define RECTANGLE class
+
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Microsoft YaHei"
+skinparam defaultFontSize 13
+skinparam packageStyle rectangle
+
+' 客户端
+actor "客户端\n(Web/Mobile)" as client #lightblue
+
+' 网关层
+rectangle "Spring Cloud Gateway\n<b>统一网关 + Sa-Token 认证</b>" as gateway #87CEEB {
+}
+
+' 微服务集群
+package "微服务集群" as services #FFFACD {
+    rectangle "athena-userauth" as userauth
+    rectangle "athena-ground" as ground
+    rectangle "athena-record" as record
+    rectangle "athena-comment" as comment
+    rectangle "athena-relation" as relation
+    rectangle "athena-oss" as oss
+    rectangle "athena-insight" as insight
+    rectangle "athena-rag" as rag
+}
+
+' Nacos
+rectangle "Nacos\n<b>服务注册发现 + 配置中心</b>" as nacos #90EE90 {
+}
+
+' 基础设施层
+package "基础设施层" as infra #FFE4B5 {
+    database "MySQL" as mysql
+    database "Redis" as redis
+    database "RocketMQ" as mq
+    database "PostgreSQL\n(PGVector)" as pg
+}
+
+' 主要连接关系
+client -down-> gateway : HTTP/HTTPS 请求
+
+gateway -down-> services : <b>统一路由转发</b>\n负载均衡
+
+services -right-> nacos : <b>服务注册</b>\n<b>配置获取</b>
+gateway -up-> nacos : <b>服务发现</b>\n动态路由
+
+services -down-> infra : 数据存储\n消息通信
+
+' 注释
+note right of gateway
+  <b>网关职责：</b>
+  • 统一入口
+  • Sa-Token 认证
+  • userId 注入请求头
+  • 动态路由
+  • 负载均衡
+end note
+
+note bottom of nacos
+  <b>Nacos 功能：</b>
+  • 服务注册与发现
+  • 配置统一管理
+  • 环境隔离（dev/prod）
+  • 配置动态刷新
+end note
+
+note right of services
+  <b>服务间通信：</b>
+  • OpenFeign RPC 调用
+  • 通过 Nacos 服务发现
+  • 上下文自动传递
+end note
+
+@enduml

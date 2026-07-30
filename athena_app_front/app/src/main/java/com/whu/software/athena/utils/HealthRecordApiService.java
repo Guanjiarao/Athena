@@ -57,7 +57,18 @@ public final class HealthRecordApiService {
         Request request = baseBuilder(context).url(url).get().build();
         Type responseType = new TypeToken<ApiResponse<List<HealthRecordEntity>>>() {
         }.getType();
-        execute(request, responseType, callback);
+        execute(request, responseType, new Callback<ApiResponse<List<HealthRecordEntity>>>() {
+            @Override
+            public void onSuccess(ApiResponse<List<HealthRecordEntity>> data) {
+                normalizeDailyDetailResponse(data);
+                callback.onSuccess(data);
+            }
+
+            @Override
+            public void onError(String message) {
+                callback.onError(message);
+            }
+        });
     }
 
     public static void createRecord(@NonNull Context context,
@@ -117,7 +128,7 @@ public final class HealthRecordApiService {
     private static Map<String, Object> toCreateBody(@NonNull HealthRecordEntity entity) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("recordDate", entity.getRecordDate());
-        body.put("modeType", entity.getModeType());
+        body.put("modeType", HealthRecordModeMapper.toApiModeType(entity.getModeType()));
         body.put("recordItemId", entity.getRecordItemId());
         body.put("recordValue", entity.getRecordValue());
         return body;
@@ -125,9 +136,20 @@ public final class HealthRecordApiService {
 
     private static Map<String, Object> toUpdateBody(@NonNull HealthRecordEntity entity) {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("modeType", entity.getModeType());
+        body.put("modeType", HealthRecordModeMapper.toApiModeType(entity.getModeType()));
         body.put("recordValue", entity.getRecordValue());
         return body;
+    }
+
+    private static void normalizeDailyDetailResponse(ApiResponse<List<HealthRecordEntity>> response) {
+        if (response == null || response.getData() == null) {
+            return;
+        }
+        for (HealthRecordEntity record : response.getData()) {
+            if (record != null) {
+                record.setModeType(HealthRecordModeMapper.toUiModeType(record.getModeType()));
+            }
+        }
     }
 
     private static Request.Builder baseBuilder(@NonNull Context context) {

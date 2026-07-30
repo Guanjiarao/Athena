@@ -1,0 +1,8 @@
+# 应用端口（保持不变）
+server:
+  port: 7005
+spring:
+  profiles:
+    active: dev
+  application:
+    name: athena-comment

@@ -20,6 +20,7 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
+import com.whu.software.athena.features.privacy.PrivacyFragment;
 
 import java.util.List;
 
@@ -34,8 +35,7 @@ import java.util.List;
  *
  * 交互规则：
  * 1. 推荐页显示发布按钮，右上角显示普通搜索图标。
- * 2. 科普页隐藏发布按钮但保留占位，保证 Tab 始终居中。
- * 3. 科普页右上角显示 AI 科普入口图标。
+ * 2. 科普页左上角显示隐私守护入口，右上角显示 AI 科普入口图标。
  */
 public class KnowledgeFragment extends Fragment {
 
@@ -114,6 +114,10 @@ public class KnowledgeFragment extends Fragment {
 
     private void setupHeaderClickListeners() {
         btnCreate.setOnClickListener(v -> {
+            if (contentPager.getCurrentItem() == PAGE_SCIENCE) {
+                openPrivacyGuard();
+                return;
+            }
             Intent intent = new Intent(getContext(), PublishActivity.class);
             startActivity(intent);
         });
@@ -133,14 +137,32 @@ public class KnowledgeFragment extends Fragment {
 
     private void updateHeaderForPage(int position) {
         if (position == PAGE_SCIENCE) {
-            btnCreate.setVisibility(View.INVISIBLE);
+            btnCreate.setVisibility(View.GONE);
+            btnCreate.setImageResource(R.drawable.ic_privacy_shield_outline);
+            btnCreate.setContentDescription("隐私守护");
             btnSearch.setImageResource(R.drawable.science_ai);
             btnSearch.setContentDescription(getString(R.string.science_ai_title));
         } else {
-            btnCreate.setVisibility(View.VISIBLE);
+            btnCreate.setVisibility(View.GONE);
+            btnCreate.setImageResource(R.drawable.ic_add);
+            btnCreate.setContentDescription("创作");
             btnSearch.setImageResource(R.drawable.ic_search);
             btnSearch.setContentDescription("搜索");
         }
+    }
+
+    private void openPrivacyGuard() {
+        FragmentActivity activity = getActivity();
+        if (activity == null) {
+            return;
+        }
+        if (activity instanceof MainActivity) {
+            ((MainActivity) activity).setBottomNavigationVisible(false);
+        }
+        activity.getSupportFragmentManager().beginTransaction()
+                .replace(R.id.nav_host_fragment, new PrivacyFragment())
+                .addToBackStack("privacy_guard")
+                .commit();
     }
 
     // ViewPager2 适配器

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="athena.ground.biz.domain.mapper.UserViewRecordMapper">
+
+    <delete id="deleteByNoteId">
+        DELETE FROM user_view_record WHERE note_id = #{noteId}
+    </delete>
+
+    <!-- 插入或更新浏览记录（幂等） -->
+    <insert id="upsertViewRecord">
+        INSERT INTO user_view_record (user_id, note_id, first_view_time, last_view_time, view_count, duration)
+        VALUES (#{userId}, #{noteId}, #{viewTime}, #{viewTime}, 1, #{duration})
+        ON DUPLICATE KEY UPDATE
+            last_view_time = #{viewTime},
+            view_count = view_count + 1,
+            duration = #{duration}
+    </insert>
+
+</mapper>

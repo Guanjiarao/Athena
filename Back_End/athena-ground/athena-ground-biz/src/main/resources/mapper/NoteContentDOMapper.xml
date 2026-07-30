@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="athena.ground.biz.domain.mapper.NoteContentDOMapper">
+  <resultMap id="BaseResultMap" type="athena.ground.biz.domain.dataobject.NoteContentDO">
+    <id column="content_id" jdbcType="BIGINT" property="contentId" />
+    <result column="note_id" jdbcType="BIGINT" property="noteId" />
+    <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+    <result column="update_time" jdbcType="TIMESTAMP" property="updateTime" />
+  </resultMap>
+  <resultMap extends="BaseResultMap" id="ResultMapWithBLOBs" type="athena.ground.biz.domain.dataobject.NoteContentDO">
+    <result column="content" jdbcType="LONGVARCHAR" property="content" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    content_id, note_id, create_time, update_time
+  </sql>
+  <sql id="Blob_Column_List">
+    content
+  </sql>
+  <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="ResultMapWithBLOBs">
+    select
+    <include refid="Base_Column_List" />
+    ,
+    <include refid="Blob_Column_List" />
+    from tb_note_content
+    where content_id = #{contentId,jdbcType=BIGINT}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Long">
+    delete from tb_note_content
+    where content_id = #{contentId,jdbcType=BIGINT}
+  </delete>
+  <delete id="deleteByNoteId" parameterType="java.lang.Long">
+    delete from tb_note_content
+    where note_id = #{noteId,jdbcType=BIGINT}
+  </delete>
+
+  <insert id="insert" parameterType="athena.ground.biz.domain.dataobject.NoteContentDO">
+    insert into tb_note_content (content_id, note_id, create_time,
+      update_time, content)
+    values (#{contentId,jdbcType=BIGINT}, #{noteId,jdbcType=BIGINT}, #{createTime,jdbcType=TIMESTAMP},
+      #{updateTime,jdbcType=TIMESTAMP}, #{content,jdbcType=LONGVARCHAR})
+  </insert>
+  <insert id="insertSelective" parameterType="athena.ground.biz.domain.dataobject.NoteContentDO">
+    insert into tb_note_content
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="contentId != null">
+        content_id,
+      </if>
+      <if test="noteId != null">
+        note_id,
+      </if>
+      <if test="createTime != null">
+        create_time,
+      </if>
+      <if test="updateTime != null">
+        update_time,
+      </if>
+      <if test="content != null">
+        content,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="contentId != null">
+        #{contentId,jdbcType=BIGINT},
+      </if>
+      <if test="noteId != null">
+        #{noteId,jdbcType=BIGINT},
+      </if>
+      <if test="createTime != null">
+        #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateTime != null">
+        #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="content != null">
+        #{content,jdbcType=LONGVARCHAR},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="athena.ground.biz.domain.dataobject.NoteContentDO">
+    update tb_note_content
+    <set>
+      <if test="noteId != null">
+        note_id = #{noteId,jdbcType=BIGINT},
+      </if>
+      <if test="createTime != null">
+        create_time = #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateTime != null">
+        update_time = #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="content != null">
+        content = #{content,jdbcType=LONGVARCHAR},
+      </if>
+    </set>
+    where content_id = #{contentId,jdbcType=BIGINT}
+  </update>
+  <update id="updateByPrimaryKeyWithBLOBs" parameterType="athena.ground.biz.domain.dataobject.NoteContentDO">
+    update tb_note_content
+    set note_id = #{noteId,jdbcType=BIGINT},
+      create_time = #{createTime,jdbcType=TIMESTAMP},
+      update_time = #{updateTime,jdbcType=TIMESTAMP},
+      content = #{content,jdbcType=LONGVARCHAR}
+    where content_id = #{contentId,jdbcType=BIGINT}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="athena.ground.biz.domain.dataobject.NoteContentDO">
+    update tb_note_content
+    set note_id = #{noteId,jdbcType=BIGINT},
+      create_time = #{createTime,jdbcType=TIMESTAMP},
+      update_time = #{updateTime,jdbcType=TIMESTAMP}
+    where content_id = #{contentId,jdbcType=BIGINT}
+  </update>
+
+    <select id="selectByNoteId" parameterType="java.lang.Long" resultMap="ResultMapWithBLOBs">
+        select
+        <include refid="Base_Column_List" />
+        ,
+        <include refid="Blob_Column_List" />
+        from tb_note_content
+        where note_id = #{noteId,jdbcType=BIGINT}
+        limit 1 <!-- 一个 note_id 对应一条内容，加 limit 提升性能 -->
+    </select>
+
+</mapper>

@@ -77,19 +77,20 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
         holder.itemView.setScaleX(1.0f);
         holder.itemView.setScaleY(1.0f);
 
-        // 点击年龄段卡片：0~12 → 身份选择；12~22 → 静态详情；22~55 → 成熟阶段分类列表
+        // 标题文案会随科普页改版变化，点击只按年龄前缀路由到现有详情页。
         View clickTarget = holder.cardTimeline != null ? holder.cardTimeline : holder.itemView;
         clickTarget.setOnClickListener(v -> {
-            if ("0~12岁".equals(item.getTitle())) {
+            String title = item.getTitle() == null ? "" : item.getTitle();
+            if (title.startsWith("0~12")) {
                 Intent intent = new Intent(v.getContext(), Age0To12RoleActivity.class);
                 v.getContext().startActivity(intent);
-            } else if ("12~22岁".equals(item.getTitle())) {
+            } else if (title.startsWith("12~22")) {
                 Intent intent = new Intent(v.getContext(), Age12To22Activity.class);
                 v.getContext().startActivity(intent);
-            } else if ("22~55岁".equals(item.getTitle())) {
+            } else if (title.startsWith("22~55")) {
                 Intent intent = new Intent(v.getContext(), MatureStageActivity.class);
                 v.getContext().startActivity(intent);
-            } else if ("55岁以上".equals(item.getTitle())) {
+            } else if (title.startsWith("55")) {
                 Intent intent = new Intent(v.getContext(), Age55PlusActivity.class);
                 v.getContext().startActivity(intent);
             }

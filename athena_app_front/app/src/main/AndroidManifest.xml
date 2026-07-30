@@ -48,10 +48,6 @@
             android:exported="false"
             android:theme="@style/LoginTheme" />
         <activity
-            android:name=".AIActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Athena.NoActionBar" />
-        <activity
             android:name=".AnalysisReportActivity"
             android:exported="false"
             android:theme="@style/Theme.Athena" />

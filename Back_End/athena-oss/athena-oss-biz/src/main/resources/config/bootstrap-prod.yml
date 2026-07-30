@@ -1,0 +1,15 @@
+spring:
+  cloud:
+    nacos:
+      config:
+        server-addr: 121.41.200.73:8848
+        namespace: d3fcf00a-f83d-4710-8a2e-2dda647187c8
+        file-extension: yaml
+        shared-configs:
+          - data-id: base.yaml
+            refresh: true
+          - data-id: oss.yaml
+            refresh: true
+      discovery:
+        server-addr: 121.41.200.73:8848
+        namespace: d3fcf00a-f83d-4710-8a2e-2dda647187c8

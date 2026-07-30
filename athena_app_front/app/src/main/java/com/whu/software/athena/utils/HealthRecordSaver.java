@@ -282,7 +282,7 @@ public final class HealthRecordSaver {
     private static Map<String, Object> buildCreatePayload(HealthRecordEntity entity) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("recordDate", entity.getRecordDate());
-        payload.put("modeType", entity.getModeType());
+        payload.put("modeType", HealthRecordModeMapper.toApiModeType(entity.getModeType()));
         payload.put("recordItemId", entity.getRecordItemId());
         payload.put("recordValue", entity.getRecordValue());
         return payload;

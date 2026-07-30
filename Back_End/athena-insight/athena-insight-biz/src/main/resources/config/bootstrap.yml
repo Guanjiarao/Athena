@@ -1,0 +1,8 @@
+# 应用端口（保持不变）
+server:
+  port: 7007
+spring:
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  application:
+    name: athena-insight
