@@ -103,8 +103,7 @@ public class SettingsActivity extends AppCompatActivity {
 
         // 隐私设置
         itemPrivacy.setOnClickListener(v -> {
-            // TODO: 跳转到隐私设置页面
-            Toast.makeText(this, "隐私设置（开发中）", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(this, DataPrivacyActivity.class));
         });
 
         // 关于我们

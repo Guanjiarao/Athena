@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": 153,
+  "requestedByUser": false,
+  "ruleSignal": null,
+  "evidence": [
+    {"evidenceId": 304, "kind": "BROWSING_HISTORY", "occurredAt": "2026-08-14T08:00:00+08:00", "summary": "用户浏览了疾病页面"}
+  ],
+  "existingTopics": []
+}

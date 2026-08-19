@@ -39,6 +39,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".BodyCluesActivity" android:exported="false" />
+        <activity android:name=".CognitionDigestActivity" android:exported="false" />
+        <activity android:name=".CognitionTopicActivity" android:exported="false" />
+        <activity android:name=".CognitionFeedbackActivity" android:exported="false" />
+        <activity android:name=".DataPrivacyActivity" android:exported="false" />
+        <activity android:name=".HealthHistoryActivity" android:exported="false" />
+        <activity android:name=".MyCognitionActivity" android:exported="false" />
+        <activity android:name=".ReminderPreferencesActivity" android:exported="false" />
+        <activity android:name=".DeviceDataDemoActivity" android:exported="false" />
+        <activity android:name=".CognitionAnalysisDemoActivity" android:exported="false" />
         <activity
             android:name=".LoginActivity"
             android:exported="false"

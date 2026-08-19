@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: athena-cognition
+  datasource:
+    druid:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+  jackson:
+    default-property-inclusion: non_null
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+
+logging:
+  level:
+    athena.cognition: info

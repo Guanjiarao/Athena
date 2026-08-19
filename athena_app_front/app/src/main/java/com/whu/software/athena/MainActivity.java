@@ -38,14 +38,9 @@ public class MainActivity extends AppCompatActivity {
                         .replace(R.id.nav_host_fragment, new KnowledgeFragment())
                         .commit();
                 return true;
-            } else if (itemId == R.id.navigation_square) {
-                getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.nav_host_fragment, new SquareFragment())
-                        .commit();
-                return true;
             } else if (itemId == R.id.navigation_record) {
                 getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.nav_host_fragment, new RecordFragment())
+                        .replace(R.id.nav_host_fragment, new HealthFragment())
                         .commit();
                 return true;
             } else if (itemId == R.id.navigation_profile) {
@@ -61,13 +56,14 @@ public class MainActivity extends AppCompatActivity {
         getSupportFragmentManager().addOnBackStackChangedListener(this::syncBottomNavigationState);
 
         boolean hasToken = hasLocalToken();
+        boolean demoMode = isDemoMode();
         if (savedInstanceState == null) {
-            if (hasToken) {
+            if (hasToken || demoMode) {
                 setBottomNavigationVisible(true);
                 getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.nav_host_fragment, new KnowledgeFragment())
+                        .replace(R.id.nav_host_fragment, new HealthFragment())
                         .commit();
-                navView.setSelectedItemId(R.id.navigation_knowledge);
+                navView.setSelectedItemId(R.id.navigation_record);
             } else {
                 setBottomNavigationVisible(false);
                 getSupportFragmentManager().beginTransaction()
@@ -76,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
                 navView.setSelectedItemId(R.id.navigation_profile);
             }
         } else {
-            setBottomNavigationVisible(hasToken);
+            setBottomNavigationVisible(hasToken || demoMode);
         }
 
         syncBottomNavigationState();
@@ -110,10 +106,10 @@ public class MainActivity extends AppCompatActivity {
     public void onLoginSuccess() {
         setBottomNavigationVisible(true);
         getSupportFragmentManager().beginTransaction()
-                .replace(R.id.nav_host_fragment, new KnowledgeFragment())
+                .replace(R.id.nav_host_fragment, new HealthFragment())
                 .commit();
         if (navView != null) {
-            navView.setSelectedItemId(R.id.navigation_knowledge);
+            navView.setSelectedItemId(R.id.navigation_record);
         }
     }
 
@@ -121,7 +117,7 @@ public class MainActivity extends AppCompatActivity {
         if (navView == null) {
             return;
         }
-        boolean show = hasLocalToken()
+        boolean show = (hasLocalToken() || isDemoMode())
                 && getSupportFragmentManager().getBackStackEntryCount() == 0;
         setBottomNavigationVisible(show);
     }
@@ -130,6 +126,11 @@ public class MainActivity extends AppCompatActivity {
         SharedPreferences sp = getSharedPreferences(PREF_AUTH, MODE_PRIVATE);
         String token = sp.getString(KEY_TOKEN, "");
         return token != null && !token.trim().isEmpty();
+    }
+
+    private boolean isDemoMode() {
+        return !getSharedPreferences("athena_cognition_config", MODE_PRIVATE)
+                .getBoolean("use_http", false);
     }
 
     private void runCalendarDataDecoupleMigrationOnce() {

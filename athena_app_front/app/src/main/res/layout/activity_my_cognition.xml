@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#FAFAF7" android:orientation="vertical">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="64dp" android:gravity="center_vertical"><ImageView android:id="@+id/btn_back" android:layout_width="48dp" android:layout_height="48dp" android:padding="12dp" android:src="@drawable/ic_arrow_back" android:contentDescription="返回"/><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="我的身体认知" android:textColor="#202725" android:textSize="21sp" android:textStyle="bold"/></LinearLayout>
+    <ScrollView android:layout_width="match_parent" android:layout_height="match_parent"><LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="你的问题、线索和正在形成的理解都保存在这里" android:textColor="#20352E" android:textSize="23sp" android:textStyle="bold"/>
+        <TextView android:id="@+id/tv_cognition_summary" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:background="#E9F0EA" android:lineSpacingExtra="4dp" android:padding="18dp" android:textColor="#385148"/>
+        <Button android:id="@+id/btn_my_clues" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="18dp" android:text="我的身体线索与疑问" android:textAllCaps="false"/>
+        <Button android:id="@+id/btn_my_drafts" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="8dp" android:text="待确认整理草稿" android:textAllCaps="false"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="28dp" android:text="认知主题" android:textColor="#202725" android:textSize="18sp" android:textStyle="bold"/>
+        <LinearLayout android:id="@+id/layout_my_topics" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:orientation="vertical"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="28dp" android:text="偏好与数据" android:textColor="#202725" android:textSize="18sp" android:textStyle="bold"/>
+        <Button android:id="@+id/btn_reminders" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="12dp" android:text="提醒偏好" android:textAllCaps="false"/>
+        <Button android:id="@+id/btn_privacy" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="8dp" android:text="我的数据与隐私" android:textAllCaps="false"/>
+        <TextView android:id="@+id/btn_reset_demo" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="8dp" android:gravity="center" android:text="重置演示数据" android:textColor="#786F66"/>
+    </LinearLayout></ScrollView>
+</LinearLayout>

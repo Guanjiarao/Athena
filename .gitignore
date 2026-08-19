@@ -51,3 +51,7 @@ images/
 **/marketing/
 Back_End/athena-rag/resources/nageoffer-nginx-2.0.1/
 Back_End/athena-rag/resources/eval/outputs/
+.gradle-local/
+.android-local/
+.verify-classes/
+.verify-heytap/
