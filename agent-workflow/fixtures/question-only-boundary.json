@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": 152,
+  "requestedByUser": true,
+  "ruleSignal": null,
+  "evidence": [
+    {"evidenceId": 303, "kind": "QUESTION", "occurredAt": "2026-08-14T08:00:00+08:00", "summary": "用户询问乳房胀痛是否常见", "question": "这常见吗？", "reviewedSource": true}
+  ],
+  "existingTopics": []
+}

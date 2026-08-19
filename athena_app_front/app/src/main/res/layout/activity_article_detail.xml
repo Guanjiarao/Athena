@@ -54,6 +54,18 @@
 
 
 
+            <TextView
+                android:id="@+id/tv_article_trust"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="16dp"
+                android:background="#E9F0EA"
+                android:lineSpacingExtra="4dp"
+                android:padding="16dp"
+                android:text="来源：Athena 健康内容库\n审核状态：健康内容编辑审核\n最近更新：2026 年 8 月\n适用人群：希望了解基础身体知识的成年人\n内容边界：科普信息不能替代诊断；持续或加重的不适请寻求专业帮助。\n\n为什么推荐给我：基于你主动选择的关注方向，不依据浏览、点赞或收藏推断身体状态。"
+                android:textColor="#385148"
+                android:textSize="13sp" />
+
             <WebView
                 android:id="@+id/web_content"
                 android:layout_width="match_parent"
@@ -61,5 +73,31 @@
                 android:paddingTop="8dp" />
         </LinearLayout>
     </ScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#FAFAF7"
+        android:orientation="vertical"
+        android:padding="10dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="长按选中一段文字，再快速标记"
+            android:textColor="#6B706E"
+            android:textSize="12sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="6dp"
+            android:orientation="horizontal">
+            <Button android:id="@+id/btn_mark_related" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="和我有关" />
+            <Button android:id="@+id/btn_mark_question" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="我有疑问" />
+            <Button android:id="@+id/btn_mark_knowledge" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="保存知识" />
+        </LinearLayout>
+    </LinearLayout>
 
 </LinearLayout>

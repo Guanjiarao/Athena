@@ -26,7 +26,6 @@ import org.json.JSONObject;
 import com.whu.software.athena.utils.UserDao;
 import com.whu.software.athena.utils.TokenManager;
 import com.whu.software.athena.net.FollowRequestManager;
-import com.whu.software.athena.features.privacy.DataAssetBottomSheet;
 
 public class ProfileFragment extends Fragment {
 
@@ -157,8 +156,7 @@ public class ProfileFragment extends Fragment {
 
         if (btnDataAsset != null) {
             btnDataAsset.setOnClickListener(v ->
-                    DataAssetBottomSheet.newInstance()
-                            .show(getChildFragmentManager(), "DataAssetBottomSheet"));
+                    startActivity(new Intent(requireActivity(), MyCognitionActivity.class)));
         }
     }
 
@@ -320,7 +318,9 @@ public class ProfileFragment extends Fragment {
             layoutLoggedIn.setVisibility(View.GONE);
         }
         if (getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).setBottomNavigationVisible(isLoggedIn);
+            boolean demoMode = !requireContext().getSharedPreferences("athena_cognition_config", android.content.Context.MODE_PRIVATE)
+                    .getBoolean("use_http", false);
+            ((MainActivity) getActivity()).setBottomNavigationVisible(isLoggedIn || demoMode);
         }
     }
 

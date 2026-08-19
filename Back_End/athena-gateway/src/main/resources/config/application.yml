@@ -26,6 +26,10 @@ spring:
           uri: lb://athena-userauth
           predicates:
             - Path=/athena/login/**,/athena/user/**
+        - id: cognition
+          uri: lb://athena-cognition
+          predicates:
+            - Path=/athena/cognition/**
         - id: rag-athena-ask
           uri: http://localhost:9090
           predicates:

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#FAFAF7" android:orientation="vertical">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="64dp" android:gravity="center_vertical"><ImageView android:id="@+id/btn_back" android:layout_width="48dp" android:layout_height="48dp" android:padding="12dp" android:src="@drawable/ic_arrow_back" android:contentDescription="返回"/><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="提醒偏好" android:textColor="#202725" android:textSize="21sp" android:textStyle="bold"/></LinearLayout>
+    <ScrollView android:layout_width="match_parent" android:layout_height="match_parent"><LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="22dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="提醒应该有用，也应该不过度打扰" android:textColor="#20352E" android:textSize="23sp" android:textStyle="bold"/>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="普通健康提醒每天最多 1 条；认知更新每周最多 2 次。关闭提醒不会删除或停止你的记录。" android:textColor="#626B67" android:textSize="14sp"/>
+        <Switch android:id="@+id/switch_daily" android:layout_width="match_parent" android:layout_height="64dp" android:layout_marginTop="22dp" android:text="每日低负担行动提醒"/>
+        <Switch android:id="@+id/switch_cognition" android:layout_width="match_parent" android:layout_height="64dp" android:text="认知主题更新提醒"/>
+        <Switch android:id="@+id/switch_professional" android:layout_width="match_parent" android:layout_height="64dp" android:text="明确规则触发的专业帮助提示"/>
+        <Switch android:id="@+id/switch_quiet" android:layout_width="match_parent" android:layout_height="64dp" android:text="22:00—08:00 不打扰"/>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:background="#F2EEE6" android:lineSpacingExtra="4dp" android:padding="16dp" android:text="演示说明：当前开关只保存在本机，不会发送真实系统通知。正式提醒只由明确规则触发，AI 不能自行提高风险等级。" android:textColor="#665D51"/>
+    </LinearLayout></ScrollView>
+</LinearLayout>

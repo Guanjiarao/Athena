@@ -174,7 +174,7 @@
                         android:background="@drawable/bg_asset_button"
                         android:paddingHorizontal="14dp"
                         android:paddingVertical="7dp"
-                        android:text="数据资产" />
+                        android:text="我的身体认知" />
 
                 </LinearLayout>
 

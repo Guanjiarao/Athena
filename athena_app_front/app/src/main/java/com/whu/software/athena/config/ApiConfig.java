@@ -72,6 +72,8 @@ public class ApiConfig {
     public static final String API_INSIGHT_FEATURE_REFRESH = API_INSIGHT_FEATURE + "/refresh";
     public static final String API_INSIGHT_RECOMMEND = API_INSIGHT_BASE + "/recommend";
 
+    public static final String API_COGNITION_BASE = BASE_URL + "cognition";
+
     public static final String MOCK_COVER_URL =
             "https://xiaoxiaolanfeng-java-ai.oss-cn-beijing.aliyuncs.com/9977fb324f344996997b48081aecfae2.jpg";
 

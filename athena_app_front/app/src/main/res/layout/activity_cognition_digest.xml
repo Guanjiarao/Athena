@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:background="#FAFAF7" android:orientation="vertical">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="64dp" android:gravity="center_vertical" android:orientation="horizontal">
+        <ImageView android:id="@+id/btn_back" android:layout_width="48dp" android:layout_height="48dp" android:padding="12dp" android:src="@drawable/ic_arrow_back" android:contentDescription="返回" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="整理草稿" android:textColor="#202725" android:textSize="21sp" android:textStyle="bold" />
+    </LinearLayout>
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+            <TextView android:id="@+id/tv_digest_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#20352E" android:textSize="25sp" android:textStyle="bold" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="26dp" android:text="判断依据" android:textStyle="bold" />
+            <TextView android:id="@+id/tv_digest_evidence" style="@style/Widget.AppCompat.TextView" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="#FFFFFF" android:padding="16dp" android:textColor="#414A47" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="22dp" android:text="可能的联系" android:textStyle="bold" />
+            <TextView android:id="@+id/tv_digest_link" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:textColor="#414A47" android:lineSpacingExtra="4dp" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="22dp" android:text="目前还不能确定" android:textStyle="bold" />
+            <TextView android:id="@+id/tv_digest_uncertainty" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="#F2EEE6" android:padding="16dp" android:textColor="#554B3D" android:lineSpacingExtra="4dp" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="22dp" android:text="建议的下一步" android:textStyle="bold" />
+            <TextView android:id="@+id/tv_digest_action" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:textColor="#315B4C" android:lineSpacingExtra="4dp" />
+        </LinearLayout>
+    </ScrollView>
+    <LinearLayout android:id="@+id/layout_digest_decisions" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+        <com.google.android.material.button.MaterialButton android:id="@+id/btn_accept_digest" android:layout_width="match_parent" android:layout_height="50dp" android:text="加入正在观察" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/btn_save_knowledge" style="@style/Widget.MaterialComponents.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="50dp" android:text="只保存为知识" />
+        <TextView android:id="@+id/btn_reject_digest" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center" android:text="这不是我想表达的" android:textColor="#77716B" />
+    </LinearLayout>
+</LinearLayout>

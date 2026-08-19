@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": 151,
+  "requestedByUser": true,
+  "ruleSignal": null,
+  "evidence": [
+    {"evidenceId": 301, "kind": "RELATED", "occurredAt": "2026-08-12T09:00:00+08:00", "summary": "用户标记一段关于经期前情绪变化的审核内容", "question": null, "reviewedSource": true},
+    {"evidenceId": 302, "kind": "QUESTION", "occurredAt": "2026-08-13T11:00:00+08:00", "summary": "用户想了解睡眠和情绪是否存在联系", "question": "这和周期有关系吗？", "reviewedSource": true}
+  ],
+  "existingTopics": []
+}
