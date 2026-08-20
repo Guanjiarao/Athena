@@ -612,6 +612,138 @@ class CognitionServiceTest {
         }
     }
 
+    // ---------- section 7.3 / TC-12~16: action feedback ----------
+
+    @Nested
+    class ActionFeedbackRules {
+
+        @Test
+        void tc12OccurredCompletesActionCreatesEvidenceAndRefreshesTopic() {
+            stubPendingAction();
+            CognitionJdbcRepository.FeedbackRow saved = new CognitionJdbcRepository.FeedbackRow(30L, 9L, 5L,
+                    ActionFeedbackResult.OCCURRED, "今天下午出现过轻微情绪低落",
+                    Instant.parse("2026-08-13T10:20:00Z"), Instant.now(), 40L);
+            when(repository.findFeedbackByAction(USER_ID, 9L)).thenReturn(Optional.empty(), Optional.of(saved));
+            when(repository.insertFeedback(eq(USER_ID), eq(9L), eq(5L), eq(ActionFeedbackResult.OCCURRED),
+                    any(), any())).thenReturn(30L);
+            when(repository.insertEvidence(eq(USER_ID), eq(EvidenceSourceType.ACTION_FEEDBACK), eq("feedback_30"),
+                    eq(FactLevel.SELF_REPORTED), any(), any())).thenReturn(40L);
+            when(repository.findTopicEvidence(USER_ID, 5L)).thenReturn(List.of(
+                    evidenceRow(1L, EvidenceSourceType.CLUE), evidenceRow(40L, EvidenceSourceType.ACTION_FEEDBACK)));
+            when(repository.findTopic(USER_ID, 5L, false)).thenReturn(Optional.of(topicRow(5L, 3)));
+
+            FeedbackResultView result = service.submitFeedback(USER_ID, "action_9",
+                    new FeedbackRequest("topic_5", ActionFeedbackResult.OCCURRED, "今天下午出现过轻微情绪低落",
+                            Instant.parse("2026-08-13T10:20:00Z")));
+
+            assertThat(result.feedback().id()).isEqualTo("feedback_30");
+            assertThat(result.feedback().evidenceId()).isEqualTo("evidence_40");
+            assertThat(result.actionStatus()).isEqualTo(ActionStatus.COMPLETED);
+            assertThat(result.topicVersion()).isEqualTo(3);
+            assertThat(result.refreshRequired()).isTrue();
+            verify(repository).linkTopicEvidence(USER_ID, 5L, List.of(40L));
+            verify(repository).updateActionStatus(USER_ID, 9L, ActionStatus.COMPLETED);
+            verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L),
+                    argThat(text -> text != null && text.contains("出现过")), eq(2), eq(1), eq(1), eq(1));
+        }
+
+        @Test
+        void tc13NotOccurredCreatesObservationEvidenceWithoutEndingTopic() {
+            stubPendingAction();
+            CognitionJdbcRepository.FeedbackRow saved = new CognitionJdbcRepository.FeedbackRow(31L, 9L, 5L,
+                    ActionFeedbackResult.NOT_OCCURRED, null, Instant.now(), Instant.now(), 41L);
+            when(repository.findFeedbackByAction(USER_ID, 9L)).thenReturn(Optional.empty(), Optional.of(saved));
+            when(repository.insertFeedback(eq(USER_ID), eq(9L), eq(5L), eq(ActionFeedbackResult.NOT_OCCURRED),
+                    any(), any())).thenReturn(31L);
+            when(repository.insertEvidence(eq(USER_ID), eq(EvidenceSourceType.ACTION_FEEDBACK), eq("feedback_31"),
+                    eq(FactLevel.OBSERVED), any(), any())).thenReturn(41L);
+            when(repository.findTopicEvidence(USER_ID, 5L)).thenReturn(List.of(
+                    evidenceRow(1L, EvidenceSourceType.CLUE), evidenceRow(41L, EvidenceSourceType.ACTION_FEEDBACK)));
+            when(repository.findTopic(USER_ID, 5L, false)).thenReturn(Optional.of(topicRow(5L, 3)));
+
+            FeedbackResultView result = service.submitFeedback(USER_ID, "action_9",
+                    new FeedbackRequest("topic_5", ActionFeedbackResult.NOT_OCCURRED, null, null));
+
+            // NOT_OCCURRED is a valid observation: evidence created, action completed,
+            // but nothing closes or ends the topic
+            assertThat(result.feedback().evidenceId()).isEqualTo("evidence_41");
+            assertThat(result.actionStatus()).isEqualTo(ActionStatus.COMPLETED);
+            verify(repository).insertEvidence(eq(USER_ID), eq(EvidenceSourceType.ACTION_FEEDBACK), any(),
+                    eq(FactLevel.OBSERVED), any(), any());
+            verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L),
+                    argThat(text -> text != null && text.contains("没有出现")), eq(2), eq(1), eq(1), eq(1));
+        }
+
+        @Test
+        void tc14UncertainKeepsEvidenceWithoutTouchingMaturity() {
+            stubPendingAction();
+            CognitionJdbcRepository.FeedbackRow saved = new CognitionJdbcRepository.FeedbackRow(32L, 9L, 5L,
+                    ActionFeedbackResult.UNCERTAIN, null, Instant.now(), Instant.now(), 42L);
+            when(repository.findFeedbackByAction(USER_ID, 9L)).thenReturn(Optional.empty(), Optional.of(saved));
+            when(repository.insertFeedback(eq(USER_ID), eq(9L), eq(5L), eq(ActionFeedbackResult.UNCERTAIN),
+                    any(), any())).thenReturn(32L);
+            when(repository.insertEvidence(eq(USER_ID), eq(EvidenceSourceType.ACTION_FEEDBACK), eq("feedback_32"),
+                    eq(FactLevel.OBSERVED), any(), any())).thenReturn(42L);
+            when(repository.findTopicEvidence(USER_ID, 5L)).thenReturn(List.of(
+                    evidenceRow(1L, EvidenceSourceType.CLUE), evidenceRow(42L, EvidenceSourceType.ACTION_FEEDBACK)));
+            when(repository.findTopic(USER_ID, 5L, false)).thenReturn(Optional.of(topicRow(5L, 3)));
+
+            FeedbackResultView result = service.submitFeedback(USER_ID, "action_9",
+                    new FeedbackRequest("topic_5", ActionFeedbackResult.UNCERTAIN, null, null));
+
+            assertThat(result.feedback().evidenceId()).isEqualTo("evidence_42");
+            assertThat(result.actionStatus()).isEqualTo(ActionStatus.COMPLETED);
+            // maturity is never part of the feedback update path (P3-2 owns it)
+            verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L),
+                    argThat(text -> text != null && text.contains("不确定")), eq(2), eq(1), eq(1), eq(1));
+        }
+
+        @Test
+        void tc15SkippedHasNoEvidenceAndNoCounterIncrease() {
+            stubPendingAction();
+            CognitionJdbcRepository.FeedbackRow saved = new CognitionJdbcRepository.FeedbackRow(33L, 9L, 5L,
+                    ActionFeedbackResult.SKIPPED, null, Instant.now(), Instant.now(), null);
+            when(repository.findFeedbackByAction(USER_ID, 9L)).thenReturn(Optional.empty(), Optional.of(saved));
+            when(repository.insertFeedback(eq(USER_ID), eq(9L), eq(5L), eq(ActionFeedbackResult.SKIPPED),
+                    any(), any())).thenReturn(33L);
+            when(repository.findTopicEvidence(USER_ID, 5L))
+                    .thenReturn(List.of(evidenceRow(1L, EvidenceSourceType.CLUE)));
+            when(repository.findTopic(USER_ID, 5L, false)).thenReturn(Optional.of(topicRow(5L, 2)));
+
+            FeedbackResultView result = service.submitFeedback(USER_ID, "action_9",
+                    new FeedbackRequest("topic_5", ActionFeedbackResult.SKIPPED, null, null));
+
+            assertThat(result.feedback().evidenceId()).isNull();
+            assertThat(result.actionStatus()).isEqualTo(ActionStatus.SKIPPED);
+            verify(repository, never()).insertEvidence(anyLong(), any(), any(), any(), any(), any());
+            verify(repository, never()).linkTopicEvidence(anyLong(), anyLong(), any());
+            // stageUnderstanding stays (null keeps current text); counters unchanged
+            verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L), isNull(), eq(1), eq(1), eq(0), eq(1));
+            // occurredAt defaults to submission time when the frontend omits it
+            ArgumentCaptor<Instant> occurredAt = ArgumentCaptor.forClass(Instant.class);
+            verify(repository).insertFeedback(eq(USER_ID), eq(9L), eq(5L), eq(ActionFeedbackResult.SKIPPED),
+                    any(), occurredAt.capture());
+            assertThat(occurredAt.getValue()).isNotNull();
+        }
+
+        private void stubPendingAction() {
+            when(repository.findAction(USER_ID, 9L, true)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.ActionRow(9L, 5L, "记录一次相关身体变化", "补充出现时间和程度",
+                            ActionType.RECORD_BODY, ActionStatus.PENDING, null, null, Instant.now())));
+        }
+
+        private CognitionJdbcRepository.EvidenceRow evidenceRow(long id, EvidenceSourceType sourceType) {
+            return new CognitionJdbcRepository.EvidenceRow(id, sourceType, "src_" + id, FactLevel.SELF_REPORTED,
+                    "摘要", Instant.now(), Instant.now(), true, null, null, null);
+        }
+
+        private CognitionJdbcRepository.TopicRow topicRow(long id, int version) {
+            return new CognitionJdbcRepository.TopicRow(id, 3L, "经前情绪变化", "MOOD", Maturity.CLUE,
+                    UserProgress.OBSERVING, RiskStatus.NONE, "阶段理解", "[]", "[]",
+                    1, 1, 0, 1, 9L, Instant.now(), version, Instant.now());
+        }
+    }
+
     // ---------- fixtures ----------
 
     private ClueRow clueRow(long id, ClueIntent intent, ClueStatus status) {

@@ -446,15 +446,22 @@ public class CognitionJdbcRepository {
         jdbc.update("UPDATE cognition_topic SET next_action_id=? WHERE user_id=? AND id=?", actionId, userId, topicId);
     }
 
-    /** Section 7.3: feedback bumps version, lastUpdatedAt and counters. */
-    public void updateTopicAfterFeedback(long userId, long topicId, boolean evidenceAdded) {
+    /**
+     * Section 7.3: after feedback the topic version and lastUpdatedAt always
+     * bump; counters are recomputed from linked evidence by the caller and
+     * stageUnderstanding follows a simple per-result text rule (null keeps the
+     * current text, used for SKIPPED). Maturity is never touched here (P3-2).
+     */
+    public void updateTopicAfterFeedback(long userId, long topicId, String stageUnderstanding,
+                                         int evidenceCount, int articleClueCount, int bodyRecordCount, int cycleCount) {
         jdbc.update("""
                 UPDATE cognition_topic
                 SET version=version+1, last_updated_at=?,
-                    evidence_count=evidence_count+?,
-                    body_record_count=body_record_count+?
+                    stage_understanding=COALESCE(?, stage_understanding),
+                    evidence_count=?, article_clue_count=?, body_record_count=?, cycle_count=?
                 WHERE user_id=? AND id=?
-                """, Timestamp.from(Instant.now()), evidenceAdded ? 1 : 0, evidenceAdded ? 1 : 0, userId, topicId);
+                """, Timestamp.from(Instant.now()), stageUnderstanding,
+                evidenceCount, articleClueCount, bodyRecordCount, cycleCount, userId, topicId);
     }
 
     public Optional<TopicRow> findPrimaryTopic(long userId) {

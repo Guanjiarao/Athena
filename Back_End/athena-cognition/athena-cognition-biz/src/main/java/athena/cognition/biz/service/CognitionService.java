@@ -465,9 +465,11 @@ public class CognitionService {
 
         Long evidenceId = null;
         if (!skipped) {
+            // Section 7.3: OCCURRED is a self report; NOT_OCCURRED / UNCERTAIN are
+            // valid observations (they neither end the topic nor raise maturity)
             FactLevel factLevel = request.result() == ActionFeedbackResult.OCCURRED
                     ? FactLevel.SELF_REPORTED : FactLevel.OBSERVED;
-            String summary = !blank(request.note()) ? request.note() : "行动反馈：" + request.result().name();
+            String summary = !blank(request.note()) ? request.note() : feedbackSummary(request.result());
             evidenceId = repository.insertEvidence(userId, EvidenceSourceType.ACTION_FEEDBACK,
                     CognitionIds.of(CognitionIds.FEEDBACK, feedbackId), factLevel, summary, occurredAt);
             repository.updateFeedbackEvidence(userId, feedbackId, evidenceId);
@@ -476,11 +478,42 @@ public class CognitionService {
 
         ActionStatus actionStatus = skipped ? ActionStatus.SKIPPED : ActionStatus.COMPLETED;
         repository.updateActionStatus(userId, actionId, actionStatus);
-        repository.updateTopicAfterFeedback(userId, action.topicId(), !skipped);
+
+        // Section 7.3: recompute counters from the linked evidence (recompute, not
+        // blind increment, so counters stay correct however evidence evolved) and
+        // refresh stage understanding with a simple per-result text rule
+        List<EvidenceRow> topicEvidence = repository.findTopicEvidence(userId, action.topicId());
+        int evidenceCount = topicEvidence.size();
+        int articleClueCount = (int) topicEvidence.stream()
+                .filter(e -> e.sourceType() == EvidenceSourceType.CLUE).count();
+        int bodyRecordCount = (int) topicEvidence.stream()
+                .filter(e -> e.sourceType() == EvidenceSourceType.BODY_RECORD
+                        || e.sourceType() == EvidenceSourceType.ACTION_FEEDBACK).count();
+        repository.updateTopicAfterFeedback(userId, action.topicId(),
+                skipped ? null : stageUnderstandingAfter(request.result()),
+                evidenceCount, articleClueCount, bodyRecordCount, distinctMonths(topicEvidence));
 
         FeedbackRow saved = repository.findFeedbackByAction(userId, actionId).orElseThrow();
         int topicVersion = repository.findTopic(userId, action.topicId(), false).orElseThrow().version();
         return new FeedbackResultView(toFeedbackView(saved), actionStatus, topicVersion, true);
+    }
+
+    private static String feedbackSummary(ActionFeedbackResult result) {
+        return switch (result) {
+            case OCCURRED -> "用户反馈相关变化出现过";
+            case NOT_OCCURRED -> "用户反馈相关变化没有出现";
+            case UNCERTAIN -> "用户反馈不确定是否出现";
+            default -> "行动反馈记录";
+        };
+    }
+
+    private static String stageUnderstandingAfter(ActionFeedbackResult result) {
+        return switch (result) {
+            case OCCURRED -> "最近一次反馈确认相关变化出现过，继续观察它是否会重复。";
+            case NOT_OCCURRED -> "最近一次反馈相关变化没有出现，这也是一次有效观察，继续观察。";
+            case UNCERTAIN -> "最近一次反馈不确定是否出现，仍需继续观察。";
+            default -> "继续观察。";
+        };
     }
 
     // ---------- section 8.4: inbox aggregate ----------
