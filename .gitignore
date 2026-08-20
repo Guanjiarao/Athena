@@ -108,3 +108,6 @@ captures/
 # --- AI tool local dirs ---
 docs/.codebuddy/
 docs/.workbuddy/
+
+# --- third-party eval tool clone ---
+eval/
