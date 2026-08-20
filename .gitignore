@@ -69,3 +69,9 @@ Back_End/athena-rag/resources/eval/outputs/
 .android-local/
 .verify-classes/
 .verify-heytap/
+
+# --- AI tool local dirs (any module) ---
+**/.claude/
+**/.cursor/
+**/.agents/
+skills-lock.json
