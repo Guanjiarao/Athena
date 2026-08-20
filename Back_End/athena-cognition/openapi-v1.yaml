@@ -2,118 +2,1282 @@ openapi: 3.0.3
 info:
   title: Athena Cognition API
   version: 1.0.0
-  description: V1 contract. RELATED and QUESTION are user intent, never verified facts.
+  description: |
+    Athena 认知闭环 V1 接口，实现《cognition-contract-v1.md》（Back_End/docs/newfunction/）。
+    本文档以 athena-cognition-biz 的实际代码为准生成。
+
+    ## 统一响应信封
+
+    所有接口返回 `Result<T>` 信封：`{ "code": 200, "message": "成功", "data": ..., "total": null }`。
+    分页列表使用 `data` 存数组、`total` 存总数。空值字段会被省略（服务端 Jackson non_null）。
+
+    ## 错误约定（契约 §12）
+
+    已处理的业务错误 HTTP 状态为 200，语义值在外层 `code`，稳定业务错误码在 `data.errorCode`：
+
+    | errorCode | code | 场景 |
+    | --- | --- | --- |
+    | COGNITION_INVALID_ARGUMENT | 400 | 字段或枚举非法 |
+    | COGNITION_NOT_FOUND | 404 | 对象不存在或不属于当前用户 |
+    | COGNITION_STATE_CONFLICT | 409 | 草稿已决定、行动已反馈、非失败任务重试等状态冲突 |
+    | COGNITION_VERSION_CONFLICT | 409 | clientVersion 已过期 |
+    | COGNITION_CLUE_IN_USE | 409 | 线索已进入草稿，不能撤销 |
+    | COGNITION_NO_VALID_EVIDENCE | 400 | 没有可用于整理的 RELATED 线索 |
+    | COGNITION_TASK_RUNNING | 409 | 相同主题已有开放任务 |
+    | COGNITION_GENERATION_FAILED | 500 | 固定生成器或未来 Agent 失败 |
+
+    未登录返回 `code=401`（无 data.errorCode）。网关、鉴权和未处理异常仍可返回真实 HTTP 4xx/5xx。
+
+    ## 用户隔离
+
+    `userId` 只从网关透传的登录上下文（UserIdHolder）获取，请求体与参数中的任何 userId 都会被忽略。
 servers:
-  - url: /athena/cognition
+  - url: /
+    description: 经网关访问（/athena 前缀由网关路由到 athena-cognition）
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: clues
+    description: 线索（§4.1 / §6）
+  - name: digests
+    description: 整理任务与草稿（§4.2 / §4.7 / §7.1 / §12）
+  - name: topics
+    description: 认知主题（§4.3）
+  - name: actions
+    description: 行动与反馈（§4.5 / §4.6 / §7.3）
+  - name: aggregates
+    description: 聚合页（§8.4 / §8.11）
+
 paths:
-  /clues:
+  /athena/cognition/clues:
     post:
-      summary: Create a clue
-      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
-      requestBody: { $ref: '#/components/requestBodies/JsonBody' }
-      responses: { '200': { $ref: '#/components/responses/Ok' } }
+      tags: [clues]
+      summary: 创建文章线索（§8.2）
+      description: |
+        三种标记共用入口（§6）：
+        - 和我有关：intent=RELATED，relationType=CURRENT/PAST/OBSERVE → status=PENDING；relationType=KNOWLEDGE_ONLY → intent=KNOWLEDGE_ONLY、status=ORGANIZED
+        - 我有疑问：intent=QUESTION → status=PENDING（不进入主题阈值）
+        - 保存为知识：intent=KNOWLEDGE_ONLY → status=ORGANIZED（不进入主题阈值）
+
+        校验：selectedText/articleTitle/originalLabel 非空、severity 0-10、source 仅接受 KNOWLEDGE_ARTICLE、忽略请求中的 userId。
+        创建 RELATED 线索后按 §10.1 自动检查阈值（RULE_1/RULE_2），触发时 digestTask 块返回真实任务信息。
+      operationId: createClue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClueCreateRequest'
+      responses:
+        '200':
+          description: 创建成功（或业务错误信封）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClueCreateResponse'
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
     get:
-      summary: List clues by PENDING, ORGANIZED, or QUESTIONS
+      tags: [clues]
+      summary: 分页查询线索（§8.3）
+      description: view 与 intent/status/articleId 可组合精确筛选；不传 view 时仅按精确条件过滤。
+      operationId: listClues
       parameters:
-        - { name: section, in: query, schema: { type: string, enum: [PENDING, ORGANIZED, QUESTIONS] } }
-        - { $ref: '#/components/parameters/Cursor' }
-        - { $ref: '#/components/parameters/Limit' }
-      responses: { '200': { $ref: '#/components/responses/Ok' } }
-  /digest-tasks:
+        - name: view
+          in: query
+          schema:
+            $ref: '#/components/schemas/ClueListView'
+          description: PENDING=intent=RELATED且status=PENDING；ORGANIZED=status=ORGANIZED；QUESTIONS=intent=QUESTION；ALL=全部
+        - name: intent
+          in: query
+          schema:
+            $ref: '#/components/schemas/ClueIntent'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ClueStatus'
+        - name: articleId
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
+      responses:
+        '200':
+          description: 分页线索列表（data 为数组，total 为总数）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClueListResponse'
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /athena/cognition/clues/{clueId}:
+    delete:
+      tags: [clues]
+      summary: 撤销线索（§8.5 / §6.4）
+      description: 仅允许撤销未进入任何草稿的 PENDING 线索和 KNOWLEDGE_ONLY 已整理线索；已进入草稿的返回 COGNITION_CLUE_IN_USE；只逻辑删除。
+      operationId: deleteClue
+      parameters:
+        - name: clueId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: clue_1001
+      responses:
+        '200':
+          description: 成功时 data 为被撤销的线索 ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringResponse'
+              example:
+                code: 200
+                message: 成功
+                data: clue_1001
+                total: null
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /athena/cognition/inbox:
+    get:
+      tags: [aggregates]
+      summary: 「我的身体线索」聚合页（§8.4）
+      description: 一次返回待整理/已整理/我的疑问三标签的首屏数据与计数；各列表只返回首屏（20 条），hasMore 提示是否有更多。
+      operationId: getInbox
+      responses:
+        '200':
+          description: 聚合结构
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InboxResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /athena/cognition/digest-tasks:
     post:
-      summary: Create an asynchronous digest task
-      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
-      requestBody: { $ref: '#/components/requestBodies/JsonBody' }
-      responses: { '200': { $ref: '#/components/responses/Ok' } }
-  /digest-tasks/{taskId}:
+      tags: [digests]
+      summary: 用户主动「帮我整理」（§8.6 / §7.1）
+      description: |
+        以 clueIds 首条为入口，扩展为同用户、同候选主题（suggestedTopicId 优先，否则 suggestedTopicTitle 去空格精确分组）的全部 RELATED+PENDING 线索。
+        没有可用线索返回 COGNITION_NO_VALID_EVIDENCE；同候选主题已有开放草稿返回 COGNITION_TASK_RUNNING。
+        V1 同步完成：PROCESSING → 固定生成器 → READY，任务状态 SUCCEEDED；失败时 task/digest 为 FAILED 并保存 failureCode，源线索保持 PROCESSING 可重试（§12）。
+      operationId: createDigestTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DigestTaskCreateRequest'
+      responses:
+        '200':
+          description: 任务结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DigestTaskResponse'
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /athena/cognition/digest-tasks/{taskId}:
     get:
-      summary: Read digest task state
-      parameters: [{ $ref: '#/components/parameters/TaskId' }]
-      responses: { '200': { $ref: '#/components/responses/Ok' } }
-  /digest-tasks/{taskId}/retry:
+      tags: [digests]
+      summary: 查询整理任务
+      operationId: getDigestTask
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: task_3001
+      responses:
+        '200':
+          description: 任务状态（含 digestId / failureCode / retryCount）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DigestTaskResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /athena/cognition/digest-tasks/{taskId}/retry:
     post:
-      summary: Retry a failed digest task
+      tags: [digests]
+      summary: 重试失败任务（§12）
+      description: 仅 FAILED 任务可重试，其他状态返回 COGNITION_STATE_CONFLICT；复用原 digest 与证据重新生成，retryCount+1，triggerType 维持原值。
+      operationId: retryDigestTask
       parameters:
-        - { $ref: '#/components/parameters/TaskId' }
-        - { $ref: '#/components/parameters/IdempotencyKey' }
-      responses: { '200': { $ref: '#/components/responses/Ok' } }
-  /digests:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: task_3001
+      responses:
+        '200':
+          description: 重试后的任务状态
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DigestTaskResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /athena/cognition/digests:
     get:
-      summary: List digest drafts
+      tags: [digests]
+      summary: 分页查询草稿（§8.7）
+      operationId: listDigests
       parameters:
-        - { name: status, in: query, schema: { type: string, enum: [PENDING_CONFIRMATION, ACCEPTED_AS_TOPIC, SAVED_AS_KNOWLEDGE, REJECTED] } }
-        - { $ref: '#/components/parameters/Cursor' }
-        - { $ref: '#/components/parameters/Limit' }
-      responses: { '200': { $ref: '#/components/responses/Ok' } }
-  /digests/{digestId}:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/DigestStatus'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
+      responses:
+        '200':
+          description: 分页草稿列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DigestListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /athena/cognition/digests/{digestId}:
     get:
-      summary: Read a digest with evidence and uncertainty
-      parameters: [{ $ref: '#/components/parameters/DigestId' }]
-      responses: { '200': { $ref: '#/components/responses/Ok' } }
-  /digests/{digestId}/decisions:
+      tags: [digests]
+      summary: 草稿详情（§8.7）
+      description: 返回结构化草稿字段与 evidence 展示对象（CLUE 证据带 articleId/articleTitle/articleType，可跳回原文章）。
+      operationId: getDigest
+      parameters:
+        - name: digestId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: digest_5001
+      responses:
+        '200':
+          description: 草稿详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DigestResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /athena/cognition/digests/{digestId}/decision:
     post:
-      summary: Accept as topic, save as knowledge, or reject
+      tags: [digests]
+      summary: 提交草稿决定（§8.8 / §7.2）
+      description: |
+        仅 READY 草稿可决定且只能决定一次（重复决定返回 COGNITION_STATE_CONFLICT）；
+        clientVersion 与草稿 version 不一致返回 COGNITION_VERSION_CONFLICT。
+        ACCEPT_AS_TOPIC：事务内创建主题（按真实证据计算 maturity、确定性关键词推断 domain）、证据关联与 PENDING 行动；
+        KEEP_AS_KNOWLEDGE / REJECT：topic 与 action 为 null。
+      operationId: decideDigest
       parameters:
-        - { $ref: '#/components/parameters/DigestId' }
-        - { $ref: '#/components/parameters/IdempotencyKey' }
-      requestBody: { $ref: '#/components/requestBodies/JsonBody' }
-      responses: { '200': { $ref: '#/components/responses/Ok' } }
-  /topics:
+        - name: digestId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: digest_5001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DigestDecisionRequest'
+      responses:
+        '200':
+          description: 决定结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DigestDecisionResponse'
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /athena/cognition/topics:
     get:
-      summary: List cognition topics
+      tags: [topics]
+      summary: 分页查询主题（§8.9）
+      operationId: listTopics
       parameters:
-        - { name: progress, in: query, schema: { type: string, enum: [ACTIVE, PAUSED, ARCHIVED] } }
-        - { $ref: '#/components/parameters/Cursor' }
-        - { $ref: '#/components/parameters/Limit' }
-      responses: { '200': { $ref: '#/components/responses/Ok' } }
-  /topics/{topicId}:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
+      responses:
+        '200':
+          description: 分页主题列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /athena/cognition/topics/{topicId}:
     get:
-      summary: Read a topic, evidence, action, and version history
-      parameters: [{ $ref: '#/components/parameters/TopicId' }]
-      responses: { '200': { $ref: '#/components/responses/Ok' } }
-  /topics/{topicId}/progress:
-    patch:
-      summary: Pause, resume, or archive a topic
+      tags: [topics]
+      summary: 主题详情（§8.9）
+      description: 一次返回主题、来源草稿、证据、当前行动、相关文章、最近反馈和最近变化说明。
+      operationId: getTopic
       parameters:
-        - { $ref: '#/components/parameters/TopicId' }
-        - { $ref: '#/components/parameters/IdempotencyKey' }
-      requestBody: { $ref: '#/components/requestBodies/JsonBody' }
-      responses: { '200': { $ref: '#/components/responses/Ok' } }
-  /actions/{actionId}/feedback:
+        - name: topicId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: topic_7001
+      responses:
+        '200':
+          description: 主题详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /athena/cognition/actions/{actionId}/feedback:
     post:
-      summary: Submit action accuracy feedback
+      tags: [actions]
+      summary: 提交行动反馈（§8.10 / §7.3）
+      description: |
+        行动必须属于 topicId 且为 PENDING；同一行动只能反馈一次（重复返回 COGNITION_STATE_CONFLICT）。
+        OCCURRED/NOT_OCCURRED/UNCERTAIN → action=COMPLETED 并创建证据（UNCERTAIN 不提高成熟度）；
+        SKIPPED → action=SKIPPED，不创建证据（evidenceId 为 null）；
+        occurredAt 缺省取提交时间；返回 refreshRequired=true 提示前端刷新首页。
+      operationId: submitFeedback
       parameters:
-        - { name: actionId, in: path, required: true, schema: { type: integer, format: int64 } }
-        - { $ref: '#/components/parameters/IdempotencyKey' }
-      requestBody: { $ref: '#/components/requestBodies/JsonBody' }
-      responses: { '200': { $ref: '#/components/responses/Ok' } }
-  /home:
+        - name: actionId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: action_8001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackRequest'
+      responses:
+        '200':
+          description: 反馈结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackResultResponse'
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /athena/cognition/home:
     get:
-      summary: Read cold-start, forming, or active health home
-      responses: { '200': { $ref: '#/components/responses/Ok' } }
+      tags: [aggregates]
+      summary: 健康首页聚合（§8.11）
+      description: |
+        summaryState 九态按优先级选择：DIGEST_READY > DIGEST_PROCESSING > DIGEST_FAILED（最新任务失败）>
+        ACTION_COMPLETED > OBSERVING > BUILDING_BASELINE > DIGEST_KEPT_AS_KNOWLEDGE / DIGEST_REJECTED（仅 24h 内短期反馈）> EMPTY。
+        完全无数据返回 200 + EMPTY + 可空对象为 null。
+      operationId: getHome
+      responses:
+        '200':
+          description: 首页聚合
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HomeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
 components:
-  parameters:
-    IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 8 } }
-    Cursor: { name: cursor, in: query, schema: { type: integer, format: int64 } }
-    Limit: { name: limit, in: query, schema: { type: integer, default: 20, minimum: 1, maximum: 100 } }
-    TaskId: { name: taskId, in: path, required: true, schema: { type: integer, format: int64 } }
-    DigestId: { name: digestId, in: path, required: true, schema: { type: integer, format: int64 } }
-    TopicId: { name: topicId, in: path, required: true, schema: { type: integer, format: int64 } }
-  requestBodies:
-    JsonBody:
-      required: true
-      content:
-        application/json:
-          schema: { type: object, additionalProperties: true }
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   responses:
-    Ok:
-      description: Athena Result envelope; business payload is in data
+    InvalidArgument:
+      description: 参数或枚举非法（HTTP 200 时信封 code=400）
       content:
         application/json:
           schema:
-            type: object
-            required: [code, message]
-            properties:
-              code: { type: integer }
-              message: { type: string }
-              data: {}
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 400
+            message: selectedText 不能为空
+            data:
+              errorCode: COGNITION_INVALID_ARGUMENT
+            total: null
+    Unauthenticated:
+      description: 未登录（信封 code=401，无 data.errorCode）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 401
+            message: 请先登录
+            data: null
+            total: null
+    NotFound:
+      description: 对象不存在或不属于当前用户（不泄露对象是否存在）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 404
+            message: 对象不存在
+            data:
+              errorCode: COGNITION_NOT_FOUND
+            total: null
+    Conflict:
+      description: 状态或版本冲突（含 COGNITION_STATE_CONFLICT / COGNITION_VERSION_CONFLICT / COGNITION_CLUE_IN_USE / COGNITION_TASK_RUNNING）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 409
+            message: 草稿已经处理，请刷新后重试
+            data:
+              errorCode: COGNITION_STATE_CONFLICT
+              objectId: digest_5001
+              currentStatus: ACCEPTED
+            total: null
+
+  schemas:
+    # ---------- enums（契约 §5，名称与前端一致） ----------
+    ClueType:
+      type: string
+      enum: [ARTICLE_HIGHLIGHT, USER_QUESTION, BODY_RECORD, ACTION_FEEDBACK]
+    ClueIntent:
+      type: string
+      enum: [RELATED, QUESTION, KNOWLEDGE_ONLY]
+    RelationType:
+      type: string
+      enum: [CURRENT, PAST, OBSERVE, KNOWLEDGE_ONLY]
+    HelpRequestType:
+      type: string
+      enum: [OBSERVE, KNOWLEDGE, ATTENTION, SAVE_ONLY]
+    QuestionType:
+      type: string
+      enum: [IS_COMMON, POSSIBLE_CAUSES, SELF_CARE, PROFESSIONAL_HELP, CUSTOM]
+    CycleRelation:
+      type: string
+      enum: [BEFORE_PERIOD, DURING_PERIOD, AFTER_PERIOD, NO_RELATION, UNKNOWN]
+    ClueStatus:
+      type: string
+      enum: [PENDING, PROCESSING, ORGANIZED, DISMISSED]
+    ClueSource:
+      type: string
+      enum: [KNOWLEDGE_ARTICLE]
+    ClueListView:
+      type: string
+      enum: [PENDING, ORGANIZED, QUESTIONS, ALL]
+    DigestStatus:
+      type: string
+      enum: [PROCESSING, READY, ACCEPTED, KEPT_AS_KNOWLEDGE, REJECTED, FAILED, EXPIRED]
+    DigestDecision:
+      type: string
+      enum: [ACCEPT_AS_TOPIC, KEEP_AS_KNOWLEDGE, REJECT]
+    DigestTaskStatus:
+      type: string
+      enum: [PENDING, RUNNING, SUCCEEDED, FAILED]
+    TriggerType:
+      type: string
+      enum: [RULE_THRESHOLD, USER_REQUEST, RETRY]
+    Maturity:
+      type: string
+      enum: [CLUE, INSUFFICIENT, EARLY_LINK, REPEATED_PATTERN, RELATIVELY_STABLE]
+    UserProgress:
+      type: string
+      enum: [PENDING_CONFIRMATION, FOLLOWING, OBSERVING, PAUSED, ARCHIVED]
+    RiskStatus:
+      type: string
+      enum: [NONE, WATCH, PROFESSIONAL_HELP]
+    TopicDomain:
+      type: string
+      description: 服务端确定性关键词推断，未命中为 OTHER
+      enum: [MOOD, CYCLE, SLEEP, SYMPTOM, SEXUAL_HEALTH, OTHER]
+    ActionType:
+      type: string
+      enum: [RECORD_BODY, RECORD_MOOD, RECORD_SLEEP, READ_CONTENT, ANSWER_QUESTION, CONFIRM_STATUS]
+    ActionStatus:
+      type: string
+      enum: [PENDING, COMPLETED, SKIPPED, EXPIRED]
+    ActionFeedbackResult:
+      type: string
+      enum: [OCCURRED, NOT_OCCURRED, UNCERTAIN, SKIPPED]
+    EvidenceSourceType:
+      type: string
+      enum: [CLUE, BODY_RECORD, ACTION_FEEDBACK, DEVICE]
+    FactLevel:
+      type: string
+      enum: [KNOWLEDGE, QUESTION, SELF_REPORTED, OBSERVED]
+    HomeSummaryState:
+      type: string
+      enum: [EMPTY, BUILDING_BASELINE, DIGEST_PROCESSING, DIGEST_READY, OBSERVING, ACTION_COMPLETED, DIGEST_KEPT_AS_KNOWLEDGE, DIGEST_REJECTED, DIGEST_FAILED]
+
+    # ---------- 信封 ----------
+    ErrorBody:
+      type: object
+      properties:
+        errorCode:
+          type: string
+          description: 8 个 COGNITION_* 稳定业务错误码之一
+        objectId:
+          type: string
+        currentStatus:
+          type: string
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: 语义值 400/401/404/409/500
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        total:
+          type: integer
+          format: int64
+          nullable: true
+    StringResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: string
+        total:
+          type: integer
+          format: int64
+          nullable: true
+
+    # ---------- 线索 ----------
+    ClueCreateRequest:
+      type: object
+      required: [type, intent]
+      properties:
+        type:
+          $ref: '#/components/schemas/ClueType'
+        intent:
+          $ref: '#/components/schemas/ClueIntent'
+        relationType:
+          $ref: '#/components/schemas/RelationType'
+        helpRequestType:
+          $ref: '#/components/schemas/HelpRequestType'
+        articleId:
+          type: string
+          maxLength: 128
+        articleTitle:
+          type: string
+          maxLength: 255
+        articleType:
+          type: integer
+          description: 当前默认 100
+        selectedText:
+          type: string
+          maxLength: 4000
+        questionType:
+          $ref: '#/components/schemas/QuestionType'
+        questionText:
+          type: string
+          maxLength: 1000
+        occurredAt:
+          type: string
+          format: date-time
+        cycleRelation:
+          $ref: '#/components/schemas/CycleRelation'
+        severity:
+          type: integer
+          minimum: 0
+          maximum: 10
+        resolved:
+          type: boolean
+        source:
+          $ref: '#/components/schemas/ClueSource'
+        suggestedTopicId:
+          type: string
+          maxLength: 128
+        suggestedTopicTitle:
+          type: string
+          maxLength: 255
+          description: 前端传的简单主题标签，不视为 AI 结果
+        originalLabel:
+          type: string
+          maxLength: 64
+          description: 还原用户当时点击的中文入口，如「和我有关」
+    ClueView:
+      type: object
+      properties:
+        id:
+          type: string
+          example: clue_1001
+        type:
+          $ref: '#/components/schemas/ClueType'
+        intent:
+          $ref: '#/components/schemas/ClueIntent'
+        relationType:
+          $ref: '#/components/schemas/RelationType'
+        helpRequestType:
+          $ref: '#/components/schemas/HelpRequestType'
+        articleId:
+          type: string
+        articleTitle:
+          type: string
+        articleType:
+          type: integer
+        selectedText:
+          type: string
+        questionType:
+          $ref: '#/components/schemas/QuestionType'
+        questionText:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        cycleRelation:
+          $ref: '#/components/schemas/CycleRelation'
+        severity:
+          type: integer
+        resolved:
+          type: boolean
+        source:
+          $ref: '#/components/schemas/ClueSource'
+        status:
+          $ref: '#/components/schemas/ClueStatus'
+        suggestedTopicId:
+          type: string
+        suggestedTopicTitle:
+          type: string
+        originalLabel:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    DigestTaskTriggerView:
+      type: object
+      description: 创建线索时是否触发了自动整理（§10.1 RULE_1/2）
+      properties:
+        triggered:
+          type: boolean
+        taskId:
+          type: string
+          example: task_3001
+        digestId:
+          type: string
+          example: digest_5001
+        status:
+          $ref: '#/components/schemas/DigestTaskStatus'
+    ClueCreateView:
+      type: object
+      properties:
+        clue:
+          $ref: '#/components/schemas/ClueView'
+        digestTask:
+          $ref: '#/components/schemas/DigestTaskTriggerView'
+
+    # ---------- 证据 ----------
+    EvidenceView:
+      type: object
+      properties:
+        id:
+          type: string
+          example: evidence_1
+        sourceType:
+          $ref: '#/components/schemas/EvidenceSourceType'
+        sourceId:
+          type: string
+          description: 原始对象 ID（CLUE 为 clue_xx，BODY_RECORD 为 daily_record.id）
+        factLevel:
+          $ref: '#/components/schemas/FactLevel'
+        summary:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        linkedAt:
+          type: string
+          format: date-time
+        active:
+          type: boolean
+        articleId:
+          type: string
+          description: 仅 CLUE 证据返回，用于跳回原文章
+        articleTitle:
+          type: string
+        articleType:
+          type: integer
+
+    # ---------- 整理任务与草稿 ----------
+    DigestTaskCreateRequest:
+      type: object
+      properties:
+        triggerType:
+          $ref: '#/components/schemas/TriggerType'
+          description: 缺省 USER_REQUEST
+        clueIds:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+          example: [clue_1001]
+        suggestedTitle:
+          type: string
+          maxLength: 120
+    DigestTaskView:
+      type: object
+      properties:
+        taskId:
+          type: string
+          example: task_3001
+        digestId:
+          type: string
+          example: digest_5001
+        status:
+          $ref: '#/components/schemas/DigestTaskStatus'
+        digestStatus:
+          $ref: '#/components/schemas/DigestStatus'
+        triggerType:
+          $ref: '#/components/schemas/TriggerType'
+        retryCount:
+          type: integer
+        failureCode:
+          type: string
+          description: 失败时为 COGNITION_GENERATION_FAILED
+    DigestView:
+      type: object
+      properties:
+        id:
+          type: string
+          example: digest_5001
+        title:
+          type: string
+        status:
+          $ref: '#/components/schemas/DigestStatus'
+        commonPoint:
+          type: string
+        possibleRelation:
+          type: string
+        uncertainty:
+          type: string
+        suggestedAction:
+          type: string
+        evidenceIds:
+          type: array
+          items:
+            type: string
+        sourceClueIds:
+          type: array
+          items:
+            type: string
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceView'
+        generatorVersion:
+          type: string
+          example: fixed-v1
+        generatedAt:
+          type: string
+          format: date-time
+        failureCode:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+    DigestDecisionRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          $ref: '#/components/schemas/DigestDecision'
+        reason:
+          type: string
+          maxLength: 255
+        clientVersion:
+          type: integer
+          description: 与草稿 version 做乐观锁校验
+    DecidedDigestView:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          $ref: '#/components/schemas/DigestStatus'
+        version:
+          type: integer
+    DigestDecisionView:
+      type: object
+      properties:
+        digest:
+          $ref: '#/components/schemas/DecidedDigestView'
+        topic:
+          $ref: '#/components/schemas/TopicView'
+          description: 仅 ACCEPT_AS_TOPIC 非空
+        action:
+          $ref: '#/components/schemas/ActionView'
+          description: 仅 ACCEPT_AS_TOPIC 非空
+
+    # ---------- 主题 ----------
+    TopicView:
+      type: object
+      properties:
+        id:
+          type: string
+          example: topic_7001
+        sourceDigestId:
+          type: string
+        title:
+          type: string
+        domain:
+          $ref: '#/components/schemas/TopicDomain'
+        maturity:
+          $ref: '#/components/schemas/Maturity'
+        userProgress:
+          $ref: '#/components/schemas/UserProgress'
+        riskStatus:
+          $ref: '#/components/schemas/RiskStatus'
+        stageUnderstanding:
+          type: string
+        knownFacts:
+          type: array
+          items:
+            type: string
+          description: 仅用户确认过的事实（CURRENT/PAST）
+        openQuestions:
+          type: array
+          items:
+            type: string
+        evidenceIds:
+          type: array
+          items:
+            type: string
+        evidenceCount:
+          type: integer
+        articleClueCount:
+          type: integer
+        bodyRecordCount:
+          type: integer
+        cycleCount:
+          type: integer
+        nextActionId:
+          type: string
+        lastUpdatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+    SourceDigestRef:
+      type: object
+      properties:
+        id:
+          type: string
+        possibleRelation:
+          type: string
+    RelatedArticleView:
+      type: object
+      properties:
+        articleId:
+          type: string
+        articleTitle:
+          type: string
+        articleType:
+          type: integer
+    TopicDetailView:
+      type: object
+      properties:
+        topic:
+          $ref: '#/components/schemas/TopicView'
+        sourceDigest:
+          $ref: '#/components/schemas/SourceDigestRef'
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceView'
+        nextAction:
+          $ref: '#/components/schemas/ActionView'
+        relatedArticles:
+          type: array
+          items:
+            $ref: '#/components/schemas/RelatedArticleView'
+        recentFeedback:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedbackView'
+        recentChange:
+          type: string
+
+    # ---------- 行动与反馈 ----------
+    ActionView:
+      type: object
+      properties:
+        id:
+          type: string
+          example: action_8001
+        topicId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        actionType:
+          $ref: '#/components/schemas/ActionType'
+        status:
+          $ref: '#/components/schemas/ActionStatus'
+        dueAt:
+          type: string
+          format: date-time
+        feedbackOptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActionFeedbackResult'
+        createdAt:
+          type: string
+          format: date-time
+    FeedbackRequest:
+      type: object
+      required: [topicId, result]
+      properties:
+        topicId:
+          type: string
+          example: topic_7001
+        result:
+          $ref: '#/components/schemas/ActionFeedbackResult'
+        note:
+          type: string
+          maxLength: 1000
+        occurredAt:
+          type: string
+          format: date-time
+          description: 缺省取提交时间
+    FeedbackView:
+      type: object
+      properties:
+        id:
+          type: string
+          example: feedback_9001
+        actionId:
+          type: string
+        topicId:
+          type: string
+        result:
+          $ref: '#/components/schemas/ActionFeedbackResult'
+        note:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        evidenceId:
+          type: string
+          description: SKIPPED 时为空
+    FeedbackResultView:
+      type: object
+      properties:
+        feedback:
+          $ref: '#/components/schemas/FeedbackView'
+        actionStatus:
+          $ref: '#/components/schemas/ActionStatus'
+        topicVersion:
+          type: integer
+        refreshRequired:
+          type: boolean
+          example: true
+
+    # ---------- 聚合 ----------
+    InboxCounts:
+      type: object
+      properties:
+        pending:
+          type: integer
+          format: int64
+        organizedTopics:
+          type: integer
+          format: int64
+        organizedKnowledge:
+          type: integer
+          format: int64
+        questions:
+          type: integer
+          format: int64
+    InboxView:
+      type: object
+      properties:
+        pendingClues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClueView'
+        activeDigest:
+          $ref: '#/components/schemas/DigestView'
+        topics:
+          type: array
+          items:
+            $ref: '#/components/schemas/TopicView'
+        knowledgeDigests:
+          type: array
+          items:
+            $ref: '#/components/schemas/DigestView'
+        knowledgeClues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClueView'
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClueView'
+        counts:
+          $ref: '#/components/schemas/InboxCounts'
+        hasMore:
+          type: boolean
+    HomeInsight:
+      type: object
+      properties:
+        title:
+          type: string
+        body:
+          type: string
+        evidenceCount:
+          type: integer
+        uncertainty:
+          type: string
+    HomeTopic:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        maturity:
+          $ref: '#/components/schemas/Maturity'
+        userProgress:
+          $ref: '#/components/schemas/UserProgress'
+        riskStatus:
+          $ref: '#/components/schemas/RiskStatus'
+        evidenceCount:
+          type: integer
+        cycleCount:
+          type: integer
+        nextActionId:
+          type: string
+    HomeView:
+      type: object
+      properties:
+        asOf:
+          type: string
+          format: date-time
+        summaryState:
+          $ref: '#/components/schemas/HomeSummaryState'
+        headline:
+          type: string
+        latestInsight:
+          $ref: '#/components/schemas/HomeInsight'
+        activeTopic:
+          $ref: '#/components/schemas/HomeTopic'
+        pendingDigestCount:
+          type: integer
+        nextAction:
+          $ref: '#/components/schemas/ActionView'
+        failedTaskCount:
+          type: integer
+
+    # ---------- 响应信封（data 按接口替换） ----------
+    ClueCreateResponse:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ClueCreateView'
+    ClueListResponse:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/ClueView'
+            total:
+              type: integer
+              format: int64
+              example: 1
+    InboxResponse:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/InboxView'
+    DigestTaskResponse:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/DigestTaskView'
+    DigestListResponse:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/DigestView'
+            total:
+              type: integer
+              format: int64
+    DigestResponse:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/DigestView'
+    DigestDecisionResponse:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/DigestDecisionView'
+    TopicListResponse:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/TopicView'
+            total:
+              type: integer
+              format: int64
+    TopicDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/TopicDetailView'
+    FeedbackResultResponse:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/FeedbackResultView'
+    HomeResponse:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/HomeView'
+    Envelope:
+      type: object
+      description: Result<T> 统一信封；分页接口以 data 存数组、total 存总数
+      properties:
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: 成功
+        total:
+          type: integer
+          format: int64
+          nullable: true
