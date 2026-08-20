@@ -72,6 +72,8 @@ public class ApiConfig {
     public static final String API_INSIGHT_FEATURE_REFRESH = API_INSIGHT_FEATURE + "/refresh";
     public static final String API_INSIGHT_RECOMMEND = API_INSIGHT_BASE + "/recommend";
 
+    public static final String API_COGNITION_BASE = BASE_URL + "cognition";
+
     public static final String MOCK_COVER_URL =
             "https://xiaoxiaolanfeng-java-ai.oss-cn-beijing.aliyuncs.com/9977fb324f344996997b48081aecfae2.jpg";
 
@@ -82,5 +84,10 @@ public class ApiConfig {
 
     public static final String API_QWEN_VL =
             "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
-    public static final String QWEN_API_KEY = "sk-dc65179484174c2494d247185601f167";
+    public static final String QWEN_API_KEY = getEnvOrEmpty("ATHENA_QWEN_API_KEY");
+
+    private static String getEnvOrEmpty(String name) {
+        String value = System.getenv(name);
+        return value == null ? "" : value;
+    }
 }

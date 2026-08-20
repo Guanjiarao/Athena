@@ -11,6 +11,7 @@ import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -33,16 +34,25 @@ import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.target.Target;
 import com.whu.software.athena.config.ApiConfig;
+import com.whu.software.athena.entity.ApiResponse;
+import com.whu.software.athena.entity.HealthRecordEntity;
 import com.whu.software.athena.utils.ArticleListParseHelper;
 import com.whu.software.athena.utils.BlogCacheBean;
 import com.whu.software.athena.utils.BlogCacheDBHelper;
+import com.whu.software.athena.utils.CycleApiService;
+import com.whu.software.athena.utils.CycleDataManager;
+import com.whu.software.athena.utils.HealthRecordApiService;
+import com.whu.software.athena.utils.MenstrualCalculator;
 import com.whu.software.athena.utils.TokenManager;
 import com.whu.software.athena.utils.UnsafeOkHttpClient;
+import com.whu.software.athena.utils.UserDao;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -81,6 +91,11 @@ public class RecommendFragment extends Fragment {
     private RecyclerView videoRecyclerView;
     private RecommendVideoAdapter videoAdapter;
     private final List<BlogCacheBean> videoList = new ArrayList<>();
+
+    private TextView statusGreeting;
+    private TextView statusDescription;
+    private String currentUserName = "";
+    private int currentModeType = 1;
 
     // 网络 & 工具
     private OkHttpClient okHttpClient;
@@ -573,6 +588,7 @@ public class RecommendFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
+        isDestroyed = false;
         okHttpClient = UnsafeOkHttpClient.getUnsafeOkHttpClient();
         if (getContext() != null) {
             dbHelper = BlogCacheDBHelper.getInstance(getContext());
@@ -581,14 +597,28 @@ public class RecommendFragment extends Fragment {
         bannerViewPager   = view.findViewById(R.id.knowledge_banner);
         bannerIndicator   = view.findViewById(R.id.knowledge_banner_indicator);
         videoRecyclerView = view.findViewById(R.id.knowledge_video_grid);
+        statusGreeting    = view.findViewById(R.id.knowledge_status_greeting);
+        statusDescription = view.findViewById(R.id.knowledge_status_description);
 
         setupBanner();
         setupBannerNavButtons(view);
         setupVideoList();
         setupClickListeners(view);
+        updateStatusCard();
+        loadCurrentUserName();
+        loadTodayMode();
+        syncLatestCycleThenRefresh();
 
         loadBannerData();
         loadVideoData();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        updateStatusCard();
+        loadCurrentUserName();
+        loadTodayMode();
     }
 
     @Override
@@ -1423,6 +1453,257 @@ public class RecommendFragment extends Fragment {
     // -----------------------------------------------------------------------
     // 点击监听 & 工具方法
     // -----------------------------------------------------------------------
+
+    private void updateStatusCard() {
+        if (statusGreeting == null || statusDescription == null || getContext() == null) {
+            return;
+        }
+        String displayName = firstNonEmpty(currentUserName, getLocalUserNameFallback());
+        statusGreeting.setText("Hi~ " + displayName);
+        statusDescription.setText(buildCycleDescription());
+    }
+
+    private void loadCurrentUserName() {
+        Context ctx = getContext();
+        if (ctx == null || okHttpClient == null) {
+            return;
+        }
+        String token = TokenManager.getToken(ctx);
+        if (TextUtils.isEmpty(token)) {
+            currentUserName = "";
+            updateStatusCard();
+            return;
+        }
+
+        Request request = new Request.Builder()
+                .url(ApiConfig.API_USER_GET_INFO)
+                .addHeader("Authorization", "Bearer " + token)
+                .get()
+                .build();
+        okHttpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                Log.w(TAG, "loadCurrentUserName failed", e);
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                String body = response.body() != null ? response.body().string() : "";
+                if (!response.isSuccessful()) {
+                    Log.w(TAG, "loadCurrentUserName HTTP=" + response.code());
+                    return;
+                }
+                String name = parseUserNameFromProfile(body);
+                if (!TextUtils.isEmpty(name)) {
+                    runOnUiThreadSafe(() -> {
+                        currentUserName = name;
+                        updateStatusCard();
+                    });
+                }
+            }
+        });
+    }
+
+    private void loadTodayMode() {
+        Context ctx = getContext();
+        if (ctx == null || TextUtils.isEmpty(TokenManager.getToken(ctx))) {
+            return;
+        }
+        String today = LocalDate.now().toString();
+        HealthRecordApiService.getDailyDetail(ctx, today,
+                new HealthRecordApiService.Callback<ApiResponse<List<HealthRecordEntity>>>() {
+                    @Override
+                    public void onSuccess(ApiResponse<List<HealthRecordEntity>> result) {
+                        if (result == null || result.getCode() != 200 || result.getData() == null) {
+                            return;
+                        }
+                        int modeType = resolveModeType(result.getData());
+                        runOnUiThreadSafe(() -> {
+                            currentModeType = modeType;
+                            updateStatusCard();
+                        });
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        Log.w(TAG, "loadTodayMode failed: " + message);
+                    }
+                });
+    }
+
+    private void syncLatestCycleThenRefresh() {
+        Context ctx = getContext();
+        if (ctx == null || TextUtils.isEmpty(TokenManager.getToken(ctx))) {
+            return;
+        }
+        new Thread(() -> {
+            try {
+                CycleApiService.LatestCycle latest = CycleApiService.getLatestCycleSync(ctx);
+                if (latest != null && latest.startDate != null) {
+                    CycleDataManager.saveLastPeriodStart(ctx, latest.startDate);
+                    if (latest.durationDays != null && latest.durationDays > 0) {
+                        CycleDataManager.saveSettings(
+                                ctx,
+                                latest.durationDays,
+                                latest.cycleLength != null && latest.cycleLength > 0
+                                        ? latest.cycleLength
+                                        : CycleDataManager.getCycleDays(ctx),
+                                CycleDataManager.isIrregular(ctx)
+                        );
+                    } else if (latest.cycleLength != null && latest.cycleLength > 0) {
+                        CycleDataManager.saveSettings(
+                                ctx,
+                                CycleDataManager.getPeriodDays(ctx),
+                                latest.cycleLength,
+                                CycleDataManager.isIrregular(ctx)
+                        );
+                    }
+                    LocalDate today = LocalDate.now();
+                    LocalDate end = latest.displayEndDate != null ? latest.displayEndDate : latest.endDate;
+                    boolean visible = end == null
+                            ? !today.isBefore(latest.startDate)
+                            : (!today.isBefore(latest.startDate) && !today.isAfter(end));
+                    CycleDataManager.setActualPeriodVisible(ctx, visible);
+                    runOnUiThreadSafe(this::updateStatusCard);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "syncLatestCycleThenRefresh failed", e);
+            }
+        }, "RecommendCycleSync").start();
+    }
+
+    private String buildCycleDescription() {
+        Context ctx = getContext();
+        if (ctx == null) {
+            return modeLabel() + "\u6a21\u5f0f\uff0c\u5c1a\u672a\u83b7\u53d6\u751f\u7406\u5468\u671f\u4fe1\u606f";
+        }
+        LocalDate lastStart = CycleDataManager.getLastPeriodStart(ctx);
+        if (lastStart == null) {
+            return "\u76ee\u524d\u662f" + modeLabel() + "\u6a21\u5f0f\uff0c\u8bf7\u5728\u5065\u5eb7\u6a21\u5757\u8bb0\u5f55\u6700\u8fd1\u4e00\u6b21\u7ecf\u671f";
+        }
+
+        int periodDays = Math.max(1, CycleDataManager.getPeriodDays(ctx));
+        int cycleDays = Math.max(periodDays + 10, CycleDataManager.getCycleDays(ctx));
+        LocalDate today = LocalDate.now();
+        long diff = ChronoUnit.DAYS.between(lastStart, today);
+        if (diff < 0) {
+            return "\u76ee\u524d\u662f" + modeLabel() + "\u6a21\u5f0f\uff0c\u8bf7\u786e\u8ba4\u6700\u8fd1\u4e00\u6b21\u7ecf\u671f\u65e5\u671f";
+        }
+
+        int dayOfCycle = (int) (diff % cycleDays);
+        int cycleDay = dayOfCycle + 1;
+        PhaseInfo phase = resolveCyclePhase(ctx, today, lastStart, periodDays, cycleDays, dayOfCycle, cycleDay);
+        return "\u76ee\u524d\u662f" + modeLabel() + "\u6a21\u5f0f\uff0c\u4eca\u5929\u662f"
+                + phase.name + "\u7b2c" + phase.day + "\u5929"
+                + "\uff08\u5468\u671f\u7b2c" + cycleDay + "\u5929\uff09";
+    }
+
+    private PhaseInfo resolveCyclePhase(Context ctx,
+                                        LocalDate today,
+                                        LocalDate lastStart,
+                                        int periodDays,
+                                        int cycleDays,
+                                        int dayOfCycle,
+                                        int cycleDay) {
+        long sinceLastStart = ChronoUnit.DAYS.between(lastStart, today);
+        if (CycleDataManager.isActualPeriodVisible(ctx) && sinceLastStart >= 0 && sinceLastStart < periodDays) {
+            return new PhaseInfo("\u6708\u7ecf\u671f", (int) sinceLastStart + 1);
+        }
+
+        int dayType = MenstrualCalculator.getDayType(today, lastStart, periodDays, cycleDays);
+        if (dayType == MenstrualCalculator.PREDICT_PERIOD || dayOfCycle < periodDays) {
+            return new PhaseInfo("\u6708\u7ecf\u671f", dayOfCycle + 1);
+        }
+
+        int ovulationDay = Math.max(periodDays + 1, cycleDays - 14);
+        int ovulationStart = Math.max(periodDays, ovulationDay - 5);
+        int ovulationEnd = Math.min(cycleDays - 1, ovulationDay + 4);
+        if (dayType == MenstrualCalculator.OVULATION_DAY
+                || dayType == MenstrualCalculator.OVULATION_WINDOW
+                || (dayOfCycle >= ovulationStart && dayOfCycle <= ovulationEnd)) {
+            return new PhaseInfo("\u6392\u5375\u671f", dayOfCycle - ovulationStart + 1);
+        }
+        if (dayOfCycle < ovulationStart) {
+            return new PhaseInfo("\u5375\u6ce1\u671f", Math.max(1, cycleDay - periodDays));
+        }
+        return new PhaseInfo("\u9ec4\u4f53\u671f", dayOfCycle - ovulationEnd + 1);
+    }
+
+    private int resolveModeType(List<HealthRecordEntity> records) {
+        int fallback = currentModeType == 2 || currentModeType == 3 ? currentModeType : 1;
+        if (records == null || records.isEmpty()) {
+            return fallback;
+        }
+        int latest = fallback;
+        for (HealthRecordEntity record : records) {
+            if (record == null) {
+                continue;
+            }
+            int modeType = record.getModeType();
+            if (modeType == 1 || modeType == 2 || modeType == 3) {
+                latest = modeType;
+            }
+        }
+        return latest;
+    }
+
+    private String modeLabel() {
+        if (currentModeType == 2) {
+            return "\u5907\u5b55";
+        }
+        if (currentModeType == 3) {
+            return "\u6000\u5b55";
+        }
+        return "\u7ecf\u671f";
+    }
+
+    private String parseUserNameFromProfile(String body) {
+        try {
+            JSONObject root = new JSONObject(body);
+            JSONObject data = root.optJSONObject("data");
+            JSONObject target = data != null ? data : root;
+            return firstNonEmpty(
+                    target.optString("nickName", ""),
+                    target.optString("nickname", ""),
+                    target.optString("userName", ""),
+                    target.optString("name", "")
+            );
+        } catch (Exception e) {
+            Log.w(TAG, "parseUserNameFromProfile failed", e);
+            return "";
+        }
+    }
+
+    private String getLocalUserNameFallback() {
+        Context ctx = getContext();
+        if (ctx == null) {
+            return "\u7528\u6237";
+        }
+        UserDao userDao = new UserDao(ctx);
+        try {
+            userDao.open();
+            String[] user = userDao.getCurrentLoginUser();
+            if (user != null && user.length >= 2 && !TextUtils.isEmpty(user[1])) {
+                String phone = user[1].trim();
+                return "\u7528\u6237" + (phone.length() >= 4 ? phone.substring(phone.length() - 4) : phone);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "getLocalUserNameFallback failed", e);
+        } finally {
+            userDao.close();
+        }
+        return "\u7528\u6237";
+    }
+
+    private static class PhaseInfo {
+        final String name;
+        final int day;
+
+        PhaseInfo(String name, int day) {
+            this.name = name;
+            this.day = Math.max(1, day);
+        }
+    }
 
     private void setupClickListeners(View view) {
         View btnAnalysis = view.findViewById(R.id.knowledge_btn_analysis);

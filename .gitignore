@@ -1,101 +1,40 @@
-# --- OS files ---
-.DS_Store
-Thumbs.db
-Desktop.ini
+# 大文件
+*.zip
+*.rar
+*.7z
+*.apk
+*.exe
+*.msi
+*.jar
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.mp4
+*.pdf
+*.docx
+*.pptx
+*.xlsx
+!athena_app_front/app/src/main/res/**/*.png
+!athena_app_front/app/src/main/res/**/*.jpg
+!athena_app_front/app/src/main/res/**/*.jpeg
+!athena_app_front/app/src/main/res/**/*.webp
+!athena_app_front/app/src/main/res/**/*.gif
+!**/gradle/wrapper/gradle-wrapper.jar
 
-# --- IDE / editor ---
-.idea/
-.vscode/
-*.iml
-*.iws
-*.ipr
-.classpath
-.project
-.settings/
-.factorypath
-.springBeans
-.sts4-cache/
-.apt_generated/
-
-# --- Java / Maven build outputs ---
-**/target/
-!**/src/main/**/target/
-!**/src/test/**/target/
-**/build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-*.class
-.flattened-pom.xml
-
-# Maven wrapper binary can be regenerated; keep wrapper scripts/properties if present.
-**/.mvn/wrapper/maven-wrapper.jar
-
-# --- Logs / runtime files ---
-*.log
-logs/
-**/logs/
-*.pid
-*.seed
-*.hprof
-
-# --- Frontend dependencies / build outputs ---
-**/node_modules/
-**/dist/
-**/dist-ssr/
-**/.vite/
-**/.turbo/
-**/.next/
-**/coverage/
-.npm-cache/
-.pnpm-store/
-
-# --- Environment / local secrets ---
-.env
-.env.*
-*.local
-
-# Keep example env files if they exist.
-!.env.example
-!.env.*.example
-
-# --- Local Spring config that may contain personal secrets ---
-**/src/main/resources/config/application-dev.yml
-**/src/main/resources/config/application-dev.yaml
-**/src/main/resources/config/application-local.yml
-**/src/main/resources/config/application-local.yaml
-**/src/main/resources/config/bootstrap-dev.yml
-**/src/main/resources/config/bootstrap-dev.yaml
-**/src/main/resources/config/bootstrap-local.yml
-**/src/main/resources/config/bootstrap-local.yaml
-
-# --- Local temp files ---
-temp/
-tmp/
-**/temp/
-**/tmp/
-
-# --- Generated evaluation reports ---
-**/resources/eval/outputs/
-**/eval-reports/
-
-# --- Local agent/tooling workspace state ---
-.claude/
-.agents/
-**/.claude/
-**/.agents/
-skills-lock.json
-
-# --- Cursor local workspace state ---
-**/.cursor/
-
-# 原有忽略
-*.iml
-**/node_modules/
-**/dist/
-**/build/
+# 缓存 / 构建
 **/.gradle/
+**/build/
+**/target/
+**/dist/
+**/node_modules/
+**/.idea/
+**/.metals/
+**/.vscode/
 **/.gradle-home/
 **/.gradle-user-home/
+**/.gradle-user/
 
 local.properties
 .idea/
@@ -111,3 +50,22 @@ docs/.workbuddy/
 
 # --- third-party eval tool clone ---
 eval/
+
+# 本地/发布敏感文件
+*.jks
+*.keystore
+*.cer
+*.pem
+*.p12
+.env
+.env.*
+
+# 非代码素材目录
+images/
+**/docs_assets/
+**/marketing/
+Back_End/athena-rag/resources/eval/outputs/
+.gradle-local/
+.android-local/
+.verify-classes/
+.verify-heytap/

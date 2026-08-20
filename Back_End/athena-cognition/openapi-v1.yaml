@@ -1,0 +1,119 @@
+openapi: 3.0.3
+info:
+  title: Athena Cognition API
+  version: 1.0.0
+  description: V1 contract. RELATED and QUESTION are user intent, never verified facts.
+servers:
+  - url: /athena/cognition
+paths:
+  /clues:
+    post:
+      summary: Create a clue
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { $ref: '#/components/requestBodies/JsonBody' }
+      responses: { '200': { $ref: '#/components/responses/Ok' } }
+    get:
+      summary: List clues by PENDING, ORGANIZED, or QUESTIONS
+      parameters:
+        - { name: section, in: query, schema: { type: string, enum: [PENDING, ORGANIZED, QUESTIONS] } }
+        - { $ref: '#/components/parameters/Cursor' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses: { '200': { $ref: '#/components/responses/Ok' } }
+  /digest-tasks:
+    post:
+      summary: Create an asynchronous digest task
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { $ref: '#/components/requestBodies/JsonBody' }
+      responses: { '200': { $ref: '#/components/responses/Ok' } }
+  /digest-tasks/{taskId}:
+    get:
+      summary: Read digest task state
+      parameters: [{ $ref: '#/components/parameters/TaskId' }]
+      responses: { '200': { $ref: '#/components/responses/Ok' } }
+  /digest-tasks/{taskId}/retry:
+    post:
+      summary: Retry a failed digest task
+      parameters:
+        - { $ref: '#/components/parameters/TaskId' }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      responses: { '200': { $ref: '#/components/responses/Ok' } }
+  /digests:
+    get:
+      summary: List digest drafts
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [PENDING_CONFIRMATION, ACCEPTED_AS_TOPIC, SAVED_AS_KNOWLEDGE, REJECTED] } }
+        - { $ref: '#/components/parameters/Cursor' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses: { '200': { $ref: '#/components/responses/Ok' } }
+  /digests/{digestId}:
+    get:
+      summary: Read a digest with evidence and uncertainty
+      parameters: [{ $ref: '#/components/parameters/DigestId' }]
+      responses: { '200': { $ref: '#/components/responses/Ok' } }
+  /digests/{digestId}/decisions:
+    post:
+      summary: Accept as topic, save as knowledge, or reject
+      parameters:
+        - { $ref: '#/components/parameters/DigestId' }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody: { $ref: '#/components/requestBodies/JsonBody' }
+      responses: { '200': { $ref: '#/components/responses/Ok' } }
+  /topics:
+    get:
+      summary: List cognition topics
+      parameters:
+        - { name: progress, in: query, schema: { type: string, enum: [ACTIVE, PAUSED, ARCHIVED] } }
+        - { $ref: '#/components/parameters/Cursor' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses: { '200': { $ref: '#/components/responses/Ok' } }
+  /topics/{topicId}:
+    get:
+      summary: Read a topic, evidence, action, and version history
+      parameters: [{ $ref: '#/components/parameters/TopicId' }]
+      responses: { '200': { $ref: '#/components/responses/Ok' } }
+  /topics/{topicId}/progress:
+    patch:
+      summary: Pause, resume, or archive a topic
+      parameters:
+        - { $ref: '#/components/parameters/TopicId' }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody: { $ref: '#/components/requestBodies/JsonBody' }
+      responses: { '200': { $ref: '#/components/responses/Ok' } }
+  /actions/{actionId}/feedback:
+    post:
+      summary: Submit action accuracy feedback
+      parameters:
+        - { name: actionId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody: { $ref: '#/components/requestBodies/JsonBody' }
+      responses: { '200': { $ref: '#/components/responses/Ok' } }
+  /home:
+    get:
+      summary: Read cold-start, forming, or active health home
+      responses: { '200': { $ref: '#/components/responses/Ok' } }
+components:
+  parameters:
+    IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 8 } }
+    Cursor: { name: cursor, in: query, schema: { type: integer, format: int64 } }
+    Limit: { name: limit, in: query, schema: { type: integer, default: 20, minimum: 1, maximum: 100 } }
+    TaskId: { name: taskId, in: path, required: true, schema: { type: integer, format: int64 } }
+    DigestId: { name: digestId, in: path, required: true, schema: { type: integer, format: int64 } }
+    TopicId: { name: topicId, in: path, required: true, schema: { type: integer, format: int64 } }
+  requestBodies:
+    JsonBody:
+      required: true
+      content:
+        application/json:
+          schema: { type: object, additionalProperties: true }
+  responses:
+    Ok:
+      description: Athena Result envelope; business payload is in data
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message]
+            properties:
+              code: { type: integer }
+              message: { type: string }
+              data: {}

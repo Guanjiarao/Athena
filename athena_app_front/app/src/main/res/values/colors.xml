@@ -63,42 +63,42 @@
     <color name="auth_divider">#F0F0F0</color>          <!-- 分割线 -->
 
     <!-- Athena 主色调 -->
-    <color name="athena_pink">#F06292</color>
+    <color name="athena_pink">#C96F7D</color>
     <!-- Science timeline axis line -->
     <color name="timeline_axis_line">#FFD1D1</color>
 
     <!-- Period (经期) module -->
-    <color name="period_rose">#E5375A</color>          <!-- 玫红：月经期实心背景/图例 -->
-    <color name="period_rose_light">#FADADD</color>    <!-- 浅粉：预测经期背景/图例 -->
+    <color name="period_rose">#C96F7D</color>          <!-- 低饱和脏粉：经期核心 -->
+    <color name="period_rose_light">#F3D9DD</color>    <!-- 浅脏粉：预测经期背景/图例 -->
     <color name="period_rose_text">#FFFFFF</color>     <!-- 月经期格子文字（白色） -->
-    <color name="period_ovulation">#C9B8F0</color>     <!-- 浅紫：排卵期背景/图例 -->
-    <color name="period_ovulation_day">#7C5CBF</color> <!-- 深紫：排卵日 -->
-    <color name="period_today_ring">#E5375A</color>    <!-- 今天圆圈描边色 -->
-    <color name="period_btn_yes_bg">#E5375A</color>    <!-- "是"按钮背景 -->
-    <color name="period_btn_no_bg">#F5F5F5</color>     <!-- "否"按钮背景 -->
+    <color name="period_ovulation">#D8D0E8</color>     <!-- 雾紫：排卵期背景/图例 -->
+    <color name="period_ovulation_day">#8B77BB</color> <!-- 深雾紫：排卵日 -->
+    <color name="period_today_ring">#C96F7D</color>    <!-- 今天圆圈描边色 -->
+    <color name="period_btn_yes_bg">#C96F7D</color>    <!-- "是"按钮背景 -->
+    <color name="period_btn_no_bg">#F4EDEA</color>     <!-- "否"按钮背景 -->
     <color name="period_card_bg">#FFFFFF</color>       <!-- 月经来了卡片背景 -->
-    <color name="period_tab_active">#E5375A</color>    <!-- 顶部 Tab 选中色 -->
-    <color name="period_tab_inactive">#888888</color>  <!-- 顶部 Tab 未选中色 -->
+    <color name="period_tab_active">#C96F7D</color>    <!-- 顶部 Tab 选中色 -->
+    <color name="period_tab_inactive">#918881</color>  <!-- 顶部 Tab 未选中色 -->
 
-    <color name="health_page_bg">#FCF8F5</color>
+    <color name="health_page_bg">#FAF7F2</color>
     <color name="health_card_bg">#FFFDFC</color>
-    <color name="health_card_tint">#FFF7F3</color>
-    <color name="health_card_stroke">#F0E7DF</color>
+    <color name="health_card_tint">#FFF6F1</color>
+    <color name="health_card_stroke">#EDE3DA</color>
     <color name="health_text_primary">#2F2926</color>
-    <color name="health_text_secondary">#8B8078</color>
+    <color name="health_text_secondary">#80766F</color>
     <color name="health_tab_bg">#FFFDFB</color>
-    <color name="health_tab_active_fill">#FCECEE</color>
+    <color name="health_tab_active_fill">#F4E5E8</color>
     <color name="health_tab_inactive">#918881</color>
-    <color name="health_accent_soft">#FDE7EC</color>
-    <color name="health_accent_secondary">#EEE5FB</color>
-    <color name="health_period_strong">#F06A82</color>
-    <color name="health_ovulation_window">#E8E0FA</color>
-    <color name="health_ovulation_day">#9B83D8</color>
-    <color name="health_pregnancy_early">#DCEBFA</color>
-    <color name="health_pregnancy_mid">#F9F1D8</color>
-    <color name="health_pregnancy_late">#F9E3E7</color>
-    <color name="health_icon_bg">#FFF1F3</color>
-    <color name="health_add_fill">#FFF3F5</color>
-    <color name="health_toggle_no_fill">#F7F3F0</color>
-    <color name="health_toggle_no_stroke">#E4D9D1</color>
+    <color name="health_accent_soft">#F4E0E3</color>
+    <color name="health_accent_secondary">#EEE6F2</color>
+    <color name="health_period_strong">#C96F7D</color>
+    <color name="health_ovulation_window">#E0DAE9</color>
+    <color name="health_ovulation_day">#8C79BC</color>
+    <color name="health_pregnancy_early">#DDEAE4</color>
+    <color name="health_pregnancy_mid">#F4E6C9</color>
+    <color name="health_pregnancy_late">#EEDCE1</color>
+    <color name="health_icon_bg">#FFF3F4</color>
+    <color name="health_add_fill">#FFF5F6</color>
+    <color name="health_toggle_no_fill">#F7F1EE</color>
+    <color name="health_toggle_no_stroke">#E1D4CA</color>
 </resources>

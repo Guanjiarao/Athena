@@ -4,10 +4,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -50,12 +53,19 @@ public class ChannelArticleListActivity extends AppCompatActivity {
 
     public static final String EXTRA_CHANNEL_NAME = "channel_name";
     public static final String EXTRA_CHANNEL_ID   = "channel_id";
+    public static final String EXTRA_INITIAL_FILTER = "initial_filter";
+    private static final String FILTER_ALL = "全部";
+    private static final String[] SAFETY_FILTERS = {
+            FILTER_ALL, "避孕失败", "短效药", "避孕套", "紧急避孕", "验孕", "感染预防"
+    };
 
+    private final List<ArticleItem> allItems = new ArrayList<>();
     private final List<ArticleItem> items = new ArrayList<>();
     private ArticleCardAdapter adapter;
     private OkHttpClient okHttpClient;
     private int channelId;
     private String channelName = "";
+    private String selectedFilter = FILTER_ALL;
 
     /** 便捷启动方法，调用方无需记忆 Extra 键名 */
     public static void start(Context context, String channelName, int channelId) {
@@ -67,6 +77,17 @@ public class ChannelArticleListActivity extends AppCompatActivity {
         context.startActivity(intent);
     }
 
+    public static void startWithFilter(Context context,
+                                       String channelName,
+                                       int channelId,
+                                       String initialFilter) {
+        Intent intent = new Intent(context, ChannelArticleListActivity.class);
+        intent.putExtra(EXTRA_CHANNEL_NAME, channelName);
+        intent.putExtra(EXTRA_CHANNEL_ID, channelId);
+        intent.putExtra(EXTRA_INITIAL_FILTER, initialFilter);
+        context.startActivity(intent);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -75,13 +96,17 @@ public class ChannelArticleListActivity extends AppCompatActivity {
         String nameExtra = getIntent().getStringExtra(EXTRA_CHANNEL_NAME);
         channelName = nameExtra != null ? nameExtra : "";
         channelId = getIntent().getIntExtra(EXTRA_CHANNEL_ID, -1);
+        selectedFilter = normalizeFilter(getIntent().getStringExtra(EXTRA_INITIAL_FILTER));
 
         ImageView btnBack  = findViewById(R.id.btn_back);
         TextView  tvTitle  = findViewById(R.id.tv_title);
         RecyclerView rv    = findViewById(R.id.rv_articles);
+        HorizontalScrollView filterScroll = findViewById(R.id.hsv_filter_chips);
+        LinearLayout filterChips = findViewById(R.id.ll_filter_chips);
 
         tvTitle.setText(channelName);
         btnBack.setOnClickListener(v -> finish());
+        setupFilterChips(filterScroll, filterChips);
 
         okHttpClient = UnsafeOkHttpClient.getUnsafeOkHttpClient();
         rv.setLayoutManager(new LinearLayoutManager(this));
@@ -95,6 +120,136 @@ public class ChannelArticleListActivity extends AppCompatActivity {
         }
         Log.i(TAG, logPrefix() + "onCreate: 开始请求列表");
         fetchArticleList();
+    }
+
+    private void setupFilterChips(HorizontalScrollView filterScroll, LinearLayout filterChips) {
+        if (filterScroll == null || filterChips == null) {
+            return;
+        }
+        if (!shouldShowSafetyFilters()) {
+            filterScroll.setVisibility(View.GONE);
+            selectedFilter = FILTER_ALL;
+            return;
+        }
+
+        filterScroll.setVisibility(View.VISIBLE);
+        filterChips.removeAllViews();
+        for (String label : SAFETY_FILTERS) {
+            TextView chip = createFilterChip(label);
+            filterChips.addView(chip);
+        }
+        updateFilterChipState();
+    }
+
+    private boolean shouldShowSafetyFilters() {
+        return channelName.contains("避孕") || channelName.contains("身体安全");
+    }
+
+    private TextView createFilterChip(String label) {
+        TextView chip = new TextView(this);
+        chip.setText(label);
+        chip.setGravity(Gravity.CENTER);
+        chip.setTextSize(13);
+        chip.setTag(label);
+        chip.setPadding(dp(13), dp(7), dp(13), dp(7));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        lp.setMarginEnd(dp(8));
+        chip.setLayoutParams(lp);
+        chip.setOnClickListener(v -> selectFilter(label));
+        return chip;
+    }
+
+    private void selectFilter(String filter) {
+        selectedFilter = normalizeFilter(filter);
+        updateFilterChipState();
+        applyArticleFilter(true);
+    }
+
+    private void updateFilterChipState() {
+        LinearLayout chipRow = findViewById(R.id.ll_filter_chips);
+        if (chipRow == null) {
+            return;
+        }
+        for (int i = 0; i < chipRow.getChildCount(); i++) {
+            View child = chipRow.getChildAt(i);
+            if (!(child instanceof TextView)) {
+                continue;
+            }
+            TextView chip = (TextView) child;
+            String label = String.valueOf(chip.getTag());
+            boolean selected = selectedFilter.equals(label);
+            chip.setBackgroundResource(selected
+                    ? R.drawable.bg_science_filter_chip_selected
+                    : R.drawable.bg_science_filter_chip);
+            chip.setTextColor(selected ? 0xFF2F6257 : 0xFF68605C);
+        }
+    }
+
+    private static String normalizeFilter(String filter) {
+        if (filter == null || filter.trim().isEmpty()) {
+            return FILTER_ALL;
+        }
+        String trimmed = filter.trim();
+        for (String allowed : SAFETY_FILTERS) {
+            if (allowed.equals(trimmed)) {
+                return trimmed;
+            }
+        }
+        return FILTER_ALL;
+    }
+
+    private void applyArticleFilter(boolean showEmptyHint) {
+        items.clear();
+        for (ArticleItem item : allItems) {
+            if (matchesSelectedFilter(item)) {
+                items.add(item);
+            }
+        }
+        if (adapter != null) {
+            adapter.notifyDataSetChanged();
+        }
+        if (showEmptyHint && !allItems.isEmpty() && items.isEmpty()) {
+            Toast.makeText(this, "该标签下暂无文章", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private boolean matchesSelectedFilter(ArticleItem item) {
+        if (FILTER_ALL.equals(selectedFilter)) {
+            return true;
+        }
+        String title = item.title == null ? "" : item.title;
+        switch (selectedFilter) {
+            case "避孕失败":
+                return containsAny(title, "避孕失败", "破", "滑落", "脱落", "体外");
+            case "短效药":
+                return containsAny(title, "短效", "口服", "漏服", "优思明", "妈富隆");
+            case "避孕套":
+                return containsAny(title, "避孕套", "安全套", "破了", "滑落");
+            case "紧急避孕":
+                return containsAny(title, "紧急", "事后", "左炔", "乌利司他");
+            case "验孕":
+                return containsAny(title, "验孕", "早孕", "怀孕", "月经推迟", "试纸");
+            case "感染预防":
+                return containsAny(title, "感染", "性传播", "HPV", "HIV", "梅毒", "淋病", "衣原体");
+            default:
+                return true;
+        }
+    }
+
+    private static boolean containsAny(String value, String... keywords) {
+        for (String keyword : keywords) {
+            if (value.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int dp(int value) {
+        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
     }
 
     private String logPrefix() {
@@ -201,6 +356,7 @@ public class ChannelArticleListActivity extends AppCompatActivity {
                 Log.e(TAG, logPrefix() + "onFailure url=" + call.request().url()
                         + " msg=" + e.getMessage(), e);
                 runOnUiThread(() -> {
+                    allItems.clear();
                     items.clear();
                     adapter.notifyDataSetChanged();
                     Toast.makeText(ChannelArticleListActivity.this,
@@ -219,6 +375,7 @@ public class ChannelArticleListActivity extends AppCompatActivity {
                 Log.d(TAG, logPrefix() + "bodyPreview=" + truncateForLog(body, LOG_BODY_MAX_CHARS));
 
                 runOnUiThread(() -> {
+                    allItems.clear();
                     items.clear();
                     adapter.notifyDataSetChanged();
                 });
@@ -290,10 +447,10 @@ public class ChannelArticleListActivity extends AppCompatActivity {
 
                     List<ArticleItem> finalResult = result;
                     runOnUiThread(() -> {
-                        items.clear();
-                        items.addAll(finalResult);
-                        adapter.notifyDataSetChanged();
-                        if (items.isEmpty()) {
+                        allItems.clear();
+                        allItems.addAll(finalResult);
+                        applyArticleFilter(false);
+                        if (allItems.isEmpty()) {
                             Log.w(TAG, logPrefix() + "最终列表为空（可能接口无数据或全部被过滤）");
                             Toast.makeText(ChannelArticleListActivity.this,
                                     "暂无文章数据", Toast.LENGTH_SHORT).show();
@@ -302,6 +459,7 @@ public class ChannelArticleListActivity extends AppCompatActivity {
                 } catch (Exception e) {
                     Log.e(TAG, logPrefix() + "JSON解析异常: " + e.getMessage(), e);
                     runOnUiThread(() -> {
+                        allItems.clear();
                         items.clear();
                         adapter.notifyDataSetChanged();
                         Toast.makeText(ChannelArticleListActivity.this,
@@ -347,7 +505,7 @@ public class ChannelArticleListActivity extends AppCompatActivity {
         @Override
         public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View v = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.item_article_card, parent, false);
+                    .inflate(R.layout.item_channel_article_card, parent, false);
             return new VH(v);
         }
 
@@ -362,6 +520,9 @@ public class ChannelArticleListActivity extends AppCompatActivity {
                     .into(holder.ivCover);
             holder.tvTitle.setMaxLines(2);
             holder.tvTitle.setText(item.title);
+            holder.tvAge.setText(inferAgeLabel(item.title));
+            holder.tvReadTime.setText("阅读时间：3 分钟");
+            holder.tvTrust.setText("可信度：来源引用");
             holder.itemView.setOnClickListener(v -> {
                 int detailType = item.blogType >= 0 ? item.blogType : 100;
                 Intent intent = new Intent(ChannelArticleListActivity.this, ArticleDetailActivity.class);
@@ -379,12 +540,32 @@ public class ChannelArticleListActivity extends AppCompatActivity {
         class VH extends RecyclerView.ViewHolder {
             final ImageView ivCover;
             final TextView  tvTitle;
+            final TextView  tvAge;
+            final TextView  tvReadTime;
+            final TextView  tvTrust;
 
             VH(@NonNull View itemView) {
                 super(itemView);
                 ivCover = itemView.findViewById(R.id.iv_cover);
                 tvTitle = itemView.findViewById(R.id.tv_article_title);
+                tvAge = itemView.findViewById(R.id.tv_article_age);
+                tvReadTime = itemView.findViewById(R.id.tv_article_read_time);
+                tvTrust = itemView.findViewById(R.id.tv_article_trust);
             }
         }
+    }
+
+    private static String inferAgeLabel(String title) {
+        String value = title == null ? "" : title;
+        if (containsAny(value, "青春期", "未成年", "女童", "孩子", "儿童")) {
+            return "适合年龄：青春期";
+        }
+        if (containsAny(value, "更年期", "绝经")) {
+            return "适合年龄：55岁以上";
+        }
+        if (containsAny(value, "备孕", "孕前", "排卵")) {
+            return "适合年龄：成年";
+        }
+        return "适合年龄：青春期 / 成年";
     }
 }

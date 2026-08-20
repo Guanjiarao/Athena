@@ -20,7 +20,7 @@ athena:
     report:
       enabled: true
       url: "https://api.siliconflow.cn/v1/chat/completions"
-      api-key: "sk-pdcncwnjmxrqehqsrrzwbqkeimbdjxmtdonpchdapcygvgvn"
+      api-key: "${ATHENA_AI_REPORT_API_KEY:}"
       model: "Pro/zai-org/GLM-4.7"
       connect-timeout-ms: 3000
       read-timeout-ms: 30000

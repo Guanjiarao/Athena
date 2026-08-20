@@ -30,14 +30,7 @@
         android:textSize="17sp"
         android:textStyle="bold" />
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:paddingBottom="20dp"
-        android:text="Based on VLDB 2025 · PS-MI 联邦隐私博弈论"
-        android:textColor="#AAAAAA"
-        android:textSize="11sp" />
+
 
     <!-- 分割线 -->
     <View
@@ -67,7 +60,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="累计 Shapley 贡献值"
+                android:text="累计贡献值"
                 android:textColor="#AA6688AA"
                 android:textSize="11sp" />
 
@@ -108,7 +101,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="AI 联邦健康积分"
+                android:text="AI 健康积分"
                 android:textColor="#AA5599BB"
                 android:textSize="11sp" />
 
@@ -165,7 +158,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="9"
                 android:lineSpacingExtra="3dp"
-                android:text="平权贡献：您已累计参与 0 次 AI 偏见矫正，为构建『无偏见女性大模型』贡献了珍贵的对齐语料！"
+                android:text="共建AI：您已经累计参与 0 次AI回答矫正，为帮助小雅科普ai针对性优化升级贡献了珍贵的场景语料"
                 android:textColor="#7B1FA2"
                 android:textSize="12sp" />
         </LinearLayout>
@@ -179,13 +172,6 @@
         android:layout_marginBottom="12dp"
         android:background="#F0E0E8" />
 
-    <!-- AI 极客说明 -->
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:lineSpacingExtra="3dp"
-        android:text="* 您的脱敏数据质量分和对联邦医疗大模型的边际贡献率，已通过本地 Monte Carlo 引擎计算完成 (Based on VLDB 2025 PS-MI)。Shapley 值每次上传实时计算并累加，积分 = Shapley × 1000，均存储于本设备本地，不上传任何原始数据。"
-        android:textColor="#AAAAAA"
-        android:textSize="10sp" />
+
 
 </LinearLayout>

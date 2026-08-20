@@ -55,6 +55,8 @@
 
         </LinearLayout>
 
+        <include layout="@layout/include_health_status_card" />
+
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -281,35 +283,74 @@
                         style="@style/HealthCardTitleText"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="今日体征" />
+                        android:text="本周期洞察" />
 
                     <LinearLayout
-                        android:id="@+id/ll_more_health_data"
+                        android:id="@+id/layout_health_data_actions"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_alignParentEnd="true"
-                        android:background="@drawable/bg_health_secondary_chip"
                         android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingStart="10dp"
-                        android:paddingTop="5dp"
-                        android:paddingEnd="10dp"
-                        android:paddingBottom="5dp">
+                        android:orientation="horizontal">
 
-                        <TextView
-                            style="@style/HealthLegendText"
+                        <LinearLayout
+                            android:id="@+id/ll_more_health_data"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="详细数据"
-                            android:textColor="@color/period_rose" />
+                            android:background="@drawable/bg_health_secondary_chip"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingStart="10dp"
+                            android:paddingTop="5dp"
+                            android:paddingEnd="10dp"
+                            android:paddingBottom="5dp">
 
-                        <TextView
+                            <TextView
+                                style="@style/HealthLegendText"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="分析报告"
+                                android:textColor="@color/period_rose" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="2dp"
+                                android:text="›"
+                                android:textColor="@color/period_rose"
+                                android:textSize="14sp" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/ll_smart_band_data"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="2dp"
-                            android:text="›"
-                            android:textColor="@color/period_rose"
-                            android:textSize="14sp" />
+                            android:layout_marginStart="8dp"
+                            android:background="@drawable/bg_health_secondary_chip"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingStart="10dp"
+                            android:paddingTop="5dp"
+                            android:paddingEnd="10dp"
+                            android:paddingBottom="5dp">
+
+                            <TextView
+                                style="@style/HealthLegendText"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="手环数据"
+                                android:textColor="@color/health_text_secondary" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="2dp"
+                                android:text="›"
+                                android:textColor="@color/health_text_secondary"
+                                android:textSize="14sp" />
+
+                        </LinearLayout>
 
                     </LinearLayout>
 
@@ -320,7 +361,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="连接智能设备后，今天的体征变化会在这里自动同步。" />
+                    android:text="记录几天后，Athena 会在这里整理你的身体节律、症状和情绪变化。" />
 
             </LinearLayout>
 

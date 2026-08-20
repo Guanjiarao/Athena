@@ -64,7 +64,11 @@ dependencies {
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
-    implementation("com.heytap.health:sdk:2.1.7")
+    if (providers.gradleProperty("athenaUseHeytapStub").orNull == "true") {
+        compileOnly(files("../../.verify-heytap/heytap-stub.jar"))
+    } else {
+        implementation("com.heytap.health:sdk:2.1.7")
+    }
 
     implementation("io.noties.markwon:core:4.6.2")
     implementation("io.noties.markwon:image-glide:4.6.2")

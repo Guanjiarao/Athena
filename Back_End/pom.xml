@@ -31,6 +31,7 @@
         <module>athena-rank</module>
         <module>athena-gateway</module>
         <module>athena-insight</module>
+        <module>athena-cognition</module>
     </modules>
 
     <!-- 版本属性（统一管理） -->
@@ -210,6 +211,11 @@
             <dependency>
                 <groupId>athena</groupId>
                 <artifactId>athena-insight-api</artifactId>
+                <version>0.0.1-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>athena</groupId>
+                <artifactId>athena-cognition-api</artifactId>
                 <version>0.0.1-SNAPSHOT</version>
             </dependency>
             <dependency>

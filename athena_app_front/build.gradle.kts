@@ -22,7 +22,10 @@ allprojects {
 
             credentials {
                 username = "healthUser"
-                password = "8174a9eac1264495b593a9d5ab221491"
+                password = providers.gradleProperty("heytapHealthMavenPassword")
+                    .orElse(providers.environmentVariable("HEYTAP_HEALTH_MAVEN_PASSWORD"))
+                    .orElse("")
+                    .get()
             }
         }
 
@@ -38,7 +41,10 @@ allprojects {
 
             credentials {
                 username = "healthUser"
-                password = "8174a9eac1264495b593a9d5ab221491"
+                password = providers.gradleProperty("heytapHealthMavenPassword")
+                    .orElse(providers.environmentVariable("HEYTAP_HEALTH_MAVEN_PASSWORD"))
+                    .orElse("")
+                    .get()
             }
         }
     }

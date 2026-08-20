@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0",
+  "eligible": true,
+  "reasonCode": null,
+  "intent": "OBSERVE_PERSONAL_CHANGE",
+  "matchedTopicId": null,
+  "title": "经期前情绪与睡眠变化",
+  "commonPoint": "你保存的内容都在关注经期前的情绪和睡眠变化。",
+  "possibleLink": "这些线索可能值得结合后续身体记录继续观察。",
+  "uncertainty": "文章标记和疑问不能确认你出现了相同情况，也不能说明变化的原因。",
+  "action": {"title": "完成一次睡眠和情绪记录", "instruction": "在接下来 7 天选择一天，记录睡眠时长和当天情绪。", "windowDays": 7},
+  "evidence": [
+    {"evidenceId": 301, "role": "OBSERVATION_CONTEXT"},
+    {"evidenceId": 302, "role": "QUESTION_CONTEXT"}
+  ],
+  "confidence": 0.72,
+  "requiresProfessionalHelpRule": false
+}

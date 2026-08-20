@@ -16,6 +16,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.Button;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
@@ -46,6 +47,7 @@ public class PrivacyFragment extends Fragment {
 
     private static final int PICK_IMAGE_REQUEST = 1;
 
+    private ImageButton        btnPrivacyBack;
     private CardView         cardPrivacyImage;
     private View             privacyPlaceholder;
     private View             ocrLoadingOverlay;
@@ -79,8 +81,6 @@ public class PrivacyFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_privacy, container, false);
         bindViews(view);
-//        view.findViewById(R.id.btn_privacy_back).setOnClickListener(v ->
-//                requireActivity().getOnBackPressedDispatcher().onBackPressed());
         setupSeekBar();
         setupToolButtons();
         setupAutoAnonymizeButton();
@@ -96,6 +96,7 @@ public class PrivacyFragment extends Fragment {
     }
 
     private void bindViews(View root) {
+        btnPrivacyBack     = root.findViewById(R.id.btn_privacy_back);
         cardPrivacyImage    = root.findViewById(R.id.cardPrivacyImage);
         privacyPlaceholder  = root.findViewById(R.id.privacyPlaceholder);
         ocrLoadingOverlay   = root.findViewById(R.id.ocrLoadingOverlay);
@@ -109,6 +110,9 @@ public class PrivacyFragment extends Fragment {
         textSeekPercent     = root.findViewById(R.id.textSeekPercent);
         cardAnalysisResult  = root.findViewById(R.id.cardAnalysisResult);
         textAnalysisResult  = root.findViewById(R.id.textAnalysisResult);
+
+        btnPrivacyBack.setOnClickListener(v ->
+                requireActivity().getOnBackPressedDispatcher().onBackPressed());
 
         offlineRedactionSucceeded = false;
         btnUploadAnalysis.setEnabled(false);

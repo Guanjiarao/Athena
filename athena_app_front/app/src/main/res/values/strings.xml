@@ -6,20 +6,7 @@
     <string name="username">用户名</string>
     <string name="change_avatar">更换头像</string>
 
-    <string name="nav_header_title">Athena AI</string>
-    <string name="nav_header_subtitle">您的贴心健康助手</string>
-
-    <string name="menu_sister">温声树洞</string>
-    <string name="menu_pro">专业科普</string>
-    <string name="menu_triage">就医助手</string>
-    <string name="menu_privacy">隐私守护</string>
-    <string name="menu_monitor">生物监测</string>
-
-    <string name="cd_back">返回</string>
-
     <string name="hint_input">请输入文字</string>
-    <string name="btn_send">发送</string>
-    <string name="btn_clear">清空对话</string>
 
     <!-- Privacy Guard：端云协同 / 医疗脱敏 -->
     <string name="privacy_title">🛡️ 隐私脱敏与智能分析</string>
@@ -50,8 +37,4 @@
     <string name="privacy_federated_log_5">序列化匿名特征 · 通过 Serverless 节点路由…</string>
     <string name="privacy_federated_log_6">正在呼叫千问医疗大模型进行联合推理…</string>
 
-    <!-- Monitor -->
-    <string name="monitor_title">生物监测沙盒</string>
-    <string name="monitor_hr">心率: %d BPM</string>
-    <string name="monitor_capture">拍摄面部分析</string>
 </resources>

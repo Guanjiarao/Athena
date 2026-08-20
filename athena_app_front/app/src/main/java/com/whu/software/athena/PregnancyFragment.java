@@ -135,6 +135,12 @@ public class PregnancyFragment extends Fragment {
     private TextView              tvPregnancyProgress;
     private TextView              tvPregnancyCountdown;
     private TextView              tvDueDateValue;  // 预产期行右侧副标签
+    private TextView              tvHealthStatusKicker;
+    private TextView              tvHealthStatusBadge;
+    private TextView              tvHealthStatusTitle;
+    private TextView              tvHealthStatusSubtitle;
+    private TextView              tvHealthStatusHint;
+    private View                  viewHealthStatusMarker;
     private RecyclerView          rvCalendar;
     private PregnancyCalendarAdapter calendarAdapter;
     private LinearLayout          actionListContainer;
@@ -185,6 +191,7 @@ public class PregnancyFragment extends Fragment {
         initTodayInfo();
         loadDueDate();           // 从 SharedPreferences 读取已保存的预产期
         initTopTabs(view);
+        initHealthStatusCard(view);
         initCalendar(view);
         updateBottomInfoBar();
         initActionList(view);
@@ -201,6 +208,12 @@ public class PregnancyFragment extends Fragment {
         tvPregnancyProgress = null;
         tvPregnancyCountdown = null;
         tvDueDateValue      = null;
+        tvHealthStatusKicker = null;
+        tvHealthStatusBadge = null;
+        tvHealthStatusTitle = null;
+        tvHealthStatusSubtitle = null;
+        tvHealthStatusHint = null;
+        viewHealthStatusMarker = null;
     }
 
     // -----------------------------------------------------------------------
@@ -336,6 +349,93 @@ public class PregnancyFragment extends Fragment {
     // 日历
     // -----------------------------------------------------------------------
 
+    private void initHealthStatusCard(View root) {
+        tvHealthStatusKicker = root.findViewById(R.id.tv_health_status_kicker);
+        tvHealthStatusBadge = root.findViewById(R.id.tv_health_status_badge);
+        tvHealthStatusTitle = root.findViewById(R.id.tv_health_status_title);
+        tvHealthStatusSubtitle = root.findViewById(R.id.tv_health_status_subtitle);
+        tvHealthStatusHint = root.findViewById(R.id.tv_health_status_hint);
+        viewHealthStatusMarker = root.findViewById(R.id.view_health_status_marker);
+        refreshPregnancyStatusCard();
+    }
+
+    private void refreshPregnancyStatusCard() {
+        if (tvHealthStatusKicker == null
+                || tvHealthStatusBadge == null
+                || tvHealthStatusTitle == null
+                || tvHealthStatusSubtitle == null
+                || tvHealthStatusHint == null) {
+            return;
+        }
+
+        tvHealthStatusKicker.setText("孕期状态");
+        tvHealthStatusBadge.setText("怀孕模式");
+
+        if (dueDateMs <= 0 || lmpMs <= 0) {
+            tvHealthStatusTitle.setText("请先设置预产期");
+            tvHealthStatusSubtitle.setText("设置后可显示孕周、阶段和倒计时");
+            tvHealthStatusHint.setText("完善预产期后，Athena 会把孕期节律整理在这里。");
+            updateHealthStatusMarker(0f);
+            return;
+        }
+
+        Calendar todayCal = Calendar.getInstance();
+        todayCal.set(todayYear, todayMonth - 1, todayDay, 0, 0, 0);
+        todayCal.set(Calendar.MILLISECOND, 0);
+        long todayMs = todayCal.getTimeInMillis();
+
+        int pregDays = calcPregnancyDays(todayMs);
+        if (pregDays < 0) {
+            tvHealthStatusTitle.setText("孕期尚未开始");
+            tvHealthStatusSubtitle.setText("请检查预产期设置是否准确");
+            tvHealthStatusHint.setText("确认后，Athena 会重新计算孕周和阶段。");
+            updateHealthStatusMarker(0f);
+            return;
+        }
+
+        int weeks = pregDays / 7;
+        int days = pregDays % 7;
+        long fullTermMs = lmpMs + (long) DAYS_FULL_TERM * MS_PER_DAY;
+        long daysToFullTerm = Math.max(0, (fullTermMs - todayMs) / MS_PER_DAY);
+        long daysToDue = Math.max(0, (dueDateMs - todayMs) / MS_PER_DAY);
+
+        tvHealthStatusTitle.setText("孕 " + weeks + " 周 + " + days + " 天");
+        tvHealthStatusSubtitle.setText("当前处于" + resolvePregnancyStageLabel(pregDays));
+        tvHealthStatusHint.setText("距离足月 " + daysToFullTerm + " 天 · 距预产期 " + daysToDue + " 天。");
+        updateHealthStatusMarker(pregDays / (float) Math.max(1, DAYS_FULL_TERM));
+    }
+
+    private void updateHealthStatusMarker(float progress) {
+        if (viewHealthStatusMarker == null) {
+            return;
+        }
+        viewHealthStatusMarker.post(() -> {
+            View parent = (View) viewHealthStatusMarker.getParent();
+            if (parent == null) {
+                return;
+            }
+            int travel = parent.getWidth() - viewHealthStatusMarker.getWidth();
+            if (travel <= 0) {
+                return;
+            }
+            float safeProgress = Math.max(0f, Math.min(1f, progress));
+            viewHealthStatusMarker.animate()
+                    .translationX((safeProgress - 0.5f) * travel)
+                    .setDuration(360L)
+                    .start();
+        });
+    }
+
+    private String resolvePregnancyStageLabel(int pregDays) {
+        if (pregDays <= DAYS_EARLY_END) {
+            return "孕早期";
+        }
+        if (pregDays <= DAYS_MID_END) {
+            return "孕中期";
+        }
+        return "孕晚期";
+    }
+
     private void initCalendar(View root) {
         tvMonthYear          = root.findViewById(R.id.tv_month_year);
         tvLunarDate          = root.findViewById(R.id.tv_lunar_date);
@@ -419,6 +519,7 @@ public class PregnancyFragment extends Fragment {
     // -----------------------------------------------------------------------
 
     private void updateBottomInfoBar() {
+        refreshPregnancyStatusCard();
         if (tvLunarDate == null) return;
 
         // 农历占位（实际项目可接入农历库）
@@ -565,10 +666,26 @@ public class PregnancyFragment extends Fragment {
 
     private void initActionList(View root) {
         actionListContainer = root.findViewById(R.id.action_list_container);
+        if (actionListContainer == null) return;
+        actionListContainer.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(requireContext());
+        addActionSectionHeader("今日优先记录");
         for (ActionRow row : buildActionRows()) {
+            if ("hCG".equals(row.title)) {
+                addActionSectionHeader("更多记录");
+            }
             actionListContainer.addView(inflateRow(inflater, row));
         }
+    }
+
+    private void addActionSectionHeader(String title) {
+        TextView header = new TextView(requireContext());
+        header.setText(title);
+        header.setTextColor(0xFF80766F);
+        header.setTextSize(12f);
+        header.setLetterSpacing(0.08f);
+        header.setPadding(dpToPx(18), dpToPx(16), dpToPx(18), dpToPx(6));
+        actionListContainer.addView(header);
     }
 
     private View inflateRow(LayoutInflater inflater, ActionRow row) {
@@ -782,18 +899,18 @@ public class PregnancyFragment extends Fragment {
         List<ActionRow> list = new ArrayList<>();
         list.add(new ActionRow(R.drawable.ic_action_plan,            "设置预产期",  RowType.DUE_DATE));
         list.add(new ActionRow(R.drawable.ic_action_checkup,         "产检日",      RowType.YESNO));
-        list.add(new ActionRow(R.drawable.ic_action_nutrition,       "营养补充",    RowType.ADD));
-        list.add(new ActionRow(R.drawable.ic_action_hcg,             "hCG",         RowType.ARROW));
-        list.add(new ActionRow(R.drawable.ic_action_progesterone,    "孕酮",        RowType.ARROW));
-        list.add(new ActionRow(R.drawable.ic_action_blood_sugar,     "孕期血糖",    RowType.ADD));
-        list.add(new ActionRow(R.drawable.ic_action_habit,           "好习惯",      RowType.HABIT));
-        list.add(new ActionRow(R.drawable.ic_action_poop,            "便便",        RowType.ADD));
         list.add(new ActionRow(R.drawable.ic_action_symptom,         "症状",        RowType.ADD));
         list.add(new ActionRow(R.drawable.ic_action_mood,            "心情",        RowType.MOOD));
         list.add(new ActionRow(R.drawable.ic_action_pregnancy_diary, "孕期日记",    RowType.ARROW));
+        list.add(new ActionRow(R.drawable.ic_action_nutrition,       "营养补充",    RowType.ADD));
+        list.add(new ActionRow(R.drawable.ic_action_blood_sugar,     "孕期血糖",    RowType.ADD));
+        list.add(new ActionRow(R.drawable.ic_action_temp,            "体温",        RowType.ADD));
+        list.add(new ActionRow(R.drawable.ic_action_hcg,             "hCG",         RowType.ARROW));
+        list.add(new ActionRow(R.drawable.ic_action_progesterone,    "孕酮",        RowType.ARROW));
+        list.add(new ActionRow(R.drawable.ic_action_habit,           "好习惯",      RowType.HABIT));
+        list.add(new ActionRow(R.drawable.ic_action_poop,            "便便",        RowType.ADD));
         list.add(new ActionRow(R.drawable.ic_action_belly_photo,     "大肚照",      RowType.ARROW));
         list.add(new ActionRow(R.drawable.ic_action_sex,             "爱爱",        RowType.ADD));
-        list.add(new ActionRow(R.drawable.ic_action_temp,            "体温",        RowType.ADD));
         list.add(new ActionRow(R.drawable.ic_action_plan,            "计划",        RowType.ADD));
         return list;
     }
@@ -810,6 +927,10 @@ public class PregnancyFragment extends Fragment {
 
     private static String formatDate(long ms) {
         return new SimpleDateFormat("yyyy/MM/dd", Locale.getDefault()).format(new Date(ms));
+    }
+
+    private int dpToPx(int dp) {
+        return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
     // -----------------------------------------------------------------------

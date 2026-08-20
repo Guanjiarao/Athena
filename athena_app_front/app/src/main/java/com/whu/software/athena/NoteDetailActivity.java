@@ -3,6 +3,7 @@ package com.whu.software.athena;
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
+import android.text.TextUtils;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
@@ -124,7 +125,7 @@ public class NoteDetailActivity extends AppCompatActivity {
         setupClickListeners();
         // 先从Intent获取blogId和userId
         Intent intent = getIntent();
-        blogId = intent.getStringExtra("blog_id");
+        blogId = resolveBlogIdFromIntent(intent);
         long userIdExtra = intent.getLongExtra("user_id", -1L);
         if (userIdExtra != -1L) {
             userId = userIdExtra;
@@ -956,7 +957,7 @@ public class NoteDetailActivity extends AppCompatActivity {
     // ─────────────────────────────────────────────────────────────
     private void loadData() {
         Intent intent = getIntent();
-        blogId = intent.getStringExtra("blog_id");
+        blogId = resolveBlogIdFromIntent(intent);
         String title = intent.getStringExtra("title");
         String content = intent.getStringExtra("content");
         String userName = intent.getStringExtra("user_name");
@@ -1092,6 +1093,31 @@ public class NoteDetailActivity extends AppCompatActivity {
      *   Header: Authorization: {token}
      * 回调在 OkHttp 线程池中，UI 更新统一包裹在 runOnUiThread。
      */
+    @NonNull
+    private String resolveBlogIdFromIntent(@NonNull Intent intent) {
+        String resolved = intent.getStringExtra("blog_id");
+        if (!TextUtils.isEmpty(resolved)) {
+            return resolved;
+        }
+        resolved = intent.getStringExtra("blogId");
+        if (!TextUtils.isEmpty(resolved)) {
+            return resolved;
+        }
+        resolved = intent.getStringExtra("id");
+        if (!TextUtils.isEmpty(resolved)) {
+            return resolved;
+        }
+        int noteId = intent.getIntExtra("noteId", 0);
+        if (noteId > 0) {
+            return String.valueOf(noteId);
+        }
+        long noteIdLong = intent.getLongExtra("noteId", -1L);
+        if (noteIdLong > 0) {
+            return String.valueOf(noteIdLong);
+        }
+        return "";
+    }
+
     private void fetchBlogDetailFromServer(String requestBlogId) {
         String url;
         try {

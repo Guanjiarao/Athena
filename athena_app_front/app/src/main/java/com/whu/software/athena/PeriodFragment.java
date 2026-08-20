@@ -27,6 +27,7 @@ import com.whu.software.athena.entity.HealthRecordEntity;
 import com.whu.software.athena.utils.CycleDataManager;
 import com.whu.software.athena.utils.CycleApiService;
 import com.whu.software.athena.utils.HealthSyncManager;
+import com.whu.software.athena.utils.HealthRecordModeMapper;
 import com.whu.software.athena.utils.HealthRecordSaver;
 import com.whu.software.athena.utils.PeriodCalculator;
 import com.whu.software.athena.utils.RecordActionExtraBinder;
@@ -73,6 +74,12 @@ public class PeriodFragment extends Fragment {
     private RecyclerView       rvCalendar;
     private CalendarDayAdapter calendarAdapter;
     private LinearLayout       actionListContainer;
+    private TextView tvHealthStatusKicker;
+    private TextView tvHealthStatusBadge;
+    private TextView tvHealthStatusTitle;
+    private TextView tvHealthStatusSubtitle;
+    private TextView tvHealthStatusHint;
+    private View viewHealthStatusMarker;
 
     private TextView btnPeriodYes;
     private TextView btnPeriodNo;
@@ -116,6 +123,7 @@ public class PeriodFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         initTodayInfo();
         initTopTabs(view);
+        initHealthStatusCard(view);
         initTitleToItemIdMap();
         initCalendar(view);
         initPeriodCard(view);
@@ -161,6 +169,12 @@ public class PeriodFragment extends Fragment {
             periodNetworkRunnable = null;
         }
         rvCalendar = null; calendarAdapter = null; actionListContainer = null;
+        tvHealthStatusKicker = null;
+        tvHealthStatusBadge = null;
+        tvHealthStatusTitle = null;
+        tvHealthStatusSubtitle = null;
+        tvHealthStatusHint = null;
+        viewHealthStatusMarker = null;
         actionTitleViews.clear();
         actionBaseTitles.clear();
     }
@@ -411,9 +425,23 @@ public class PeriodFragment extends Fragment {
         if (actionListContainer == null) return;
         actionListContainer.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(requireContext());
+        addActionSectionHeader("今日优先记录");
         for (ActionRow row : buildActionRows()) {
+            if ("白带".equals(row.title)) {
+                addActionSectionHeader("更多记录");
+            }
             actionListContainer.addView(inflateRow(inflater, row));
         }
+    }
+
+    private void addActionSectionHeader(String title) {
+        TextView header = new TextView(requireContext());
+        header.setText(title);
+        header.setTextColor(0xFF80766F);
+        header.setTextSize(12f);
+        header.setLetterSpacing(0.08f);
+        header.setPadding(dpToPx(18), dpToPx(16), dpToPx(18), dpToPx(6));
+        actionListContainer.addView(header);
     }
 
     private View inflateRow(LayoutInflater inflater, ActionRow row) {
@@ -485,10 +513,10 @@ public class PeriodFragment extends Fragment {
         List<ActionRow> list = new ArrayList<>();
         list.add(new ActionRow(R.drawable.ic_action_symptom, "症状", RowType.ADD));
         list.add(new ActionRow(R.drawable.ic_action_mood, "心情", RowType.MOOD));
+        list.add(new ActionRow(R.drawable.ic_action_diary, "日记", RowType.ARROW));
         list.add(new ActionRow(R.drawable.ic_action_discharge, "白带", RowType.ADD));
         list.add(new ActionRow(R.drawable.ic_action_temp, "体温", RowType.ADD));
         list.add(new ActionRow(R.drawable.ic_action_weight, "体重", RowType.ADD));
-        list.add(new ActionRow(R.drawable.ic_action_diary, "日记", RowType.ARROW));
         list.add(new ActionRow(R.drawable.ic_action_habit, "好习惯", RowType.HABIT));
         list.add(new ActionRow(R.drawable.ic_action_poop, "便便", RowType.ADD));
         return list;
@@ -515,12 +543,17 @@ public class PeriodFragment extends Fragment {
         View moreDataBtn = root.findViewById(R.id.ll_more_health_data);
         if (moreDataBtn != null) {
             moreDataBtn.setOnClickListener(v ->
+                    startActivity(new Intent(requireContext(), AnalysisReportActivity.class)));
+        }
+        View smartBandBtn = root.findViewById(R.id.ll_smart_band_data);
+        if (smartBandBtn != null) {
+            smartBandBtn.setOnClickListener(v ->
                     startActivity(new Intent(requireContext(), SmartBandActivity.class)));
         }
         View healthCard = root.findViewById(R.id.card_health_data);
         if (healthCard != null) {
             healthCard.setOnClickListener(v ->
-                    startActivity(new Intent(requireContext(), SmartBandActivity.class)));
+                    startActivity(new Intent(requireContext(), AnalysisReportActivity.class)));
         }
     }
 
@@ -580,6 +613,16 @@ public class PeriodFragment extends Fragment {
         calendarAdapter.setCells(cells);
     }
 
+    private void initHealthStatusCard(View root) {
+        tvHealthStatusKicker = root.findViewById(R.id.tv_health_status_kicker);
+        tvHealthStatusBadge = root.findViewById(R.id.tv_health_status_badge);
+        tvHealthStatusTitle = root.findViewById(R.id.tv_health_status_title);
+        tvHealthStatusSubtitle = root.findViewById(R.id.tv_health_status_subtitle);
+        tvHealthStatusHint = root.findViewById(R.id.tv_health_status_hint);
+        viewHealthStatusMarker = root.findViewById(R.id.view_health_status_marker);
+        refreshHealthStatusCard();
+    }
+
     private void initPeriodCard(View root) {
         tvPeriodTitle = root.findViewById(R.id.tv_period_title);
         tvPeriodMeta = root.findViewById(R.id.tv_cycle_settings_entry_period);
@@ -598,6 +641,117 @@ public class PeriodFragment extends Fragment {
     }
 
     // ── 经期"是/否"乐观更新 ─────────────────────────────────────────────────────────────
+
+    private void refreshHealthStatusCard() {
+        if (tvHealthStatusKicker == null
+                || tvHealthStatusBadge == null
+                || tvHealthStatusTitle == null
+                || tvHealthStatusSubtitle == null
+                || tvHealthStatusHint == null) {
+            return;
+        }
+
+        tvHealthStatusKicker.setText("身体状态");
+        tvHealthStatusBadge.setText("经期模式");
+
+        if (hasOngoingPeriodCycle()) {
+            CycleApiService.CycleSlice displayCycle = todayMonthActualCycle != null
+                    ? todayMonthActualCycle
+                    : buildFallbackDisplayCycle();
+            LocalDate displayStartDate = resolveCycleDisplayStart(displayCycle);
+            int displayDays = resolveCycleDisplayDuration(displayCycle);
+            if (displayDays <= 0 && displayStartDate != null) {
+                LocalDate effectiveEndDate = LocalDate.now();
+                LocalDate resolvedEndDate = resolveCycleDisplayEnd(displayCycle);
+                if (resolvedEndDate != null && resolvedEndDate.isBefore(effectiveEndDate)) {
+                    effectiveEndDate = resolvedEndDate;
+                }
+                displayDays = (int) (ChronoUnit.DAYS.between(displayStartDate, effectiveEndDate) + 1);
+            }
+            if (displayDays > 0) {
+                tvHealthStatusTitle.setText("经期第 " + displayDays + " 天");
+                tvHealthStatusSubtitle.setText("开始于 " + (displayStartDate != null ? displayStartDate : "今天"));
+                int periodDays = Math.max(1, CycleDataManager.getPeriodDays(requireContext()));
+                updateHealthStatusMarker((displayDays - 1f) / Math.max(1, periodDays - 1));
+            } else {
+                tvHealthStatusTitle.setText("经期进行中");
+                tvHealthStatusSubtitle.setText("正在同步当前周期状态");
+                updateHealthStatusMarker(0f);
+            }
+            tvHealthStatusHint.setText("今天更适合轻量安排，重点关注睡眠、情绪和腹部不适。");
+            return;
+        }
+
+        int cycleDay = resolveCurrentCycleDay();
+        if (cycleDay > 0) {
+            int cycleDays = Math.max(1, CycleDataManager.getCycleDays(requireContext()));
+            updateHealthStatusMarker((cycleDay - 1f) / Math.max(1, cycleDays - 1));
+            tvHealthStatusTitle.setText("周期第 " + cycleDay + " 天");
+            tvHealthStatusSubtitle.setText("身体正在进入黄体期");
+            int daysToPeriod = resolveEstimatedDaysToNextPeriod();
+            if (daysToPeriod >= 0) {
+                tvHealthStatusHint.setText("预计 " + daysToPeriod + " 天后进入经期。");
+            } else {
+                tvHealthStatusHint.setText("记录几天后，Athena 会帮你整理更稳定的节律。");
+            }
+        } else {
+            updateHealthStatusMarker(0.5f);
+            tvHealthStatusTitle.setText("暂无完整周期");
+            tvHealthStatusSubtitle.setText("记录 2-3 个周期后，Athena 会帮你整理规律");
+            tvHealthStatusHint.setText("先记录月经开始日期，后续状态会更准确。");
+        }
+    }
+
+    private void updateHealthStatusMarker(float progress) {
+        if (viewHealthStatusMarker == null) {
+            return;
+        }
+        viewHealthStatusMarker.post(() -> {
+            View parent = (View) viewHealthStatusMarker.getParent();
+            if (parent == null) {
+                return;
+            }
+            int travel = parent.getWidth() - viewHealthStatusMarker.getWidth();
+            if (travel <= 0) {
+                return;
+            }
+            float safeProgress = Math.max(0f, Math.min(1f, progress));
+            viewHealthStatusMarker.animate()
+                    .translationX((safeProgress - 0.5f) * travel)
+                    .setDuration(360L)
+                    .start();
+        });
+    }
+
+    private int resolveCurrentCycleDay() {
+        if (!isAdded()) {
+            return -1;
+        }
+        LocalDate startDate = latestCycleState != null && latestCycleState.startDate != null
+                ? latestCycleState.startDate
+                : CycleDataManager.getLastPeriodStart(requireContext());
+        if (startDate == null) {
+            return -1;
+        }
+        long elapsed = ChronoUnit.DAYS.between(startDate, LocalDate.now());
+        if (elapsed < 0) {
+            return -1;
+        }
+        int cycleDays = Math.max(1, CycleDataManager.getCycleDays(requireContext()));
+        return (int) (elapsed % cycleDays) + 1;
+    }
+
+    private int resolveEstimatedDaysToNextPeriod() {
+        if (!isAdded()) {
+            return -1;
+        }
+        int cycleDay = resolveCurrentCycleDay();
+        if (cycleDay <= 0) {
+            return -1;
+        }
+        int cycleDays = Math.max(1, CycleDataManager.getCycleDays(requireContext()));
+        return Math.max(0, cycleDays - cycleDay + 1);
+    }
 
     private boolean hasOngoingPeriodCycle() {
         if (!isAdded()) {
@@ -661,6 +815,7 @@ public class PeriodFragment extends Fragment {
     }
 
     private void refreshPeriodCardUi() {
+        refreshHealthStatusCard();
         if (tvPeriodTitle == null || tvPeriodMeta == null || btnPeriodYes == null || btnPeriodNo == null) {
             return;
         }
@@ -1102,8 +1257,12 @@ public class PeriodFragment extends Fragment {
                 if (dataArr != null) {
                     Gson gson = new Gson();
                     for (int i = 0; i < dataArr.length(); i++) {
-                        records.add(gson.fromJson(
-                                dataArr.getJSONObject(i).toString(), HealthRecordEntity.class));
+                        HealthRecordEntity record = gson.fromJson(
+                                dataArr.getJSONObject(i).toString(), HealthRecordEntity.class);
+                        if (record != null) {
+                            record.setModeType(HealthRecordModeMapper.toUiModeType(record.getModeType()));
+                            records.add(record);
+                        }
                     }
                 }
 

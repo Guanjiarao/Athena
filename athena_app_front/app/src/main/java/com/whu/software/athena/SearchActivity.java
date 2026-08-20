@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -24,6 +25,7 @@ public class SearchActivity extends AppCompatActivity {
     private int searchType;
     
     // 视图
+    private ImageButton ivBack;
     private EditText etSearch;
     private ImageView ivClear;
     private TextView tvSearch;
@@ -74,11 +76,15 @@ public class SearchActivity extends AppCompatActivity {
     }
     
     private void initViews() {
+        ivBack = findViewById(R.id.iv_back);
         etSearch = findViewById(R.id.et_search);
         ivClear = findViewById(R.id.iv_clear);
         tvSearch = findViewById(R.id.tv_search);
         llHistoryContainer = findViewById(R.id.ll_history_container);
         tvClearHistory = findViewById(R.id.tv_clear_history);
+
+        // 退出/返回按钮
+        ivBack.setOnClickListener(v -> finish());
         
         // 设置搜索框文本变化监听器
         etSearch.addTextChangedListener(new android.text.TextWatcher() {
