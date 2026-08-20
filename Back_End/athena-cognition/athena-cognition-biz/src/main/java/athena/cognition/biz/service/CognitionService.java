@@ -599,7 +599,14 @@ public class CognitionService {
                 counts, hasMore);
     }
 
-    // ---------- section 8.11: home aggregate (minimal selection rules) ----------
+    // ---------- section 8.11: home aggregate (full 9-state selection rules) ----------
+
+    /**
+     * Short-term feedback states (DIGEST_KEPT_AS_KNOWLEDGE / DIGEST_REJECTED)
+     * only show while the decision is recent; older decisions fall back to
+     * EMPTY so they never become the permanent home state (section 8.11).
+     */
+    private static final java.time.Duration DECISION_FEEDBACK_WINDOW = java.time.Duration.ofHours(24);
 
     public HomeView getHome(long userId) {
         int pendingDigests = (int) repository.countPendingDigests(userId);
@@ -616,6 +623,7 @@ public class CognitionService {
             headline = "Athena 正在整理你的身体线索";
         } else if (failedTasks > 0 && repository.findLatestTask(userId)
                 .map(task -> task.status() == DigestTaskStatus.FAILED).orElse(false)) {
+            // "most recent generation failed and nothing of higher priority exists"
             state = HomeSummaryState.DIGEST_FAILED;
             headline = "最近一次整理没有完成，可以稍后重试";
         } else if (topicRow != null) {
@@ -623,17 +631,21 @@ public class CognitionService {
                     && repository.findAction(userId, topicRow.nextActionId(), false)
                     .map(action -> action.status() == ActionStatus.COMPLETED).orElse(false);
             state = actionCompleted ? HomeSummaryState.ACTION_COMPLETED : HomeSummaryState.OBSERVING;
-            headline = "Athena 正在理解你的身体变化";
+            headline = actionCompleted ? "这次观察已完成，阶段理解已更新" : "Athena 正在理解你的身体变化";
         } else if (repository.countClues(userId, ClueListView.PENDING, null, null, null) > 0) {
             state = HomeSummaryState.BUILDING_BASELINE;
             headline = "Athena 正在积累你的身体线索";
         } else {
+            // Reached only with no topic, no open digest and no pending clue:
+            // the latest decision may show as a short-term feedback state
             var latestDecision = repository.findLatestDecision(userId);
-            if (latestDecision.isPresent()
-                    && latestDecision.get().decision() == DigestDecision.KEEP_AS_KNOWLEDGE) {
+            boolean recentDecision = latestDecision.isPresent()
+                    && latestDecision.get().createdAt() != null
+                    && latestDecision.get().createdAt().isAfter(Instant.now().minus(DECISION_FEEDBACK_WINDOW));
+            if (recentDecision && latestDecision.get().decision() == DigestDecision.KEEP_AS_KNOWLEDGE) {
                 state = HomeSummaryState.DIGEST_KEPT_AS_KNOWLEDGE;
                 headline = "这次整理已保存为知识";
-            } else if (latestDecision.isPresent() && latestDecision.get().decision() == DigestDecision.REJECT) {
+            } else if (recentDecision && latestDecision.get().decision() == DigestDecision.REJECT) {
                 state = HomeSummaryState.DIGEST_REJECTED;
                 headline = "这次整理已按你的反馈撤下";
             } else {

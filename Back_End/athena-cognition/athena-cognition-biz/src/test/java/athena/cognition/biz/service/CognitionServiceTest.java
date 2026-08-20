@@ -919,6 +919,205 @@ class CognitionServiceTest {
         }
     }
 
+    // ---------- section 8.11 / TC-20: home summary state selection ----------
+
+    @Nested
+    class HomeSummaryStates {
+
+        @Test
+        void digestReadyWins() {
+            stubCounts(1L, 0);
+            when(repository.findPrimaryTopic(USER_ID)).thenReturn(Optional.empty());
+            when(repository.hasDigestWithStatus(USER_ID, DigestStatus.READY)).thenReturn(true);
+
+            HomeView view = service.getHome(USER_ID);
+
+            assertThat(view.summaryState()).isEqualTo(HomeSummaryState.DIGEST_READY);
+            assertThat(view.headline()).isEqualTo("有一份整理草稿等待确认");
+            assertThat(view.pendingDigestCount()).isEqualTo(1);
+            assertThat(view.activeTopic()).isNull();
+            assertThat(view.latestInsight()).isNull();
+        }
+
+        @Test
+        void digestReadyBeatsExistingTopic() {
+            stubCounts(1L, 0);
+            when(repository.findPrimaryTopic(USER_ID)).thenReturn(Optional.of(homeTopicRow()));
+            when(repository.hasDigestWithStatus(USER_ID, DigestStatus.READY)).thenReturn(true);
+
+            HomeView view = service.getHome(USER_ID);
+
+            assertThat(view.summaryState()).isEqualTo(HomeSummaryState.DIGEST_READY);
+        }
+
+        @Test
+        void digestProcessing() {
+            stubCounts(1L, 0);
+            when(repository.findPrimaryTopic(USER_ID)).thenReturn(Optional.empty());
+            when(repository.hasDigestWithStatus(USER_ID, DigestStatus.READY)).thenReturn(false);
+            when(repository.hasProcessingTask(USER_ID)).thenReturn(true);
+
+            assertThat(service.getHome(USER_ID).summaryState()).isEqualTo(HomeSummaryState.DIGEST_PROCESSING);
+        }
+
+        @Test
+        void digestFailedWhenLatestTaskFailed() {
+            stubCounts(0L, 1);
+            when(repository.findPrimaryTopic(USER_ID)).thenReturn(Optional.empty());
+            when(repository.hasDigestWithStatus(USER_ID, DigestStatus.READY)).thenReturn(false);
+            when(repository.hasProcessingTask(USER_ID)).thenReturn(false);
+            when(repository.findLatestTask(USER_ID)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.TaskRow(100L, 200L, DigestTaskStatus.FAILED,
+                            TriggerType.USER_REQUEST, "fixed-v1", 0, CognitionException.GENERATION_FAILED,
+                            Instant.now())));
+
+            HomeView view = service.getHome(USER_ID);
+
+            assertThat(view.summaryState()).isEqualTo(HomeSummaryState.DIGEST_FAILED);
+            assertThat(view.failedTaskCount()).isEqualTo(1);
+        }
+
+        @Test
+        void actionCompleted() {
+            stubTopicBranch(homeActionRow(ActionStatus.COMPLETED));
+
+            HomeView view = service.getHome(USER_ID);
+
+            assertThat(view.summaryState()).isEqualTo(HomeSummaryState.ACTION_COMPLETED);
+            assertThat(view.headline()).isEqualTo("这次观察已完成，阶段理解已更新");
+            assertThat(view.nextAction()).isNull();
+            assertThat(view.activeTopic().id()).isEqualTo("topic_5");
+            assertThat(view.activeTopic().maturity()).isEqualTo(Maturity.EARLY_LINK);
+            assertThat(view.activeTopic().userProgress()).isEqualTo(UserProgress.OBSERVING);
+            assertThat(view.activeTopic().riskStatus()).isEqualTo(RiskStatus.NONE);
+            assertThat(view.activeTopic().evidenceCount()).isEqualTo(3);
+            assertThat(view.activeTopic().cycleCount()).isEqualTo(1);
+            assertThat(view.activeTopic().nextActionId()).isEqualTo("action_9");
+            assertThat(view.latestInsight().title()).isEqualTo("经前情绪变化");
+            assertThat(view.latestInsight().body()).contains("初步联系");
+            assertThat(view.latestInsight().evidenceCount()).isEqualTo(3);
+            assertThat(view.latestInsight().uncertainty()).contains("还不能确定");
+        }
+
+        @Test
+        void observingWithPendingNextAction() {
+            stubTopicBranch(homeActionRow(ActionStatus.PENDING));
+
+            HomeView view = service.getHome(USER_ID);
+
+            assertThat(view.summaryState()).isEqualTo(HomeSummaryState.OBSERVING);
+            assertThat(view.headline()).isEqualTo("Athena 正在理解你的身体变化");
+            assertThat(view.nextAction().id()).isEqualTo("action_9");
+            assertThat(view.nextAction().status()).isEqualTo(ActionStatus.PENDING);
+            assertThat(view.nextAction().feedbackOptions()).containsExactly(
+                    ActionFeedbackResult.OCCURRED, ActionFeedbackResult.NOT_OCCURRED,
+                    ActionFeedbackResult.UNCERTAIN, ActionFeedbackResult.SKIPPED);
+        }
+
+        @Test
+        void buildingBaselineWithOnlyPendingRelatedClues() {
+            stubNoDigestBranch();
+            when(repository.countClues(USER_ID, ClueListView.PENDING, null, null, null)).thenReturn(2L);
+
+            assertThat(service.getHome(USER_ID).summaryState()).isEqualTo(HomeSummaryState.BUILDING_BASELINE);
+        }
+
+        @Test
+        void digestKeptAsKnowledgeIsShortTermFeedback() {
+            stubNoDigestBranch();
+            when(repository.countClues(USER_ID, ClueListView.PENDING, null, null, null)).thenReturn(0L);
+            when(repository.findLatestDecision(USER_ID)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.DecisionLogRow(9L, DigestDecision.KEEP_AS_KNOWLEDGE, Instant.now())));
+
+            HomeView view = service.getHome(USER_ID);
+
+            assertThat(view.summaryState()).isEqualTo(HomeSummaryState.DIGEST_KEPT_AS_KNOWLEDGE);
+            assertThat(view.headline()).isEqualTo("这次整理已保存为知识");
+        }
+
+        @Test
+        void digestRejectedIsShortTermFeedback() {
+            stubNoDigestBranch();
+            when(repository.countClues(USER_ID, ClueListView.PENDING, null, null, null)).thenReturn(0L);
+            when(repository.findLatestDecision(USER_ID)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.DecisionLogRow(9L, DigestDecision.REJECT, Instant.now())));
+
+            assertThat(service.getHome(USER_ID).summaryState()).isEqualTo(HomeSummaryState.DIGEST_REJECTED);
+        }
+
+        @Test
+        void tc20EmptyUserGetsEmptyStateWithNulls() {
+            stubNoDigestBranch();
+            when(repository.countClues(USER_ID, ClueListView.PENDING, null, null, null)).thenReturn(0L);
+            when(repository.findLatestDecision(USER_ID)).thenReturn(Optional.empty());
+
+            HomeView view = service.getHome(USER_ID);
+
+            assertThat(view.summaryState()).isEqualTo(HomeSummaryState.EMPTY);
+            assertThat(view.headline()).isEqualTo("还没有可展示的身体认知摘要");
+            assertThat(view.asOf()).isNotNull();
+            assertThat(view.latestInsight()).isNull();
+            assertThat(view.activeTopic()).isNull();
+            assertThat(view.nextAction()).isNull();
+            assertThat(view.pendingDigestCount()).isZero();
+            assertThat(view.failedTaskCount()).isZero();
+        }
+
+        @Test
+        void staleDecisionFallsBackToEmpty() {
+            stubNoDigestBranch();
+            when(repository.countClues(USER_ID, ClueListView.PENDING, null, null, null)).thenReturn(0L);
+            when(repository.findLatestDecision(USER_ID)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.DecisionLogRow(9L, DigestDecision.REJECT,
+                            Instant.now().minus(java.time.Duration.ofDays(2)))));
+
+            // an old reject must not occupy the home state forever
+            assertThat(service.getHome(USER_ID).summaryState()).isEqualTo(HomeSummaryState.EMPTY);
+        }
+
+        @Test
+        void freshDecisionYieldsToNewPendingClues() {
+            stubNoDigestBranch();
+            when(repository.countClues(USER_ID, ClueListView.PENDING, null, null, null)).thenReturn(1L);
+
+            // even right after a reject, new baseline data takes over
+            assertThat(service.getHome(USER_ID).summaryState()).isEqualTo(HomeSummaryState.BUILDING_BASELINE);
+        }
+
+        private void stubCounts(long pendingDigests, int failedTasks) {
+            when(repository.countPendingDigests(USER_ID)).thenReturn(pendingDigests);
+            when(repository.countFailedTasks(USER_ID)).thenReturn(failedTasks);
+        }
+
+        private void stubNoDigestBranch() {
+            stubCounts(0L, 0);
+            when(repository.findPrimaryTopic(USER_ID)).thenReturn(Optional.empty());
+            when(repository.hasDigestWithStatus(USER_ID, DigestStatus.READY)).thenReturn(false);
+            when(repository.hasProcessingTask(USER_ID)).thenReturn(false);
+        }
+
+        private void stubTopicBranch(CognitionJdbcRepository.ActionRow nextAction) {
+            stubCounts(0L, 0);
+            when(repository.findPrimaryTopic(USER_ID)).thenReturn(Optional.of(homeTopicRow()));
+            when(repository.hasDigestWithStatus(USER_ID, DigestStatus.READY)).thenReturn(false);
+            when(repository.hasProcessingTask(USER_ID)).thenReturn(false);
+            when(repository.findAction(USER_ID, 9L, false)).thenReturn(Optional.of(nextAction));
+        }
+
+        private CognitionJdbcRepository.TopicRow homeTopicRow() {
+            return new CognitionJdbcRepository.TopicRow(5L, 3L, "经前情绪变化", "MOOD", Maturity.EARLY_LINK,
+                    UserProgress.OBSERVING, RiskStatus.NONE, "这些线索出现初步联系，但仍需继续观察。",
+                    "[\"用户确认现在出现过与该线索类似的情况\"]", "[\"还不能确定这种联系是否会重复\"]",
+                    3, 2, 1, 1, 9L, Instant.now(), 2, Instant.now());
+        }
+
+        private CognitionJdbcRepository.ActionRow homeActionRow(ActionStatus status) {
+            return new CognitionJdbcRepository.ActionRow(9L, 5L, "记录一次相关身体变化", "补充出现时间和程度",
+                    ActionType.RECORD_BODY, status, null,
+                    "[\"OCCURRED\",\"NOT_OCCURRED\",\"UNCERTAIN\",\"SKIPPED\"]", Instant.now());
+        }
+    }
+
     // ---------- fixtures ----------
 
     private ClueRow clueRow(long id, ClueIntent intent, ClueStatus status) {
