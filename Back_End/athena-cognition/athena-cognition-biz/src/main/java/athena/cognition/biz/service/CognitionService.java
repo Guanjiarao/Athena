@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Contract business logic: three marker save rules (section 6), state flows
@@ -347,7 +348,8 @@ public class CognitionService {
 
         switch (request.decision()) {
             case ACCEPT_AS_TOPIC -> {
-                List<EvidenceRow> evidence = repository.findDigestEvidence(userId, digestId);
+                List<EvidenceRow> evidence = retireDeadBodyRecordEvidence(userId,
+                        repository.findDigestEvidence(userId, digestId));
                 long topicId = createTopicFromDigest(userId, digest, clues, evidence);
                 repository.linkTopicEvidence(userId, topicId, evidence.stream().map(EvidenceRow::id).toList());
                 long actionId = repository.insertAction(userId, topicId, "记录一次相关身体变化",
@@ -406,6 +408,26 @@ public class CognitionService {
     private static List<MaturityCalculator.EvidenceFact> toFacts(List<EvidenceRow> evidence) {
         return evidence.stream().map(e -> new MaturityCalculator.EvidenceFact(
                 e.sourceType(), e.factLevel(), e.feedbackResult(), e.occurredAt())).toList();
+    }
+
+    /**
+     * Section 4.8.5: BODY_RECORD evidence is re-validated against athena-record
+     * at recompute moments (digest accept, action feedback). Evidence whose
+     * record no longer exists is retired (active=0, never physically deleted)
+     * and excluded from counters, thresholds and maturity. Degradation fails
+     * open inside the provider: an outage keeps evidence alive.
+     */
+    private List<EvidenceRow> retireDeadBodyRecordEvidence(long userId, List<EvidenceRow> evidence) {
+        List<EvidenceRow> bodyRecords = evidence.stream()
+                .filter(e -> e.sourceType() == EvidenceSourceType.BODY_RECORD).toList();
+        if (bodyRecords.isEmpty()) return evidence;
+        Set<String> alive = bodyRecordEvidenceProvider.filterExistingRecordIds(userId,
+                bodyRecords.stream().map(EvidenceRow::sourceId).toList());
+        List<Long> deadIds = bodyRecords.stream().filter(e -> !alive.contains(e.sourceId()))
+                .map(EvidenceRow::id).toList();
+        if (deadIds.isEmpty()) return evidence;
+        repository.deactivateEvidence(userId, deadIds);
+        return evidence.stream().filter(e -> !deadIds.contains(e.id())).toList();
     }
 
     private static String clueTexts(List<ClueRow> clues) {
@@ -502,7 +524,8 @@ public class CognitionService {
         // Section 7.3: recompute counters from the linked evidence (recompute, not
         // blind increment, so counters stay correct however evidence evolved) and
         // refresh stage understanding with a simple per-result text rule
-        List<EvidenceRow> topicEvidence = repository.findTopicEvidence(userId, action.topicId());
+        List<EvidenceRow> topicEvidence = retireDeadBodyRecordEvidence(userId,
+                repository.findTopicEvidence(userId, action.topicId()));
         int evidenceCount = topicEvidence.size();
         int articleClueCount = (int) topicEvidence.stream()
                 .filter(e -> e.sourceType() == EvidenceSourceType.CLUE).count();

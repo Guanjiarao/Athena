@@ -323,6 +323,13 @@ public class CognitionJdbcRepository {
                 });
     }
 
+    /** Section 4.4: retire evidence whose source is gone; never physically delete. */
+    public void deactivateEvidence(long userId, List<Long> evidenceIds) {
+        if (evidenceIds.isEmpty()) return;
+        namedJdbc.update("UPDATE cognition_evidence SET active=0 WHERE user_id=:userId AND id IN (:ids)",
+                new MapSqlParameterSource("userId", userId).addValue("ids", evidenceIds));
+    }
+
     private static final String EVIDENCE_SELECT = """
             SELECT e.*, c.article_id AS clue_article_id, c.article_title AS clue_article_title,
                    c.article_type AS clue_article_type, af.result AS feedback_result

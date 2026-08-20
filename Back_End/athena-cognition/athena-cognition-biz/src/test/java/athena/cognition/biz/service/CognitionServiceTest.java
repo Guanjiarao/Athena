@@ -18,8 +18,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -44,6 +46,9 @@ class CognitionServiceTest {
     void setUp() {
         service = new CognitionService(repository, generator, bodyRecordEvidenceProvider,
                 new ObjectMapper().findAndRegisterModules());
+        // default: every referenced daily_record is alive; liveness tests override this
+        lenient().when(bodyRecordEvidenceProvider.filterExistingRecordIds(anyLong(), anyCollection()))
+                .thenAnswer(invocation -> new HashSet<>(invocation.getArgument(1)));
     }
 
     // ---------- section 6: three marker save rules ----------
@@ -307,6 +312,42 @@ class CognitionServiceTest {
             assertThat(result.topic().evidenceCount()).isEqualTo(3);
             assertThat(result.action().id()).isEqualTo("action_8001");
             verify(repository).linkTopicEvidence(USER_ID, 7001L, List.of(1L, 2L, 3L));
+        }
+
+        @Test
+        void acceptDigestRetiresDeadBodyRecordEvidence() {
+            when(repository.findDigest(USER_ID, 9L, true))
+                    .thenReturn(Optional.of(digestRow(9L, DigestStatus.READY, 1)));
+            when(repository.findDigestClues(USER_ID, 9L)).thenReturn(List.of(
+                    clueRow(1L, ClueIntent.RELATED, ClueStatus.PROCESSING),
+                    clueRow(2L, ClueIntent.RELATED, ClueStatus.PROCESSING)));
+            // the BODY_RECORD evidence references a deleted daily_record
+            when(repository.findDigestEvidence(USER_ID, 9L)).thenReturn(List.of(
+                    evidenceRow(1L, EvidenceSourceType.CLUE, null, Instant.parse("2026-08-10T04:00:00Z")),
+                    evidenceRow(2L, EvidenceSourceType.BODY_RECORD, null, Instant.parse("2026-06-10T04:00:00Z"))));
+            when(bodyRecordEvidenceProvider.filterExistingRecordIds(USER_ID, List.of("src_2")))
+                    .thenReturn(Set.of());
+            when(repository.insertTopic(eq(USER_ID), eq(9L), eq("经前情绪变化"), eq("MOOD"),
+                    eq(Maturity.CLUE), any(), any(), any(), eq(1), eq(1), eq(0), eq(1))).thenReturn(7001L);
+            when(repository.insertAction(eq(USER_ID), eq(7001L), any(), any(), eq(ActionType.RECORD_BODY),
+                    any(), any())).thenReturn(8001L);
+            when(repository.findTopic(USER_ID, 7001L, false)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.TopicRow(7001L, 9L, "经前情绪变化", "MOOD",
+                            Maturity.CLUE, UserProgress.OBSERVING, RiskStatus.NONE, "可能联系",
+                            "[]", "[]", 1, 1, 0, 1, 8001L, Instant.now(), 1, Instant.now())));
+            when(repository.findAction(USER_ID, 8001L, false)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.ActionRow(8001L, 7001L, "记录一次相关身体变化", "记录一次",
+                            ActionType.RECORD_BODY, ActionStatus.PENDING, null, null, Instant.now())));
+            when(repository.findDigest(USER_ID, 9L, false))
+                    .thenReturn(Optional.of(digestRow(9L, DigestStatus.ACCEPTED, 2)));
+
+            DigestDecisionView result = service.decideDigest(USER_ID, "digest_9",
+                    new DigestDecisionRequest(DigestDecision.ACCEPT_AS_TOPIC, null, 1));
+
+            assertThat(result.topic().maturity()).isEqualTo(Maturity.CLUE);
+            verify(repository).deactivateEvidence(USER_ID, List.of(2L));
+            // dead evidence is neither linked to the topic nor counted
+            verify(repository).linkTopicEvidence(USER_ID, 7001L, List.of(1L));
         }
     }
 
@@ -824,6 +865,38 @@ class CognitionServiceTest {
 
             verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L), any(),
                     eq(Maturity.REPEATED_PATTERN), eq(2), eq(1), eq(1), eq(1));
+        }
+
+        @Test
+        void deadBodyRecordEvidenceIsRetiredAndExcludedFromCounters() {
+            stubPendingAction();
+            stubCurrentTopic(Maturity.CLUE);
+            CognitionJdbcRepository.FeedbackRow saved = new CognitionJdbcRepository.FeedbackRow(36L, 9L, 5L,
+                    ActionFeedbackResult.OCCURRED, null, Instant.parse("2026-08-13T04:00:00Z"),
+                    Instant.now(), 46L);
+            when(repository.findFeedbackByAction(USER_ID, 9L)).thenReturn(Optional.empty(), Optional.of(saved));
+            when(repository.insertFeedback(eq(USER_ID), eq(9L), eq(5L), eq(ActionFeedbackResult.OCCURRED),
+                    any(), any())).thenReturn(36L);
+            when(repository.insertEvidence(eq(USER_ID), eq(EvidenceSourceType.ACTION_FEEDBACK), eq("feedback_36"),
+                    eq(FactLevel.SELF_REPORTED), any(), any())).thenReturn(46L);
+            // the BODY_RECORD evidence references a daily_record that no longer exists
+            when(repository.findTopicEvidence(USER_ID, 5L)).thenReturn(List.of(
+                    evidenceRow(1L, EvidenceSourceType.CLUE, null, Instant.parse("2026-08-10T04:00:00Z")),
+                    evidenceRow(2L, EvidenceSourceType.BODY_RECORD, null, Instant.parse("2026-06-10T04:00:00Z")),
+                    evidenceRow(46L, EvidenceSourceType.ACTION_FEEDBACK, ActionFeedbackResult.OCCURRED,
+                            Instant.parse("2026-08-13T04:00:00Z"))));
+            when(bodyRecordEvidenceProvider.filterExistingRecordIds(USER_ID, List.of("src_2")))
+                    .thenReturn(Set.of());
+            when(repository.findTopic(USER_ID, 5L, false)).thenReturn(Optional.of(topicRow(5L, 3)));
+
+            service.submitFeedback(USER_ID, "action_9",
+                    new FeedbackRequest("topic_5", ActionFeedbackResult.OCCURRED, null,
+                            Instant.parse("2026-08-13T04:00:00Z")));
+
+            // retired (active=0), never physically deleted; counters and maturity exclude it
+            verify(repository).deactivateEvidence(USER_ID, List.of(2L));
+            verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L), any(),
+                    eq(Maturity.INSUFFICIENT), eq(2), eq(1), eq(1), eq(1));
         }
 
         private void stubPendingAction() {
