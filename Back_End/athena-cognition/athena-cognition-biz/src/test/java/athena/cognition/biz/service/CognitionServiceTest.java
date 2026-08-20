@@ -1,5 +1,7 @@
 package athena.cognition.biz.service;
 
+import athena.cognition.biz.bodyrecord.BodyRecordEvidenceProvider;
+import athena.cognition.biz.bodyrecord.BodyRecordEvidenceProvider.ConfirmedBodyRecord;
 import athena.cognition.biz.domain.CognitionException;
 import athena.cognition.biz.domain.CognitionModels.*;
 import athena.cognition.biz.generator.DigestGenerator;
@@ -33,12 +35,15 @@ class CognitionServiceTest {
     private CognitionJdbcRepository repository;
     @Mock
     private DigestGenerator generator;
+    @Mock
+    private BodyRecordEvidenceProvider bodyRecordEvidenceProvider;
 
     private CognitionService service;
 
     @BeforeEach
     void setUp() {
-        service = new CognitionService(repository, generator, new ObjectMapper().findAndRegisterModules());
+        service = new CognitionService(repository, generator, bodyRecordEvidenceProvider,
+                new ObjectMapper().findAndRegisterModules());
     }
 
     // ---------- section 6: three marker save rules ----------
@@ -305,6 +310,169 @@ class CognitionServiceTest {
                     new DigestTaskCreateRequest(TriggerType.USER_REQUEST, List.of("clue_1", "clue_2"), null)));
 
             verify(repository, never()).insertTask(anyLong(), any(), any());
+        }
+    }
+
+    // ---------- section 10.1 / TC-07: automatic thresholds ----------
+
+    @Nested
+    class AutoThreshold {
+
+        @Test
+        void rule1TriggersOnThirdRelatedClueInCandidateGroup() {
+            ClueCreateRequest request = relatedRequest("经前情绪变化");
+            ClueRow saved = clueRow(3L, ClueIntent.RELATED, ClueStatus.PENDING);
+            when(repository.insertClue(eq(USER_ID), any(), any(), any(), any(), any())).thenReturn(3L);
+            when(repository.findClue(USER_ID, 3L)).thenReturn(Optional.of(saved));
+            when(repository.findPendingRelatedCluesForCandidate(USER_ID, null, "经前情绪变化"))
+                    .thenReturn(List.of(clueRow(1L, ClueIntent.RELATED, ClueStatus.PENDING),
+                            clueRow(2L, ClueIntent.RELATED, ClueStatus.PENDING), saved));
+            when(repository.hasOpenDigestForClues(USER_ID, List.of(1L, 2L, 3L))).thenReturn(false);
+            when(repository.insertTask(USER_ID, TriggerType.RULE_THRESHOLD, "fixed-v1")).thenReturn(100L);
+            when(repository.insertDigest(eq(USER_ID), any(), eq("fixed-v1"))).thenReturn(200L);
+            when(generator.generate(any(), any())).thenReturn(generated());
+            when(repository.findTask(USER_ID, 100L)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.TaskRow(100L, 200L, DigestTaskStatus.SUCCEEDED,
+                            TriggerType.RULE_THRESHOLD, "fixed-v1", 0, null, Instant.now())));
+            when(repository.findDigest(USER_ID, 200L, false))
+                    .thenReturn(Optional.of(digestRow(200L, DigestStatus.READY, 1)));
+
+            ClueCreateView result = service.createClue(USER_ID, request);
+
+            assertThat(result.digestTask().triggered()).isTrue();
+            assertThat(result.digestTask().taskId()).isEqualTo("task_100");
+            assertThat(result.digestTask().digestId()).isEqualTo("digest_200");
+            assertThat(result.digestTask().status()).isEqualTo(DigestTaskStatus.SUCCEEDED);
+            verify(repository).insertTask(USER_ID, TriggerType.RULE_THRESHOLD, "fixed-v1");
+            verify(repository).updateClueStatus(USER_ID, List.of(1L, 2L, 3L), ClueStatus.PROCESSING);
+        }
+
+        @Test
+        void belowThresholdDoesNotTrigger() {
+            ClueCreateRequest request = relatedRequest("经前情绪变化");
+            when(repository.insertClue(eq(USER_ID), any(), any(), any(), any(), any())).thenReturn(1L);
+            when(repository.findClue(USER_ID, 1L))
+                    .thenReturn(Optional.of(clueRow(1L, ClueIntent.RELATED, ClueStatus.PENDING)));
+            when(repository.findPendingRelatedCluesForCandidate(USER_ID, null, "经前情绪变化"))
+                    .thenReturn(List.of(clueRow(1L, ClueIntent.RELATED, ClueStatus.PENDING)));
+
+            ClueCreateView result = service.createClue(USER_ID, request);
+
+            assertThat(result.digestTask().triggered()).isFalse();
+            assertThat(result.digestTask().taskId()).isNull();
+            verify(repository, never()).insertTask(anyLong(), any(), any());
+        }
+
+        @Test
+        void questionAndKnowledgeOnlyNeverCountIntoThreshold() {
+            ClueCreateRequest question = new ClueCreateRequest(
+                    ClueType.ARTICLE_HIGHLIGHT, ClueIntent.QUESTION, null, HelpRequestType.KNOWLEDGE,
+                    "1024", "文章", 100, "选中文字", QuestionType.IS_COMMON, "这是否常见？",
+                    null, null, null, null, null, null, "经前情绪变化", "我有疑问");
+            when(repository.insertClue(eq(USER_ID), any(), any(), any(), any(), any())).thenReturn(5L, 6L);
+            when(repository.findClue(USER_ID, 5L))
+                    .thenReturn(Optional.of(clueRow(5L, ClueIntent.QUESTION, ClueStatus.PENDING)));
+            when(repository.findClue(USER_ID, 6L))
+                    .thenReturn(Optional.of(clueRow(6L, ClueIntent.KNOWLEDGE_ONLY, ClueStatus.ORGANIZED)));
+            ClueCreateRequest knowledge = new ClueCreateRequest(
+                    ClueType.ARTICLE_HIGHLIGHT, ClueIntent.KNOWLEDGE_ONLY, RelationType.KNOWLEDGE_ONLY,
+                    HelpRequestType.SAVE_ONLY, "1024", "文章", 100, "选中文字", null, null,
+                    null, null, null, null, null, null, "经前情绪变化", "保存为知识");
+
+            assertThat(service.createClue(USER_ID, question).digestTask().triggered()).isFalse();
+            assertThat(service.createClue(USER_ID, knowledge).digestTask().triggered()).isFalse();
+
+            verify(repository, never()).findPendingRelatedCluesForCandidate(anyLong(), any(), any());
+            verify(repository, never()).insertTask(anyLong(), any(), any());
+        }
+
+        @Test
+        void openDigestBlocksDuplicateAutomaticTask() {
+            ClueCreateRequest request = relatedRequest("经前情绪变化");
+            ClueRow saved = clueRow(3L, ClueIntent.RELATED, ClueStatus.PENDING);
+            when(repository.insertClue(eq(USER_ID), any(), any(), any(), any(), any())).thenReturn(3L);
+            when(repository.findClue(USER_ID, 3L)).thenReturn(Optional.of(saved));
+            when(repository.findPendingRelatedCluesForCandidate(USER_ID, null, "经前情绪变化"))
+                    .thenReturn(List.of(clueRow(1L, ClueIntent.RELATED, ClueStatus.PENDING),
+                            clueRow(2L, ClueIntent.RELATED, ClueStatus.PENDING), saved));
+            when(repository.hasOpenDigestForClues(USER_ID, List.of(1L, 2L, 3L))).thenReturn(true);
+
+            ClueCreateView result = service.createClue(USER_ID, request);
+
+            assertThat(result.digestTask().triggered()).isFalse();
+            verify(repository, never()).insertTask(anyLong(), any(), any());
+        }
+
+        @Test
+        void rule2FiresWhenProviderConfirmsBodyRecord() {
+            ClueCreateRequest request = relatedRequest("经前情绪变化");
+            ClueRow saved = clueRow(2L, ClueIntent.RELATED, ClueStatus.PENDING);
+            when(repository.insertClue(eq(USER_ID), any(), any(), any(), any(), any())).thenReturn(2L);
+            when(repository.findClue(USER_ID, 2L)).thenReturn(Optional.of(saved));
+            when(repository.findPendingRelatedCluesForCandidate(USER_ID, null, "经前情绪变化"))
+                    .thenReturn(List.of(clueRow(1L, ClueIntent.RELATED, ClueStatus.PENDING), saved));
+            when(bodyRecordEvidenceProvider.findConfirmedBodyRecords(USER_ID, null, "经前情绪变化"))
+                    .thenReturn(List.of(new ConfirmedBodyRecord("2001", "经期前记录过轻微情绪波动", Instant.now())));
+            when(repository.hasOpenDigestForClues(USER_ID, List.of(1L, 2L))).thenReturn(false);
+            when(repository.insertTask(USER_ID, TriggerType.RULE_THRESHOLD, "fixed-v1")).thenReturn(100L);
+            when(repository.insertDigest(eq(USER_ID), any(), eq("fixed-v1"))).thenReturn(200L);
+            when(generator.generate(any(), any())).thenReturn(generated());
+            when(repository.findTask(USER_ID, 100L)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.TaskRow(100L, 200L, DigestTaskStatus.SUCCEEDED,
+                            TriggerType.RULE_THRESHOLD, "fixed-v1", 0, null, Instant.now())));
+            when(repository.findDigest(USER_ID, 200L, false))
+                    .thenReturn(Optional.of(digestRow(200L, DigestStatus.READY, 1)));
+
+            ClueCreateView result = service.createClue(USER_ID, request);
+
+            assertThat(result.digestTask().triggered()).isTrue();
+            verify(repository).insertEvidence(eq(USER_ID), eq(EvidenceSourceType.BODY_RECORD), eq("2001"),
+                    eq(FactLevel.SELF_REPORTED), any(), any());
+        }
+
+        @Test
+        void rule2StaysInertWhenProviderConfirmsNothing() {
+            ClueCreateRequest request = relatedRequest("经前情绪变化");
+            ClueRow saved = clueRow(2L, ClueIntent.RELATED, ClueStatus.PENDING);
+            when(repository.insertClue(eq(USER_ID), any(), any(), any(), any(), any())).thenReturn(2L);
+            when(repository.findClue(USER_ID, 2L)).thenReturn(Optional.of(saved));
+            when(repository.findPendingRelatedCluesForCandidate(USER_ID, null, "经前情绪变化"))
+                    .thenReturn(List.of(clueRow(1L, ClueIntent.RELATED, ClueStatus.PENDING), saved));
+
+            ClueCreateView result = service.createClue(USER_ID, request);
+
+            assertThat(result.digestTask().triggered()).isFalse();
+            verify(repository, never()).insertTask(anyLong(), any(), any());
+        }
+
+        @Test
+        void emptyCandidateGroupDoesNotAutoMerge() {
+            ClueCreateRequest request = relatedRequest(null);
+            ClueRow saved = new ClueRow(7L, ClueType.ARTICLE_HIGHLIGHT, ClueIntent.RELATED, RelationType.CURRENT,
+                    HelpRequestType.OBSERVE, "1024", "文章", 100, "选中文字", null, null, null,
+                    CycleRelation.UNKNOWN, null, null, ClueSource.KNOWLEDGE_ARTICLE, ClueStatus.PENDING,
+                    null, null, "和我有关", Instant.now(), Instant.now());
+            when(repository.insertClue(eq(USER_ID), any(), any(), any(), any(), any())).thenReturn(7L);
+            when(repository.findClue(USER_ID, 7L)).thenReturn(Optional.of(saved));
+
+            ClueCreateView result = service.createClue(USER_ID, request);
+
+            assertThat(result.digestTask().triggered()).isFalse();
+            verify(repository, never()).findPendingRelatedCluesForCandidate(anyLong(), any(), any());
+            verify(repository, never()).insertTask(anyLong(), any(), any());
+        }
+
+        private ClueCreateRequest relatedRequest(String suggestedTopicTitle) {
+            return new ClueCreateRequest(
+                    ClueType.ARTICLE_HIGHLIGHT, ClueIntent.RELATED, RelationType.CURRENT, HelpRequestType.OBSERVE,
+                    "1024", "文章", 100, "选中文字", null, null,
+                    null, CycleRelation.BEFORE_PERIOD, 3, false, ClueSource.KNOWLEDGE_ARTICLE,
+                    null, suggestedTopicTitle, "和我有关");
+        }
+
+        private DigestGenerator.GeneratedDigest generated() {
+            return new DigestGenerator.GeneratedDigest("经前情绪变化", "共同点", "可能联系", "仍不确定",
+                    "记录一次", "fixed-v1");
         }
     }
 

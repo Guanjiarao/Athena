@@ -1,5 +1,7 @@
 package athena.cognition.biz.service;
 
+import athena.cognition.biz.bodyrecord.BodyRecordEvidenceProvider;
+import athena.cognition.biz.bodyrecord.BodyRecordEvidenceProvider.ConfirmedBodyRecord;
 import athena.cognition.biz.domain.CognitionException;
 import athena.cognition.biz.domain.CognitionIds;
 import athena.cognition.biz.domain.CognitionModels.*;
@@ -36,14 +38,21 @@ public class CognitionService {
     private static final int MAX_PAGE_SIZE = 50;
     private static final int INBOX_FIRST_PAGE = 20;
     private static final String DEFAULT_DOMAIN = "OTHER";
+    /** Section 10.1 RULE_1: at least 3 valid RELATED article clues per candidate topic. */
+    private static final int RULE_1_MIN_CLUES = 3;
+    /** Section 10.1 RULE_2: at least 2 valid RELATED article clues plus 1 confirmed body record. */
+    private static final int RULE_2_MIN_CLUES = 2;
 
     private final CognitionJdbcRepository repository;
     private final DigestGenerator generator;
+    private final BodyRecordEvidenceProvider bodyRecordEvidenceProvider;
     private final ObjectMapper objectMapper;
 
-    public CognitionService(CognitionJdbcRepository repository, DigestGenerator generator, ObjectMapper objectMapper) {
+    public CognitionService(CognitionJdbcRepository repository, DigestGenerator generator,
+                            BodyRecordEvidenceProvider bodyRecordEvidenceProvider, ObjectMapper objectMapper) {
         this.repository = repository;
         this.generator = generator;
+        this.bodyRecordEvidenceProvider = bodyRecordEvidenceProvider;
         this.objectMapper = objectMapper;
     }
 
@@ -76,8 +85,45 @@ public class CognitionService {
         CycleRelation cycleRelation = request.cycleRelation() == null ? CycleRelation.UNKNOWN : request.cycleRelation();
 
         long id = repository.insertClue(userId, request, intent, status, helpRequestType, cycleRelation);
-        ClueView clue = toClueView(repository.findClue(userId, id).orElseThrow(CognitionException::notFound));
-        return new ClueCreateView(clue, DigestTaskTriggerView.notTriggered());
+        ClueRow saved = repository.findClue(userId, id).orElseThrow(CognitionException::notFound);
+        return new ClueCreateView(toClueView(saved), maybeAutoTrigger(userId, saved));
+    }
+
+    /**
+     * Section 10.1 automatic thresholds, checked after a RELATED clue is saved.
+     * QUESTION and KNOWLEDGE_ONLY clues never reach this point. RULE_2 stays
+     * inert until the daily_record provider (P3-3) confirms real body records.
+     */
+    private DigestTaskTriggerView maybeAutoTrigger(long userId, ClueRow saved) {
+        if (saved.intent() != ClueIntent.RELATED || saved.status() != ClueStatus.PENDING) {
+            return DigestTaskTriggerView.notTriggered();
+        }
+        String candidateTopicId = blank(saved.suggestedTopicId()) ? null : saved.suggestedTopicId();
+        String candidateTitle = blank(saved.suggestedTopicTitle()) ? null : saved.suggestedTopicTitle().trim();
+        if (candidateTopicId == null && candidateTitle == null) {
+            // Section 10.1: no deterministic candidate group, no automatic merge
+            return DigestTaskTriggerView.notTriggered();
+        }
+
+        List<ClueRow> group = repository.findPendingRelatedCluesForCandidate(userId, candidateTopicId, candidateTitle);
+        List<ConfirmedBodyRecord> bodyRecords = List.of();
+        boolean rule1 = group.size() >= RULE_1_MIN_CLUES;
+        if (!rule1 && group.size() >= RULE_2_MIN_CLUES) {
+            bodyRecords = bodyRecordEvidenceProvider.findConfirmedBodyRecords(userId, candidateTopicId, candidateTitle);
+        }
+        boolean rule2 = !rule1 && !bodyRecords.isEmpty();
+        if (!rule1 && !rule2) {
+            return DigestTaskTriggerView.notTriggered();
+        }
+
+        List<Long> clueIds = group.stream().map(ClueRow::id).toList();
+        if (repository.hasOpenDigestForClues(userId, clueIds)) {
+            // Section 10.1: at most one open digest per candidate topic
+            return DigestTaskTriggerView.notTriggered();
+        }
+
+        DigestTaskView task = organize(userId, TriggerType.RULE_THRESHOLD, group, bodyRecords, candidateTitle);
+        return new DigestTaskTriggerView(true, task.taskId(), task.digestId(), task.status());
     }
 
     private void validateClue(ClueCreateRequest request) {
@@ -171,6 +217,17 @@ public class CognitionService {
         String title = !blank(request.suggestedTitle()) ? request.suggestedTitle().trim()
                 : (candidateTitle != null && !candidateTitle.isBlank() ? candidateTitle.trim() : null);
 
+        return organize(userId, triggerType, clues, List.of(), title);
+    }
+
+    /**
+     * Shared task + digest pipeline (section 7.1): task record, PROCESSING
+     * digest, clue membership, clue status flip, evidence, then the fixed
+     * generator. Used by both user-requested tasks and automatic thresholds.
+     */
+    private DigestTaskView organize(long userId, TriggerType triggerType, List<ClueRow> clues,
+                                    List<ConfirmedBodyRecord> bodyRecords, String title) {
+        List<Long> clueIds = clues.stream().map(ClueRow::id).toList();
         long taskId = repository.insertTask(userId, triggerType, DigestGenerator.FIXED_VERSION);
         repository.markTaskRunning(userId, taskId, false);
         long digestId = repository.insertDigest(userId,
@@ -179,6 +236,12 @@ public class CognitionService {
         repository.updateClueStatus(userId, clueIds, ClueStatus.PROCESSING);
 
         List<Long> evidenceIds = createClueEvidence(userId, clues);
+        for (ConfirmedBodyRecord record : bodyRecords) {
+            // Section 4.8: evidence references the real daily_record id, no clue copy
+            long evidenceId = repository.insertEvidence(userId, EvidenceSourceType.BODY_RECORD,
+                    record.dailyRecordId(), FactLevel.SELF_REPORTED, record.summary(), record.occurredAt());
+            evidenceIds.add(evidenceId);
+        }
         repository.linkDigestEvidence(userId, digestId, evidenceIds);
 
         runGeneration(userId, taskId, digestId, clues, title);
