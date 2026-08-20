@@ -8,9 +8,3 @@ spring:
     redis:
       enabled: false
 
-# 分诊配置
-triage:
-  session:
-    max-clarification-turns: 5
-    max-total-turns: 10
-    min-required-turns: 7
