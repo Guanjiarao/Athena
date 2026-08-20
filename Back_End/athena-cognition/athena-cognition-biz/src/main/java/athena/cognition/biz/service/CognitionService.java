@@ -6,6 +6,8 @@ import athena.cognition.biz.domain.CognitionException;
 import athena.cognition.biz.domain.CognitionIds;
 import athena.cognition.biz.domain.CognitionModels.*;
 import athena.cognition.biz.domain.CognitionStateMachine;
+import athena.cognition.biz.domain.MaturityCalculator;
+import athena.cognition.biz.domain.TopicDomainClassifier;
 import athena.cognition.biz.generator.DigestGenerator;
 import athena.cognition.biz.repository.CognitionJdbcRepository;
 import athena.cognition.biz.repository.CognitionJdbcRepository.ActionRow;
@@ -37,7 +39,6 @@ public class CognitionService {
 
     private static final int MAX_PAGE_SIZE = 50;
     private static final int INBOX_FIRST_PAGE = 20;
-    private static final String DEFAULT_DOMAIN = "OTHER";
     /** Section 10.1 RULE_1: at least 3 valid RELATED article clues per candidate topic. */
     private static final int RULE_1_MIN_CLUES = 3;
     /** Section 10.1 RULE_2: at least 2 valid RELATED article clues plus 1 confirmed body record. */
@@ -391,10 +392,29 @@ public class CognitionService {
         int bodyRecordCount = (int) evidence.stream().filter(e -> e.sourceType() == EvidenceSourceType.BODY_RECORD).count();
         int cycleCount = distinctMonths(evidence);
 
-        return repository.insertTopic(userId, digest.id(), digest.title(), DEFAULT_DOMAIN,
+        // Section 10.2: maturity is computed from the real evidence, not demoed
+        Maturity maturity = MaturityCalculator.calculate(toFacts(evidence));
+        // Section 4.3: deterministic keyword domain inference, no model involved
+        String domain = TopicDomainClassifier.classify(digest.title(), clueTexts(clues));
+
+        return repository.insertTopic(userId, digest.id(), digest.title(), domain, maturity,
                 digest.possibleRelation() != null ? digest.possibleRelation() : "这些线索仍需继续观察。",
                 writeJson(knownFacts), writeJson(openQuestions),
                 evidence.size(), articleClueCount, bodyRecordCount, cycleCount);
+    }
+
+    private static List<MaturityCalculator.EvidenceFact> toFacts(List<EvidenceRow> evidence) {
+        return evidence.stream().map(e -> new MaturityCalculator.EvidenceFact(
+                e.sourceType(), e.factLevel(), e.feedbackResult(), e.occurredAt())).toList();
+    }
+
+    private static String clueTexts(List<ClueRow> clues) {
+        StringBuilder texts = new StringBuilder();
+        for (ClueRow clue : clues) {
+            if (clue.suggestedTopicTitle() != null) texts.append(clue.suggestedTopicTitle()).append('\n');
+            if (clue.selectedText() != null) texts.append(clue.selectedText()).append('\n');
+        }
+        return texts.toString();
     }
 
     private static int distinctMonths(List<EvidenceRow> evidence) {
@@ -489,8 +509,14 @@ public class CognitionService {
         int bodyRecordCount = (int) topicEvidence.stream()
                 .filter(e -> e.sourceType() == EvidenceSourceType.BODY_RECORD
                         || e.sourceType() == EvidenceSourceType.ACTION_FEEDBACK).count();
+        // Section 10.2: feedback may raise maturity but never lowers it; riskStatus
+        // stays an independent axis and is not touched here
+        TopicRow topic = repository.findTopic(userId, action.topicId(), true)
+                .orElseThrow(CognitionException::notFound);
+        Maturity maturity = MaturityCalculator.higherOf(topic.maturity(),
+                MaturityCalculator.calculate(toFacts(topicEvidence)));
         repository.updateTopicAfterFeedback(userId, action.topicId(),
-                skipped ? null : stageUnderstandingAfter(request.result()),
+                skipped ? null : stageUnderstandingAfter(request.result()), maturity,
                 evidenceCount, articleClueCount, bodyRecordCount, distinctMonths(topicEvidence));
 
         FeedbackRow saved = repository.findFeedbackByAction(userId, actionId).orElseThrow();

@@ -226,7 +226,7 @@ class CognitionServiceTest {
             assertThat(result.topic()).isNull();
             assertThat(result.action()).isNull();
             assertThat(result.digest().status()).isEqualTo(DigestStatus.KEPT_AS_KNOWLEDGE);
-            verify(repository, never()).insertTopic(anyLong(), anyLong(), any(), any(), any(), any(), any(),
+            verify(repository, never()).insertTopic(anyLong(), anyLong(), any(), any(), any(), any(), any(), any(),
                     anyInt(), anyInt(), anyInt(), anyInt());
             verify(repository, never()).insertAction(anyLong(), anyLong(), any(), any(), any(), any(), any());
         }
@@ -268,6 +268,45 @@ class CognitionServiceTest {
                     USER_ID, "digest_9", new DigestDecisionRequest(DigestDecision.ACCEPT_AS_TOPIC, null, 1)));
 
             assertThat(ex.errorCode()).isEqualTo(CognitionException.VERSION_CONFLICT);
+        }
+
+        @Test
+        void acceptDigestComputesMaturityAndDomainFromEvidence() {
+            when(repository.findDigest(USER_ID, 9L, true))
+                    .thenReturn(Optional.of(digestRow(9L, DigestStatus.READY, 1)));
+            when(repository.findDigestClues(USER_ID, 9L)).thenReturn(List.of(
+                    clueRow(1L, ClueIntent.RELATED, ClueStatus.PROCESSING),
+                    clueRow(2L, ClueIntent.RELATED, ClueStatus.PROCESSING)));
+            // 1 article clue + 2 confirmed body records across two cycles
+            when(repository.findDigestEvidence(USER_ID, 9L)).thenReturn(List.of(
+                    evidenceRow(1L, EvidenceSourceType.CLUE, null, Instant.parse("2026-08-10T04:00:00Z")),
+                    evidenceRow(2L, EvidenceSourceType.BODY_RECORD, null, Instant.parse("2026-06-10T04:00:00Z")),
+                    evidenceRow(3L, EvidenceSourceType.BODY_RECORD, null, Instant.parse("2026-07-11T04:00:00Z"))));
+            when(repository.insertTopic(eq(USER_ID), eq(9L), eq("经前情绪变化"), eq("MOOD"),
+                    eq(Maturity.REPEATED_PATTERN), any(), any(), any(),
+                    eq(3), eq(1), eq(2), eq(3))).thenReturn(7001L);
+            when(repository.insertAction(eq(USER_ID), eq(7001L), any(), any(), eq(ActionType.RECORD_BODY),
+                    any(), any())).thenReturn(8001L);
+            when(repository.findTopic(USER_ID, 7001L, false)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.TopicRow(7001L, 9L, "经前情绪变化", "MOOD",
+                            Maturity.REPEATED_PATTERN, UserProgress.OBSERVING, RiskStatus.NONE, "可能联系",
+                            "[]", "[]", 3, 1, 2, 3, 8001L, Instant.now(), 1, Instant.now())));
+            when(repository.findAction(USER_ID, 8001L, false)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.ActionRow(8001L, 7001L, "记录一次相关身体变化", "记录一次",
+                            ActionType.RECORD_BODY, ActionStatus.PENDING, null, null, Instant.now())));
+            when(repository.findDigest(USER_ID, 9L, false))
+                    .thenReturn(Optional.of(digestRow(9L, DigestStatus.ACCEPTED, 2)));
+
+            DigestDecisionView result = service.decideDigest(USER_ID, "digest_9",
+                    new DigestDecisionRequest(DigestDecision.ACCEPT_AS_TOPIC, null, 1));
+
+            assertThat(result.digest().status()).isEqualTo(DigestStatus.ACCEPTED);
+            assertThat(result.topic().maturity()).isEqualTo(Maturity.REPEATED_PATTERN);
+            assertThat(result.topic().domain()).isEqualTo("MOOD");
+            assertThat(result.topic().userProgress()).isEqualTo(UserProgress.OBSERVING);
+            assertThat(result.topic().evidenceCount()).isEqualTo(3);
+            assertThat(result.action().id()).isEqualTo("action_8001");
+            verify(repository).linkTopicEvidence(USER_ID, 7001L, List.of(1L, 2L, 3L));
         }
     }
 
@@ -509,7 +548,7 @@ class CognitionServiceTest {
             // Section 12 V1: source clues stay PROCESSING, nothing else is created
             verify(repository).updateClueStatus(USER_ID, List.of(1L), ClueStatus.PROCESSING);
             verify(repository, never()).updateClueStatus(eq(USER_ID), any(), eq(ClueStatus.PENDING));
-            verify(repository, never()).insertTopic(anyLong(), anyLong(), any(), any(), any(), any(), any(),
+            verify(repository, never()).insertTopic(anyLong(), anyLong(), any(), any(), any(), any(), any(), any(),
                     anyInt(), anyInt(), anyInt(), anyInt());
             verify(repository, never()).insertAction(anyLong(), anyLong(), any(), any(), any(), any(), any());
         }
@@ -620,6 +659,7 @@ class CognitionServiceTest {
         @Test
         void tc12OccurredCompletesActionCreatesEvidenceAndRefreshesTopic() {
             stubPendingAction();
+            stubCurrentTopic(Maturity.CLUE);
             CognitionJdbcRepository.FeedbackRow saved = new CognitionJdbcRepository.FeedbackRow(30L, 9L, 5L,
                     ActionFeedbackResult.OCCURRED, "今天下午出现过轻微情绪低落",
                     Instant.parse("2026-08-13T10:20:00Z"), Instant.now(), 40L);
@@ -629,7 +669,8 @@ class CognitionServiceTest {
             when(repository.insertEvidence(eq(USER_ID), eq(EvidenceSourceType.ACTION_FEEDBACK), eq("feedback_30"),
                     eq(FactLevel.SELF_REPORTED), any(), any())).thenReturn(40L);
             when(repository.findTopicEvidence(USER_ID, 5L)).thenReturn(List.of(
-                    evidenceRow(1L, EvidenceSourceType.CLUE), evidenceRow(40L, EvidenceSourceType.ACTION_FEEDBACK)));
+                    clueEvidence(1L), evidenceRow(40L, EvidenceSourceType.ACTION_FEEDBACK,
+                            ActionFeedbackResult.OCCURRED, Instant.parse("2026-08-13T10:20:00Z"))));
             when(repository.findTopic(USER_ID, 5L, false)).thenReturn(Optional.of(topicRow(5L, 3)));
 
             FeedbackResultView result = service.submitFeedback(USER_ID, "action_9",
@@ -644,12 +685,14 @@ class CognitionServiceTest {
             verify(repository).linkTopicEvidence(USER_ID, 5L, List.of(40L));
             verify(repository).updateActionStatus(USER_ID, 9L, ActionStatus.COMPLETED);
             verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L),
-                    argThat(text -> text != null && text.contains("出现过")), eq(2), eq(1), eq(1), eq(1));
+                    argThat(text -> text != null && text.contains("出现过")),
+                    eq(Maturity.INSUFFICIENT), eq(2), eq(1), eq(1), eq(1));
         }
 
         @Test
         void tc13NotOccurredCreatesObservationEvidenceWithoutEndingTopic() {
             stubPendingAction();
+            stubCurrentTopic(Maturity.CLUE);
             CognitionJdbcRepository.FeedbackRow saved = new CognitionJdbcRepository.FeedbackRow(31L, 9L, 5L,
                     ActionFeedbackResult.NOT_OCCURRED, null, Instant.now(), Instant.now(), 41L);
             when(repository.findFeedbackByAction(USER_ID, 9L)).thenReturn(Optional.empty(), Optional.of(saved));
@@ -658,7 +701,8 @@ class CognitionServiceTest {
             when(repository.insertEvidence(eq(USER_ID), eq(EvidenceSourceType.ACTION_FEEDBACK), eq("feedback_31"),
                     eq(FactLevel.OBSERVED), any(), any())).thenReturn(41L);
             when(repository.findTopicEvidence(USER_ID, 5L)).thenReturn(List.of(
-                    evidenceRow(1L, EvidenceSourceType.CLUE), evidenceRow(41L, EvidenceSourceType.ACTION_FEEDBACK)));
+                    clueEvidence(1L), evidenceRow(41L, EvidenceSourceType.ACTION_FEEDBACK,
+                            ActionFeedbackResult.NOT_OCCURRED, Instant.now())));
             when(repository.findTopic(USER_ID, 5L, false)).thenReturn(Optional.of(topicRow(5L, 3)));
 
             FeedbackResultView result = service.submitFeedback(USER_ID, "action_9",
@@ -671,12 +715,14 @@ class CognitionServiceTest {
             verify(repository).insertEvidence(eq(USER_ID), eq(EvidenceSourceType.ACTION_FEEDBACK), any(),
                     eq(FactLevel.OBSERVED), any(), any());
             verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L),
-                    argThat(text -> text != null && text.contains("没有出现")), eq(2), eq(1), eq(1), eq(1));
+                    argThat(text -> text != null && text.contains("没有出现")),
+                    eq(Maturity.INSUFFICIENT), eq(2), eq(1), eq(1), eq(1));
         }
 
         @Test
-        void tc14UncertainKeepsEvidenceWithoutTouchingMaturity() {
+        void tc14UncertainKeepsEvidenceWithoutRaisingMaturity() {
             stubPendingAction();
+            stubCurrentTopic(Maturity.CLUE);
             CognitionJdbcRepository.FeedbackRow saved = new CognitionJdbcRepository.FeedbackRow(32L, 9L, 5L,
                     ActionFeedbackResult.UNCERTAIN, null, Instant.now(), Instant.now(), 42L);
             when(repository.findFeedbackByAction(USER_ID, 9L)).thenReturn(Optional.empty(), Optional.of(saved));
@@ -685,7 +731,8 @@ class CognitionServiceTest {
             when(repository.insertEvidence(eq(USER_ID), eq(EvidenceSourceType.ACTION_FEEDBACK), eq("feedback_32"),
                     eq(FactLevel.OBSERVED), any(), any())).thenReturn(42L);
             when(repository.findTopicEvidence(USER_ID, 5L)).thenReturn(List.of(
-                    evidenceRow(1L, EvidenceSourceType.CLUE), evidenceRow(42L, EvidenceSourceType.ACTION_FEEDBACK)));
+                    clueEvidence(1L), evidenceRow(42L, EvidenceSourceType.ACTION_FEEDBACK,
+                            ActionFeedbackResult.UNCERTAIN, Instant.now())));
             when(repository.findTopic(USER_ID, 5L, false)).thenReturn(Optional.of(topicRow(5L, 3)));
 
             FeedbackResultView result = service.submitFeedback(USER_ID, "action_9",
@@ -693,21 +740,22 @@ class CognitionServiceTest {
 
             assertThat(result.feedback().evidenceId()).isEqualTo("evidence_42");
             assertThat(result.actionStatus()).isEqualTo(ActionStatus.COMPLETED);
-            // maturity is never part of the feedback update path (P3-2 owns it)
+            // UNCERTAIN evidence is saved but excluded from maturity: stays CLUE
             verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L),
-                    argThat(text -> text != null && text.contains("不确定")), eq(2), eq(1), eq(1), eq(1));
+                    argThat(text -> text != null && text.contains("不确定")),
+                    eq(Maturity.CLUE), eq(2), eq(1), eq(1), eq(1));
         }
 
         @Test
         void tc15SkippedHasNoEvidenceAndNoCounterIncrease() {
             stubPendingAction();
+            stubCurrentTopic(Maturity.CLUE);
             CognitionJdbcRepository.FeedbackRow saved = new CognitionJdbcRepository.FeedbackRow(33L, 9L, 5L,
                     ActionFeedbackResult.SKIPPED, null, Instant.now(), Instant.now(), null);
             when(repository.findFeedbackByAction(USER_ID, 9L)).thenReturn(Optional.empty(), Optional.of(saved));
             when(repository.insertFeedback(eq(USER_ID), eq(9L), eq(5L), eq(ActionFeedbackResult.SKIPPED),
                     any(), any())).thenReturn(33L);
-            when(repository.findTopicEvidence(USER_ID, 5L))
-                    .thenReturn(List.of(evidenceRow(1L, EvidenceSourceType.CLUE)));
+            when(repository.findTopicEvidence(USER_ID, 5L)).thenReturn(List.of(clueEvidence(1L)));
             when(repository.findTopic(USER_ID, 5L, false)).thenReturn(Optional.of(topicRow(5L, 2)));
 
             FeedbackResultView result = service.submitFeedback(USER_ID, "action_9",
@@ -718,12 +766,64 @@ class CognitionServiceTest {
             verify(repository, never()).insertEvidence(anyLong(), any(), any(), any(), any(), any());
             verify(repository, never()).linkTopicEvidence(anyLong(), anyLong(), any());
             // stageUnderstanding stays (null keeps current text); counters unchanged
-            verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L), isNull(), eq(1), eq(1), eq(0), eq(1));
+            verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L), isNull(),
+                    eq(Maturity.CLUE), eq(1), eq(1), eq(0), eq(1));
             // occurredAt defaults to submission time when the frontend omits it
             ArgumentCaptor<Instant> occurredAt = ArgumentCaptor.forClass(Instant.class);
             verify(repository).insertFeedback(eq(USER_ID), eq(9L), eq(5L), eq(ActionFeedbackResult.SKIPPED),
                     any(), occurredAt.capture());
             assertThat(occurredAt.getValue()).isNotNull();
+        }
+
+        @Test
+        void feedbackAcrossTwoCyclesRaisesMaturity() {
+            stubPendingAction();
+            stubCurrentTopic(Maturity.CLUE);
+            CognitionJdbcRepository.FeedbackRow saved = new CognitionJdbcRepository.FeedbackRow(34L, 9L, 5L,
+                    ActionFeedbackResult.OCCURRED, null, Instant.parse("2026-07-11T04:00:00Z"),
+                    Instant.now(), 44L);
+            when(repository.findFeedbackByAction(USER_ID, 9L)).thenReturn(Optional.empty(), Optional.of(saved));
+            when(repository.insertFeedback(eq(USER_ID), eq(9L), eq(5L), eq(ActionFeedbackResult.OCCURRED),
+                    any(), any())).thenReturn(34L);
+            when(repository.insertEvidence(eq(USER_ID), eq(EvidenceSourceType.ACTION_FEEDBACK), eq("feedback_34"),
+                    eq(FactLevel.SELF_REPORTED), any(), any())).thenReturn(44L);
+            when(repository.findTopicEvidence(USER_ID, 5L)).thenReturn(List.of(
+                    clueEvidence(1L),
+                    evidenceRow(43L, EvidenceSourceType.ACTION_FEEDBACK, ActionFeedbackResult.OCCURRED,
+                            Instant.parse("2026-06-10T04:00:00Z")),
+                    evidenceRow(44L, EvidenceSourceType.ACTION_FEEDBACK, ActionFeedbackResult.OCCURRED,
+                            Instant.parse("2026-07-11T04:00:00Z"))));
+            when(repository.findTopic(USER_ID, 5L, false)).thenReturn(Optional.of(topicRow(5L, 3)));
+
+            service.submitFeedback(USER_ID, "action_9",
+                    new FeedbackRequest("topic_5", ActionFeedbackResult.OCCURRED, null,
+                            Instant.parse("2026-07-11T04:00:00Z")));
+
+            verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L), any(),
+                    eq(Maturity.REPEATED_PATTERN), eq(3), eq(1), eq(2), eq(3));
+        }
+
+        @Test
+        void singleNotOccurredNeverDowngradesMaturity() {
+            stubPendingAction();
+            stubCurrentTopic(Maturity.REPEATED_PATTERN);
+            CognitionJdbcRepository.FeedbackRow saved = new CognitionJdbcRepository.FeedbackRow(35L, 9L, 5L,
+                    ActionFeedbackResult.NOT_OCCURRED, null, Instant.now(), Instant.now(), 45L);
+            when(repository.findFeedbackByAction(USER_ID, 9L)).thenReturn(Optional.empty(), Optional.of(saved));
+            when(repository.insertFeedback(eq(USER_ID), eq(9L), eq(5L), eq(ActionFeedbackResult.NOT_OCCURRED),
+                    any(), any())).thenReturn(35L);
+            when(repository.insertEvidence(eq(USER_ID), eq(EvidenceSourceType.ACTION_FEEDBACK), eq("feedback_35"),
+                    eq(FactLevel.OBSERVED), any(), any())).thenReturn(45L);
+            when(repository.findTopicEvidence(USER_ID, 5L)).thenReturn(List.of(
+                    clueEvidence(1L), evidenceRow(45L, EvidenceSourceType.ACTION_FEEDBACK,
+                            ActionFeedbackResult.NOT_OCCURRED, Instant.now())));
+            when(repository.findTopic(USER_ID, 5L, false)).thenReturn(Optional.of(topicRow(5L, 3)));
+
+            service.submitFeedback(USER_ID, "action_9",
+                    new FeedbackRequest("topic_5", ActionFeedbackResult.NOT_OCCURRED, null, null));
+
+            verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L), any(),
+                    eq(Maturity.REPEATED_PATTERN), eq(2), eq(1), eq(1), eq(1));
         }
 
         private void stubPendingAction() {
@@ -732,9 +832,11 @@ class CognitionServiceTest {
                             ActionType.RECORD_BODY, ActionStatus.PENDING, null, null, Instant.now())));
         }
 
-        private CognitionJdbcRepository.EvidenceRow evidenceRow(long id, EvidenceSourceType sourceType) {
-            return new CognitionJdbcRepository.EvidenceRow(id, sourceType, "src_" + id, FactLevel.SELF_REPORTED,
-                    "摘要", Instant.now(), Instant.now(), true, null, null, null);
+        private void stubCurrentTopic(Maturity maturity) {
+            when(repository.findTopic(USER_ID, 5L, true)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.TopicRow(5L, 3L, "经前情绪变化", "MOOD", maturity,
+                            UserProgress.OBSERVING, RiskStatus.NONE, "阶段理解", "[]", "[]",
+                            1, 1, 0, 1, 9L, Instant.now(), 1, Instant.now())));
         }
 
         private CognitionJdbcRepository.TopicRow topicRow(long id, int version) {
@@ -756,5 +858,15 @@ class CognitionServiceTest {
     private DigestRow digestRow(long id, DigestStatus status, int version) {
         return new DigestRow(id, "经前情绪变化", status, "共同点", "可能联系", "仍不确定", "记录一次",
                 "fixed-v1", Instant.now(), null, null, version, Instant.now());
+    }
+
+    private CognitionJdbcRepository.EvidenceRow evidenceRow(long id, EvidenceSourceType sourceType,
+                                                            ActionFeedbackResult feedbackResult, Instant occurredAt) {
+        return new CognitionJdbcRepository.EvidenceRow(id, sourceType, "src_" + id, FactLevel.SELF_REPORTED,
+                "摘要", occurredAt, Instant.now(), true, null, null, null, feedbackResult);
+    }
+
+    private CognitionJdbcRepository.EvidenceRow clueEvidence(long id) {
+        return evidenceRow(id, EvidenceSourceType.CLUE, null, Instant.now());
     }
 }

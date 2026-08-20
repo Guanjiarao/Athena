@@ -325,10 +325,11 @@ public class CognitionJdbcRepository {
 
     private static final String EVIDENCE_SELECT = """
             SELECT e.*, c.article_id AS clue_article_id, c.article_title AS clue_article_title,
-                   c.article_type AS clue_article_type
+                   c.article_type AS clue_article_type, af.result AS feedback_result
             FROM cognition_evidence e
             LEFT JOIN cognition_clue c ON e.source_type='CLUE'
                 AND c.id=CAST(SUBSTRING_INDEX(e.source_id, '_', -1) AS UNSIGNED)
+            LEFT JOIN cognition_action_feedback af ON af.evidence_id=e.id
             """;
 
     public List<EvidenceRow> findDigestEvidence(long userId, long digestId) {
@@ -409,16 +410,17 @@ public class CognitionJdbcRepository {
 
     // ---------- topic ----------
 
-    public long insertTopic(long userId, long sourceDigestId, String title, String domain, String stageUnderstanding,
-                            String knownFactsJson, String openQuestionsJson, int evidenceCount, int articleClueCount,
-                            int bodyRecordCount, int cycleCount) {
+    public long insertTopic(long userId, long sourceDigestId, String title, String domain, Maturity maturity,
+                            String stageUnderstanding, String knownFactsJson, String openQuestionsJson,
+                            int evidenceCount, int articleClueCount, int bodyRecordCount, int cycleCount) {
         return insertAndReturnKey("""
                 INSERT INTO cognition_topic
                 (user_id,source_digest_id,title,domain,maturity,user_progress,risk_status,stage_understanding,
                  known_facts,open_questions,evidence_count,article_clue_count,body_record_count,cycle_count,last_updated_at)
-                VALUES (?,?,?,?,'CLUE','OBSERVING','NONE',?,?,?,?,?,?,?,?)
-                """, userId, sourceDigestId, title, domain, stageUnderstanding, knownFactsJson, openQuestionsJson,
-                evidenceCount, articleClueCount, bodyRecordCount, cycleCount, Timestamp.from(Instant.now()));
+                VALUES (?,?,?,?,?,'OBSERVING','NONE',?,?,?,?,?,?,?)
+                """, userId, sourceDigestId, title, domain, maturity.name(), stageUnderstanding, knownFactsJson,
+                openQuestionsJson, evidenceCount, articleClueCount, bodyRecordCount, cycleCount,
+                Timestamp.from(Instant.now()));
     }
 
     public Optional<TopicRow> findTopic(long userId, long topicId, boolean forUpdate) {
@@ -448,19 +450,20 @@ public class CognitionJdbcRepository {
 
     /**
      * Section 7.3: after feedback the topic version and lastUpdatedAt always
-     * bump; counters are recomputed from linked evidence by the caller and
+     * bump; counters are recomputed from linked evidence by the caller,
      * stageUnderstanding follows a simple per-result text rule (null keeps the
-     * current text, used for SKIPPED). Maturity is never touched here (P3-2).
+     * current text, used for SKIPPED) and maturity is the caller-computed
+     * higher-of value (section 10.2, never downgrades).
      */
-    public void updateTopicAfterFeedback(long userId, long topicId, String stageUnderstanding,
+    public void updateTopicAfterFeedback(long userId, long topicId, String stageUnderstanding, Maturity maturity,
                                          int evidenceCount, int articleClueCount, int bodyRecordCount, int cycleCount) {
         jdbc.update("""
                 UPDATE cognition_topic
-                SET version=version+1, last_updated_at=?,
+                SET version=version+1, last_updated_at=?, maturity=?,
                     stage_understanding=COALESCE(?, stage_understanding),
                     evidence_count=?, article_clue_count=?, body_record_count=?, cycle_count=?
                 WHERE user_id=? AND id=?
-                """, Timestamp.from(Instant.now()), stageUnderstanding,
+                """, Timestamp.from(Instant.now()), maturity.name(), stageUnderstanding,
                 evidenceCount, articleClueCount, bodyRecordCount, cycleCount, userId, topicId);
     }
 
@@ -634,7 +637,8 @@ public class CognitionJdbcRepository {
             FactLevel.valueOf(rs.getString("fact_level")), rs.getString("summary"),
             instant(rs.getTimestamp("occurred_at")), instant(rs.getTimestamp("linked_at")),
             rs.getBoolean("active"),
-            rs.getString("clue_article_id"), rs.getString("clue_article_title"), nullableInt(rs, "clue_article_type"));
+            rs.getString("clue_article_id"), rs.getString("clue_article_title"), nullableInt(rs, "clue_article_type"),
+            rs.getString("feedback_result") == null ? null : ActionFeedbackResult.valueOf(rs.getString("feedback_result")));
 
     // ---------- row records (internal numeric ids) ----------
 
@@ -672,7 +676,8 @@ public class CognitionJdbcRepository {
 
     public record EvidenceRow(long id, EvidenceSourceType sourceType, String sourceId, FactLevel factLevel,
                               String summary, Instant occurredAt, Instant linkedAt, boolean active,
-                              String articleId, String articleTitle, Integer articleType) {
+                              String articleId, String articleTitle, Integer articleType,
+                              ActionFeedbackResult feedbackResult) {
     }
 
     public record DecisionLogRow(long digestId, DigestDecision decision, Instant createdAt) {
