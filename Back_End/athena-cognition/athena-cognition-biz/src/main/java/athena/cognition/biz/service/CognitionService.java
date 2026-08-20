@@ -248,11 +248,16 @@ public class CognitionService {
         return toTaskView(userId, repository.findTask(userId, taskId).orElseThrow(CognitionException::notFound));
     }
 
-    /** Section 12: retry keeps the same evidence and source clues. */
+    /**
+     * Section 12: retry keeps the same digest, evidence and source clues; the
+     * task row is locked so concurrent retries cannot double-run. Only FAILED
+     * tasks are retryable; a succeeded retry makes any further retry a
+     * COGNITION_STATE_CONFLICT with no side effects.
+     */
     @Transactional
     public DigestTaskView retryTask(long userId, String taskExternalId) {
         long taskId = CognitionIds.parse(CognitionIds.TASK, taskExternalId);
-        TaskRow task = repository.findTask(userId, taskId).orElseThrow(CognitionException::notFound);
+        TaskRow task = repository.findTaskForUpdate(userId, taskId).orElseThrow(CognitionException::notFound);
         if (task.status() != DigestTaskStatus.FAILED) {
             throw CognitionException.stateConflict("只有失败任务可以重试", taskExternalId, task.status().name());
         }

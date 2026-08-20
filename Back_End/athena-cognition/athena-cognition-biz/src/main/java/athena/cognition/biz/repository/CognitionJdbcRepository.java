@@ -358,13 +358,24 @@ public class CognitionJdbcRepository {
                 TASK_ROW, userId, taskId));
     }
 
+    /** Row lock for re-entrant-safe retry (section 12). */
+    public Optional<TaskRow> findTaskForUpdate(long userId, long taskId) {
+        return first(jdbc.query("SELECT * FROM cognition_digest_task WHERE user_id=? AND id=? AND deleted=0 FOR UPDATE",
+                TASK_ROW, userId, taskId));
+    }
+
+    /**
+     * Retry bumps retry_count only: trigger_type keeps the original value
+     * (RULE_THRESHOLD / USER_REQUEST) so the task record stays truthful about
+     * how the digest was first triggered. The RETRY enum value is reserved for
+     * a future manual re-trigger that creates a new task record.
+     */
     public void markTaskRunning(long userId, long taskId, boolean retry) {
         jdbc.update("""
                 UPDATE cognition_digest_task
-                SET status='RUNNING', retry_count=retry_count+?, trigger_type=IF(?,'RETRY',trigger_type),
-                    failure_code=NULL, version=version+1
+                SET status='RUNNING', retry_count=retry_count+?, failure_code=NULL, version=version+1
                 WHERE user_id=? AND id=?
-                """, retry ? 1 : 0, retry, userId, taskId);
+                """, retry ? 1 : 0, userId, taskId);
     }
 
     public void markTaskSucceeded(long userId, long taskId, long digestId) {

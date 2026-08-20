@@ -476,6 +476,142 @@ class CognitionServiceTest {
         }
     }
 
+    // ---------- section 12 / TC-19: generation failure and retry ----------
+
+    @Nested
+    class FailureAndRetry {
+
+        @Test
+        void failedGenerationKeepsFailureStateQueryableAndCluesProcessing() {
+            ClueRow clue = clueRow(1L, ClueIntent.RELATED, ClueStatus.PENDING);
+            when(repository.findClues(USER_ID, List.of(1L))).thenReturn(List.of(clue));
+            when(repository.findPendingRelatedCluesForCandidate(USER_ID, null, "经前情绪变化"))
+                    .thenReturn(List.of(clue));
+            when(repository.hasOpenDigestForClues(USER_ID, List.of(1L))).thenReturn(false);
+            when(repository.insertTask(USER_ID, TriggerType.USER_REQUEST, "fixed-v1")).thenReturn(100L);
+            when(repository.insertDigest(eq(USER_ID), any(), eq("fixed-v1"))).thenReturn(200L);
+            when(generator.generate(any(), any())).thenThrow(new RuntimeException("boom"));
+            when(repository.findTask(USER_ID, 100L)).thenReturn(Optional.of(
+                    taskRow(100L, 200L, DigestTaskStatus.FAILED, 0, CognitionException.GENERATION_FAILED)));
+            CognitionJdbcRepository.DigestRow failedDigest = new CognitionJdbcRepository.DigestRow(200L,
+                    "经前情绪变化", DigestStatus.FAILED, null, null, null, null, "fixed-v1", null,
+                    CognitionException.GENERATION_FAILED, null, 1, Instant.now());
+            when(repository.findDigest(USER_ID, 200L, false)).thenReturn(Optional.of(failedDigest));
+
+            DigestTaskView result = service.createDigestTask(USER_ID,
+                    new DigestTaskCreateRequest(TriggerType.USER_REQUEST, List.of("clue_1"), null));
+
+            assertThat(result.status()).isEqualTo(DigestTaskStatus.FAILED);
+            assertThat(result.digestStatus()).isEqualTo(DigestStatus.FAILED);
+            assertThat(result.failureCode()).isEqualTo(CognitionException.GENERATION_FAILED);
+            verify(repository).failDigest(USER_ID, 200L, CognitionException.GENERATION_FAILED);
+            verify(repository).markTaskFailed(USER_ID, 100L, 200L, CognitionException.GENERATION_FAILED);
+            // Section 12 V1: source clues stay PROCESSING, nothing else is created
+            verify(repository).updateClueStatus(USER_ID, List.of(1L), ClueStatus.PROCESSING);
+            verify(repository, never()).updateClueStatus(eq(USER_ID), any(), eq(ClueStatus.PENDING));
+            verify(repository, never()).insertTopic(anyLong(), anyLong(), any(), any(), any(), any(), any(),
+                    anyInt(), anyInt(), anyInt(), anyInt());
+            verify(repository, never()).insertAction(anyLong(), anyLong(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        void retryOfNonFailedTaskReturnsStateConflict() {
+            when(repository.findTaskForUpdate(USER_ID, 100L)).thenReturn(Optional.of(
+                    taskRow(100L, 200L, DigestTaskStatus.SUCCEEDED, 1, null)));
+
+            CognitionException ex = assertThrows(CognitionException.class,
+                    () -> service.retryTask(USER_ID, "task_100"));
+
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.STATE_CONFLICT);
+            assertThat(ex.currentStatus()).isEqualTo("SUCCEEDED");
+            verify(repository, never()).markTaskRunning(anyLong(), anyLong(), anyBoolean());
+            verify(generator, never()).generate(any(), any());
+        }
+
+        @Test
+        void retryReusesOriginalDigestAndEvidence() {
+            when(repository.findTaskForUpdate(USER_ID, 100L)).thenReturn(Optional.of(
+                    taskRow(100L, 200L, DigestTaskStatus.FAILED, 0, CognitionException.GENERATION_FAILED)));
+            when(repository.findDigest(USER_ID, 200L, true))
+                    .thenReturn(Optional.of(digestRow(200L, DigestStatus.FAILED, 1)));
+            when(repository.findDigestClues(USER_ID, 200L)).thenReturn(List.of(
+                    clueRow(1L, ClueIntent.RELATED, ClueStatus.PROCESSING),
+                    clueRow(2L, ClueIntent.RELATED, ClueStatus.PROCESSING)));
+            when(generator.generate(any(), any())).thenReturn(
+                    new DigestGenerator.GeneratedDigest("经前情绪变化", "共同点", "可能联系", "仍不确定",
+                            "记录一次", "fixed-v1"));
+            when(repository.findTask(USER_ID, 100L)).thenReturn(Optional.of(
+                    taskRow(100L, 200L, DigestTaskStatus.SUCCEEDED, 1, null)));
+            when(repository.findDigest(USER_ID, 200L, false))
+                    .thenReturn(Optional.of(digestRow(200L, DigestStatus.READY, 2)));
+
+            DigestTaskView result = service.retryTask(USER_ID, "task_100");
+
+            assertThat(result.status()).isEqualTo(DigestTaskStatus.SUCCEEDED);
+            assertThat(result.digestId()).isEqualTo("digest_200");
+            assertThat(result.digestStatus()).isEqualTo(DigestStatus.READY);
+            assertThat(result.retryCount()).isEqualTo(1);
+            assertThat(result.failureCode()).isNull();
+            verify(repository).markTaskRunning(USER_ID, 100L, true);
+            verify(repository).markDigestProcessing(USER_ID, 200L);
+            verify(repository).completeDigest(eq(USER_ID), eq(200L), any(), any(), any(), any());
+            // no duplicate digest / evidence / clue membership
+            verify(repository, never()).insertTask(anyLong(), any(), any());
+            verify(repository, never()).insertDigest(anyLong(), any(), any());
+            verify(repository, never()).insertEvidence(anyLong(), any(), any(), any(), any(), any());
+            verify(repository, never()).linkDigestClues(anyLong(), anyLong(), any());
+        }
+
+        @Test
+        void secondRetryAfterSuccessConflictsWithoutSideEffects() {
+            when(repository.findTaskForUpdate(USER_ID, 100L)).thenReturn(
+                    Optional.of(taskRow(100L, 200L, DigestTaskStatus.FAILED, 0, CognitionException.GENERATION_FAILED)),
+                    Optional.of(taskRow(100L, 200L, DigestTaskStatus.SUCCEEDED, 1, null)));
+            when(repository.findDigest(USER_ID, 200L, true))
+                    .thenReturn(Optional.of(digestRow(200L, DigestStatus.FAILED, 1)));
+            when(repository.findDigestClues(USER_ID, 200L))
+                    .thenReturn(List.of(clueRow(1L, ClueIntent.RELATED, ClueStatus.PROCESSING)));
+            when(generator.generate(any(), any())).thenReturn(
+                    new DigestGenerator.GeneratedDigest("经前情绪变化", "共同点", "可能联系", "仍不确定",
+                            "记录一次", "fixed-v1"));
+            when(repository.findTask(USER_ID, 100L)).thenReturn(Optional.of(
+                    taskRow(100L, 200L, DigestTaskStatus.SUCCEEDED, 1, null)));
+            when(repository.findDigest(USER_ID, 200L, false))
+                    .thenReturn(Optional.of(digestRow(200L, DigestStatus.READY, 2)));
+
+            service.retryTask(USER_ID, "task_100");
+            CognitionException ex = assertThrows(CognitionException.class,
+                    () -> service.retryTask(USER_ID, "task_100"));
+
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.STATE_CONFLICT);
+            verify(generator, times(1)).generate(any(), any());
+            verify(repository, never()).insertDigest(anyLong(), any(), any());
+            verify(repository, never()).insertEvidence(anyLong(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        void duplicateFeedbackStillConflicts() {
+            CognitionJdbcRepository.ActionRow action = new CognitionJdbcRepository.ActionRow(9L, 5L, "记录一次",
+                    "补充时间和程度", ActionType.RECORD_BODY, ActionStatus.PENDING, null, null, Instant.now());
+            when(repository.findAction(USER_ID, 9L, true)).thenReturn(Optional.of(action));
+            when(repository.findFeedbackByAction(USER_ID, 9L)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.FeedbackRow(30L, 9L, 5L, ActionFeedbackResult.OCCURRED, null,
+                            Instant.now(), Instant.now(), 40L)));
+
+            CognitionException ex = assertThrows(CognitionException.class, () -> service.submitFeedback(
+                    USER_ID, "action_9", new FeedbackRequest("topic_5", ActionFeedbackResult.OCCURRED, null, null)));
+
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.STATE_CONFLICT);
+            verify(repository, never()).insertFeedback(anyLong(), anyLong(), anyLong(), any(), any(), any());
+        }
+
+        private CognitionJdbcRepository.TaskRow taskRow(long id, Long digestId, DigestTaskStatus status,
+                                                        int retryCount, String failureCode) {
+            return new CognitionJdbcRepository.TaskRow(id, digestId, status, TriggerType.USER_REQUEST,
+                    "fixed-v1", retryCount, failureCode, Instant.now());
+        }
+    }
+
     // ---------- fixtures ----------
 
     private ClueRow clueRow(long id, ClueIntent intent, ClueStatus status) {
