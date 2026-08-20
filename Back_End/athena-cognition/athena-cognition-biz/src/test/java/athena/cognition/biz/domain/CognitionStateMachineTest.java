@@ -3,17 +3,18 @@ package athena.cognition.biz.domain;
 import org.junit.jupiter.api.Test;
 
 import static athena.cognition.biz.domain.CognitionModels.DigestStatus.ACCEPTED;
-import static athena.cognition.biz.domain.CognitionModels.DigestStatus.PENDING_CONFIRMATION;
-import static athena.cognition.biz.domain.CognitionModels.TopicProgress.*;
+import static athena.cognition.biz.domain.CognitionModels.DigestStatus.READY;
+import static athena.cognition.biz.domain.CognitionModels.UserProgress.*;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class CognitionStateMachineTest {
 
     @Test
-    void onlyPendingDigestCanBeDecided() {
-        assertDoesNotThrow(() -> CognitionStateMachine.requirePendingDigest(PENDING_CONFIRMATION));
-        assertThrows(CognitionException.class, () -> CognitionStateMachine.requirePendingDigest(ACCEPTED));
+    void onlyReadyDigestCanBeDecided() {
+        assertDoesNotThrow(() -> CognitionStateMachine.requireReadyDigest("digest_1", READY));
+        assertThrows(CognitionException.class,
+                () -> CognitionStateMachine.requireReadyDigest("digest_1", ACCEPTED));
     }
 
     @Test

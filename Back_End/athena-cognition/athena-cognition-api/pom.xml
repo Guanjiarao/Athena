@@ -9,4 +9,17 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
     <artifactId>athena-cognition-api</artifactId>
+    <packaging>jar</packaging>
+    <build>
+        <plugins>
+            <!-- 与项目其他 api 模块一致：跳过 spring-boot repackage -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
