@@ -5,17 +5,3 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:dev}
   application:
     name: athena-cognition
-  cloud:
-    nacos:
-      config:
-        server-addr: ${NACOS_SERVER_ADDR:121.41.200.73:8848}
-        namespace: ${NACOS_NAMESPACE:71e163a1-9eae-4a2f-9c57-491089e5cc5d}
-        file-extension: yaml
-        shared-configs:
-          - data-id: base.yaml
-            refresh: true
-          - data-id: database.yaml
-            refresh: true
-      discovery:
-        server-addr: ${NACOS_SERVER_ADDR:121.41.200.73:8848}
-        namespace: ${NACOS_NAMESPACE:71e163a1-9eae-4a2f-9c57-491089e5cc5d}
