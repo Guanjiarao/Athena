@@ -1,0 +1,1341 @@
+<?xml version="1.0" encoding="UTF-8"?><jmeterTestPlan version="1.4" jmeter="5.6.3" testplan="Athena 认知闭环功能测试计划">
+  <hashTree>
+    <!--
+    ============================================
+    Athena 认知闭环功能测试计划 v1.0
+    ============================================
+    如何切换环境：
+    1. 打开 User Defined Variables 元件
+    2. 修改 HOST 为目标服务器地址（如 192.168.1.100 或 api.example.com）
+    3. 修改 PORT 为目标端口（如 8080）
+    4. 修改 HTTP Header Manager 中的 Authorization Bearer Token
+    ============================================
+    -->
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Athena 认知闭环功能测试" enabled="true">
+      <stringProp name="TestPlan.comments">Athena 认知闭环后端功能测试计划</stringProp>
+      <boolProp name="TestPlan.functional_mode">true</boolProp>
+      <boolProp name="TestPlan.serialize_threadgroups">true</boolProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
+        <collectionProp name="Arguments.arguments">
+          <elementProp name="HOST" elementType="Argument">
+            <stringProp name="Argument.name">HOST</stringProp>
+            <stringProp name="Argument.value">localhost</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="PORT" elementType="Argument">
+            <stringProp name="Argument.name">PORT</stringProp>
+            <stringProp name="Argument.value">13715</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="RUN_ID" elementType="Argument"><stringProp name="Argument.name">RUN_ID</stringProp><stringProp name="Argument.value">${__time(yyyyMMddHHmmss)}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+        </collectionProp>
+      </elementProp>
+      <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
+      <stringProp name="TestPlan.user_define_classpath"/>
+    </TestPlan>
+    <hashTree>
+      <Arguments guiclass="ArgumentsPanel" testclass="Arguments" testname="全局参数" enabled="true">
+        <collectionProp name="Arguments.arguments"/>
+      </Arguments>
+      <hashTree/>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="认知闭环功能测试线程组" enabled="true"><elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="循环控制器" enabled="true"><boolProp name="LoopController.continue_forever">false</boolProp><stringProp name="LoopController.loops">1</stringProp></elementProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <boolProp name="ThreadGroup.delayedStart">false</boolProp>
+        <boolProp name="ThreadGroup.same_user_on_iterations">true</boolProp>
+        <intProp name="ThreadGroup.num_threads">1</intProp>
+        <intProp name="ThreadGroup.ramp_time">1</intProp>
+        <intProp name="ThreadGroup.duration">0</intProp>
+        <intProp name="ThreadGroup.main_controller.delay">0</intProp>
+        <boolProp name="ThreadGroup.scheduler">false</boolProp>
+        <boolProp name="ThreadGroup.enable_rte_mode">false</boolProp>
+      </ThreadGroup>
+      <hashTree>
+        <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="HTTP Request Defaults" enabled="true"><elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true"><collectionProp name="Arguments.arguments"/></elementProp><stringProp name="HTTPSampler.domain">${HOST}</stringProp><stringProp name="HTTPSampler.port">${PORT}</stringProp><stringProp name="HTTPSampler.protocol">http</stringProp><stringProp name="HTTPSampler.contentEncoding"/><stringProp name="HTTPSampler.path"/><stringProp name="HTTPSampler.connect_timeout"/><stringProp name="HTTPSampler.response_timeout"/></ConfigTestElement>
+        <hashTree/>
+        <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="全局 HTTP Header Manager" enabled="true">
+          <collectionProp name="HeaderManager.headers">
+            <elementProp name="" elementType="Header">
+              <stringProp name="Header.name">Authorization</stringProp>
+              <stringProp name="Header.value">Bearer HPZTciG1qFwjU8q5wwmCgcsJuEYsKLlH</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="Header">
+              <stringProp name="Header.name">Content-Type</stringProp>
+              <stringProp name="Header.value">application/json</stringProp>
+            </elementProp>
+          </collectionProp>
+        </HeaderManager>
+        <hashTree/>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS01-1-创建RELATED线索" enabled="true">
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <stringProp name="Argument.name"/>
+                  <stringProp name="Argument.value">{&quot;type&quot;:&quot;ARTICLE_HIGHLIGHT&quot;,&quot;intent&quot;:&quot;RELATED&quot;,&quot;relationType&quot;:&quot;CURRENT&quot;,&quot;helpRequestType&quot;:&quot;OBSERVE&quot;,&quot;articleId&quot;:&quot;1024&quot;,&quot;articleTitle&quot;:&quot;经期前情绪变化值得怎样记录&quot;,&quot;articleType&quot;:100,&quot;selectedText&quot;:&quot;经期前几天出现的情绪变化，需要结合时间和重复情况继续观察。&quot;,&quot;suggestedTopicTitle&quot;:&quot;经前情绪变化${RUN_ID}&quot;,&quot;originalLabel&quot;:&quot;和我有关&quot;,&quot;occurredAt&quot;:&quot;2026-08-10T00:00:00+08:00&quot;,&quot;cycleRelation&quot;:&quot;BEFORE_PERIOD&quot;,&quot;severity&quot;:3,&quot;resolved&quot;:false}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+            <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+            <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+            <stringProp name="HTTPSampler.protocol">http</stringProp>
+            <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+            <stringProp name="HTTPSampler.path">/athena/cognition/clues</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+            <stringProp name="HTTPSampler.embedded_url_re"/>
+            <stringProp name="HTTPSampler.connect_timeout"/>
+            <stringProp name="HTTPSampler.response_timeout"/>
+          </HTTPSamplerProxy><hashTree>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 code=200" enabled="true">
+              <stringProp name="JSON_PATH">$.code</stringProp>
+              <stringProp name="EXPECTED_VALUE">200</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 clue.status=PENDING" enabled="true">
+              <stringProp name="JSON_PATH">$.data.clue.status</stringProp>
+              <stringProp name="EXPECTED_VALUE">PENDING</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 digestTask.triggered=false" enabled="true">
+              <stringProp name="JSON_PATH">$.data.digestTask.triggered</stringProp>
+              <stringProp name="EXPECTED_VALUE">false</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="提取 clueId_1" enabled="true">
+              <stringProp name="JSONPostProcessor.referenceNames">clueId_1</stringProp>
+              <stringProp name="JSONPostProcessor.jsonPathExprs">$.data.clue.id</stringProp>
+              <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+              <stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>
+              <boolProp name="JSONPostProcessor.compute_concat">true</boolProp>
+            </JSONPostProcessor>
+            <hashTree/>
+          </hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS01-2-创建QUESTION线索" enabled="true">
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <stringProp name="Argument.name"/>
+                  <stringProp name="Argument.value">{&quot;type&quot;:&quot;ARTICLE_HIGHLIGHT&quot;,&quot;intent&quot;:&quot;QUESTION&quot;,&quot;helpRequestType&quot;:&quot;KNOWLEDGE&quot;,&quot;articleId&quot;:&quot;1024&quot;,&quot;articleTitle&quot;:&quot;经期前情绪变化值得怎样记录&quot;,&quot;articleType&quot;:100,&quot;selectedText&quot;:&quot;经期前几天可能出现情绪变化。&quot;,&quot;suggestedTopicTitle&quot;:&quot;经前情绪变化${RUN_ID}&quot;,&quot;originalLabel&quot;:&quot;我有疑问&quot;,&quot;questionType&quot;:&quot;IS_COMMON&quot;,&quot;questionText&quot;:&quot;这是否常见？&quot;,&quot;cycleRelation&quot;:&quot;UNKNOWN&quot;}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+            <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+            <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+            <stringProp name="HTTPSampler.protocol">http</stringProp>
+            <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+            <stringProp name="HTTPSampler.path">/athena/cognition/clues</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+            <stringProp name="HTTPSampler.embedded_url_re"/>
+            <stringProp name="HTTPSampler.connect_timeout"/>
+            <stringProp name="HTTPSampler.response_timeout"/>
+          </HTTPSamplerProxy><hashTree>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 code=200" enabled="true">
+              <stringProp name="JSON_PATH">$.code</stringProp>
+              <stringProp name="EXPECTED_VALUE">200</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 clue.status=PENDING" enabled="true">
+              <stringProp name="JSON_PATH">$.data.clue.status</stringProp>
+              <stringProp name="EXPECTED_VALUE">PENDING</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="提取 clueId_q" enabled="true">
+              <stringProp name="JSONPostProcessor.referenceNames">clueId_q</stringProp>
+              <stringProp name="JSONPostProcessor.jsonPathExprs">$.data.clue.id</stringProp>
+              <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+              <stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>
+              <boolProp name="JSONPostProcessor.compute_concat">true</boolProp>
+            </JSONPostProcessor>
+            <hashTree/>
+          </hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS01-3-创建KNOWLEDGE_ONLY线索" enabled="true">
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <stringProp name="Argument.name"/>
+                  <stringProp name="Argument.value">{&quot;type&quot;:&quot;ARTICLE_HIGHLIGHT&quot;,&quot;intent&quot;:&quot;KNOWLEDGE_ONLY&quot;,&quot;relationType&quot;:&quot;KNOWLEDGE_ONLY&quot;,&quot;helpRequestType&quot;:&quot;SAVE_ONLY&quot;,&quot;articleId&quot;:&quot;1025&quot;,&quot;articleTitle&quot;:&quot;经期护理基础&quot;,&quot;articleType&quot;:100,&quot;selectedText&quot;:&quot;经期保持清洁和休息很重要。&quot;,&quot;originalLabel&quot;:&quot;保存为知识&quot;,&quot;cycleRelation&quot;:&quot;UNKNOWN&quot;}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+            <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+            <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+            <stringProp name="HTTPSampler.protocol">http</stringProp>
+            <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+            <stringProp name="HTTPSampler.path">/athena/cognition/clues</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+            <stringProp name="HTTPSampler.embedded_url_re"/>
+            <stringProp name="HTTPSampler.connect_timeout"/>
+            <stringProp name="HTTPSampler.response_timeout"/>
+          </HTTPSamplerProxy><hashTree>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 code=200" enabled="true">
+              <stringProp name="JSON_PATH">$.code</stringProp>
+              <stringProp name="EXPECTED_VALUE">200</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 clue.status=ORGANIZED" enabled="true">
+              <stringProp name="JSON_PATH">$.data.clue.status</stringProp>
+              <stringProp name="EXPECTED_VALUE">ORGANIZED</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="提取 clueId_k" enabled="true">
+              <stringProp name="JSONPostProcessor.referenceNames">clueId_k</stringProp>
+              <stringProp name="JSONPostProcessor.jsonPathExprs">$.data.clue.id</stringProp>
+              <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+              <stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>
+              <boolProp name="JSONPostProcessor.compute_concat">true</boolProp>
+            </JSONPostProcessor>
+            <hashTree/>
+          </hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS01-4-创建线索severity超限" enabled="true">
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <stringProp name="Argument.name"/>
+                  <stringProp name="Argument.value">{&quot;type&quot;:&quot;ARTICLE_HIGHLIGHT&quot;,&quot;intent&quot;:&quot;RELATED&quot;,&quot;relationType&quot;:&quot;CURRENT&quot;,&quot;helpRequestType&quot;:&quot;OBSERVE&quot;,&quot;articleId&quot;:&quot;1024&quot;,&quot;articleTitle&quot;:&quot;经期前情绪变化值得怎样记录&quot;,&quot;articleType&quot;:100,&quot;selectedText&quot;:&quot;经期前几天出现的情绪变化，需要结合时间和重复情况继续观察。&quot;,&quot;suggestedTopicTitle&quot;:&quot;经前情绪变化${RUN_ID}&quot;,&quot;originalLabel&quot;:&quot;和我有关&quot;,&quot;occurredAt&quot;:&quot;2026-08-10T00:00:00+08:00&quot;,&quot;cycleRelation&quot;:&quot;BEFORE_PERIOD&quot;,&quot;severity&quot;:11,&quot;resolved&quot;:false}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+            <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+            <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+            <stringProp name="HTTPSampler.protocol">http</stringProp>
+            <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+            <stringProp name="HTTPSampler.path">/athena/cognition/clues</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+            <stringProp name="HTTPSampler.embedded_url_re"/>
+            <stringProp name="HTTPSampler.connect_timeout"/>
+            <stringProp name="HTTPSampler.response_timeout"/>
+          </HTTPSamplerProxy><hashTree>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 code=400" enabled="true">
+              <stringProp name="JSON_PATH">$.code</stringProp>
+              <stringProp name="EXPECTED_VALUE">400</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 errorCode=COGNITION_INVALID_ARGUMENT" enabled="true">
+              <stringProp name="JSON_PATH">$.data.errorCode</stringProp>
+              <stringProp name="EXPECTED_VALUE">COGNITION_INVALID_ARGUMENT</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+          </hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS01-5-创建线索selectedText为空" enabled="true">
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <stringProp name="Argument.name"/>
+                  <stringProp name="Argument.value">{&quot;type&quot;:&quot;ARTICLE_HIGHLIGHT&quot;,&quot;intent&quot;:&quot;RELATED&quot;,&quot;relationType&quot;:&quot;CURRENT&quot;,&quot;helpRequestType&quot;:&quot;OBSERVE&quot;,&quot;articleId&quot;:&quot;1024&quot;,&quot;articleTitle&quot;:&quot;经期前情绪变化值得怎样记录&quot;,&quot;articleType&quot;:100,&quot;selectedText&quot;:&quot;&quot;,&quot;suggestedTopicTitle&quot;:&quot;经前情绪变化${RUN_ID}&quot;,&quot;originalLabel&quot;:&quot;和我有关&quot;,&quot;occurredAt&quot;:&quot;2026-08-10T00:00:00+08:00&quot;,&quot;cycleRelation&quot;:&quot;BEFORE_PERIOD&quot;,&quot;severity&quot;:3,&quot;resolved&quot;:false}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+            <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+            <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+            <stringProp name="HTTPSampler.protocol">http</stringProp>
+            <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+            <stringProp name="HTTPSampler.path">/athena/cognition/clues</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+            <stringProp name="HTTPSampler.embedded_url_re"/>
+            <stringProp name="HTTPSampler.connect_timeout"/>
+            <stringProp name="HTTPSampler.response_timeout"/>
+          </HTTPSamplerProxy><hashTree>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 code=400" enabled="true">
+              <stringProp name="JSON_PATH">$.code</stringProp>
+              <stringProp name="EXPECTED_VALUE">400</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 errorCode=COGNITION_INVALID_ARGUMENT" enabled="true">
+              <stringProp name="JSON_PATH">$.data.errorCode</stringProp>
+              <stringProp name="EXPECTED_VALUE">COGNITION_INVALID_ARGUMENT</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+          </hashTree>
+        
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS02-1-查询PENDING线索" enabled="true">
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
+              <collectionProp name="Arguments.arguments"/>
+            </elementProp>
+            <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+            <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+            <stringProp name="HTTPSampler.protocol">http</stringProp>
+            <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+            <stringProp name="HTTPSampler.path">/athena/cognition/clues?view=PENDING&amp;page=1&amp;pageSize=20</stringProp>
+            <stringProp name="HTTPSampler.method">GET</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+            <stringProp name="HTTPSampler.embedded_url_re"/>
+            <stringProp name="HTTPSampler.connect_timeout"/>
+            <stringProp name="HTTPSampler.response_timeout"/>
+          </HTTPSamplerProxy><hashTree>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 code=200" enabled="true">
+              <stringProp name="JSON_PATH">$.code</stringProp>
+              <stringProp name="EXPECTED_VALUE">200</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 total&gt;=2" enabled="true">
+              <stringProp name="JSON_PATH">$.total</stringProp>
+              <stringProp name="EXPECTED_VALUE">[1-9]\d*</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            <boolProp name="ISREGEX">true</boolProp></JSONPathAssertion>
+            <hashTree/>
+          </hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS02-2-查询QUESTIONS线索" enabled="true">
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
+              <collectionProp name="Arguments.arguments"/>
+            </elementProp>
+            <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+            <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+            <stringProp name="HTTPSampler.protocol">http</stringProp>
+            <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+            <stringProp name="HTTPSampler.path">/athena/cognition/clues?view=QUESTIONS&amp;page=1&amp;pageSize=20</stringProp>
+            <stringProp name="HTTPSampler.method">GET</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+            <stringProp name="HTTPSampler.embedded_url_re"/>
+            <stringProp name="HTTPSampler.connect_timeout"/>
+            <stringProp name="HTTPSampler.response_timeout"/>
+          </HTTPSamplerProxy><hashTree>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 code=200" enabled="true">
+              <stringProp name="JSON_PATH">$.code</stringProp>
+              <stringProp name="EXPECTED_VALUE">200</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 total&gt;=1" enabled="true">
+              <stringProp name="JSON_PATH">$.total</stringProp>
+              <stringProp name="EXPECTED_VALUE">[1-9]\d*</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            <boolProp name="ISREGEX">true</boolProp></JSONPathAssertion>
+            <hashTree/>
+          </hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS02-3-查询inbox" enabled="true">
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
+              <collectionProp name="Arguments.arguments"/>
+            </elementProp>
+            <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+            <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+            <stringProp name="HTTPSampler.protocol">http</stringProp>
+            <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+            <stringProp name="HTTPSampler.path">/athena/cognition/inbox</stringProp>
+            <stringProp name="HTTPSampler.method">GET</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+            <stringProp name="HTTPSampler.embedded_url_re"/>
+            <stringProp name="HTTPSampler.connect_timeout"/>
+            <stringProp name="HTTPSampler.response_timeout"/>
+          </HTTPSamplerProxy><hashTree>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 code=200" enabled="true">
+              <stringProp name="JSON_PATH">$.code</stringProp>
+              <stringProp name="EXPECTED_VALUE">200</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 counts.pending&gt;=1" enabled="true">
+              <stringProp name="JSON_PATH">$.data.counts.pending</stringProp>
+              <stringProp name="EXPECTED_VALUE">[1-9]\d*</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            <boolProp name="ISREGEX">true</boolProp></JSONPathAssertion>
+            <hashTree/>
+          </hashTree>
+        
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS03-1-创建整理任务" enabled="true">
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <stringProp name="Argument.name"/>
+                  <stringProp name="Argument.value">{&quot;triggerType&quot;:&quot;USER_REQUEST&quot;,&quot;clueIds&quot;:[&quot;${clueId_1}&quot;],&quot;suggestedTitle&quot;:&quot;经前情绪变化${RUN_ID}&quot;}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+            <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+            <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+            <stringProp name="HTTPSampler.protocol">http</stringProp>
+            <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+            <stringProp name="HTTPSampler.path">/athena/cognition/digest-tasks</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+            <stringProp name="HTTPSampler.embedded_url_re"/>
+            <stringProp name="HTTPSampler.connect_timeout"/>
+            <stringProp name="HTTPSampler.response_timeout"/>
+          </HTTPSamplerProxy><hashTree>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 code=200" enabled="true">
+              <stringProp name="JSON_PATH">$.code</stringProp>
+              <stringProp name="EXPECTED_VALUE">200</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 status=SUCCEEDED" enabled="true">
+              <stringProp name="JSON_PATH">$.data.status</stringProp>
+              <stringProp name="EXPECTED_VALUE">SUCCEEDED</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 digestStatus=READY" enabled="true">
+              <stringProp name="JSON_PATH">$.data.digestStatus</stringProp>
+              <stringProp name="EXPECTED_VALUE">READY</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="提取 taskId_1" enabled="true">
+              <stringProp name="JSONPostProcessor.referenceNames">taskId_1</stringProp>
+              <stringProp name="JSONPostProcessor.jsonPathExprs">$.data.taskId</stringProp>
+              <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+              <stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>
+              <boolProp name="JSONPostProcessor.compute_concat">true</boolProp>
+            </JSONPostProcessor>
+            <hashTree/>
+            <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="提取 digestId_1" enabled="true">
+              <stringProp name="JSONPostProcessor.referenceNames">digestId_1</stringProp>
+              <stringProp name="JSONPostProcessor.jsonPathExprs">$.data.digestId</stringProp>
+              <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+              <stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>
+              <boolProp name="JSONPostProcessor.compute_concat">true</boolProp>
+            </JSONPostProcessor>
+            <hashTree/>
+          </hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS03-2-重复创建整理任务" enabled="true">
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <stringProp name="Argument.name"/>
+                  <stringProp name="Argument.value">{&quot;triggerType&quot;:&quot;USER_REQUEST&quot;,&quot;clueIds&quot;:[&quot;${clueId_1}&quot;],&quot;suggestedTitle&quot;:&quot;经前情绪变化${RUN_ID}&quot;}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+            <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+            <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+            <stringProp name="HTTPSampler.protocol">http</stringProp>
+            <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+            <stringProp name="HTTPSampler.path">/athena/cognition/digest-tasks</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+            <stringProp name="HTTPSampler.embedded_url_re"/>
+            <stringProp name="HTTPSampler.connect_timeout"/>
+            <stringProp name="HTTPSampler.response_timeout"/>
+          </HTTPSamplerProxy><hashTree>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 code=409" enabled="true">
+              <stringProp name="JSON_PATH">$.code</stringProp>
+              <stringProp name="EXPECTED_VALUE">409</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 errorCode=COGNITION_TASK_RUNNING" enabled="true">
+              <stringProp name="JSON_PATH">$.data.errorCode</stringProp>
+              <stringProp name="EXPECTED_VALUE">COGNITION_TASK_RUNNING</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+          </hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS03-3-查询digest详情" enabled="true">
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
+              <collectionProp name="Arguments.arguments"/>
+            </elementProp>
+            <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+            <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+            <stringProp name="HTTPSampler.protocol">http</stringProp>
+            <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+            <stringProp name="HTTPSampler.path">/athena/cognition/digests/${digestId_1}</stringProp>
+            <stringProp name="HTTPSampler.method">GET</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+            <stringProp name="HTTPSampler.embedded_url_re"/>
+            <stringProp name="HTTPSampler.connect_timeout"/>
+            <stringProp name="HTTPSampler.response_timeout"/>
+          </HTTPSamplerProxy><hashTree>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 code=200" enabled="true">
+              <stringProp name="JSON_PATH">$.code</stringProp>
+              <stringProp name="EXPECTED_VALUE">200</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 status=READY" enabled="true">
+              <stringProp name="JSON_PATH">$.data.status</stringProp>
+              <stringProp name="EXPECTED_VALUE">READY</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 generatorVersion=fixed-v1" enabled="true">
+              <stringProp name="JSON_PATH">$.data.generatorVersion</stringProp>
+              <stringProp name="EXPECTED_VALUE">fixed-v1</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 evidence非空" enabled="true">
+              <stringProp name="JSON_PATH">$.data.evidence</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">true</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="提取 digestVersion_1" enabled="true">
+              <stringProp name="JSONPostProcessor.referenceNames">digestVersion_1</stringProp>
+              <stringProp name="JSONPostProcessor.jsonPathExprs">$.data.version</stringProp>
+              <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+              <stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>
+              <boolProp name="JSONPostProcessor.compute_concat">true</boolProp>
+            </JSONPostProcessor>
+            <hashTree/>
+          </hashTree>
+        
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS04-1-决定ACCEPT_AS_TOPIC" enabled="true">
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <stringProp name="Argument.name"/>
+                  <stringProp name="Argument.value">{&quot;decision&quot;:&quot;ACCEPT_AS_TOPIC&quot;,&quot;reason&quot;:null,&quot;clientVersion&quot;:${digestVersion_1}}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+            <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+            <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+            <stringProp name="HTTPSampler.protocol">http</stringProp>
+            <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+            <stringProp name="HTTPSampler.path">/athena/cognition/digests/${digestId_1}/decision</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+            <stringProp name="HTTPSampler.embedded_url_re"/>
+            <stringProp name="HTTPSampler.connect_timeout"/>
+            <stringProp name="HTTPSampler.response_timeout"/>
+          </HTTPSamplerProxy><hashTree>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 code=200" enabled="true">
+              <stringProp name="JSON_PATH">$.code</stringProp>
+              <stringProp name="EXPECTED_VALUE">200</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 digest.status=ACCEPTED" enabled="true">
+              <stringProp name="JSON_PATH">$.data.digest.status</stringProp>
+              <stringProp name="EXPECTED_VALUE">ACCEPTED</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 topic.id非空" enabled="true">
+              <stringProp name="JSON_PATH">$.data.topic.id</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">true</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 action.id非空" enabled="true">
+              <stringProp name="JSON_PATH">$.data.action.id</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">true</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 topic.nextActionId=action.id" enabled="true">
+              <stringProp name="JSON_PATH">$.data.topic.nextActionId</stringProp>
+              <stringProp name="EXPECTED_VALUE">${actionId_1}</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="提取 topicId" enabled="true">
+              <stringProp name="JSONPostProcessor.referenceNames">topicId</stringProp>
+              <stringProp name="JSONPostProcessor.jsonPathExprs">$.data.topic.id</stringProp>
+              <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+              <stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>
+              <boolProp name="JSONPostProcessor.compute_concat">true</boolProp>
+            </JSONPostProcessor>
+            <hashTree/>
+            <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="提取 actionId_1" enabled="true">
+              <stringProp name="JSONPostProcessor.referenceNames">actionId_1</stringProp>
+              <stringProp name="JSONPostProcessor.jsonPathExprs">$.data.action.id</stringProp>
+              <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+              <stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>
+              <boolProp name="JSONPostProcessor.compute_concat">true</boolProp>
+            </JSONPostProcessor>
+            <hashTree/>
+          </hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS04-2-重复提交decision" enabled="true">
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <stringProp name="Argument.name"/>
+                  <stringProp name="Argument.value">{&quot;decision&quot;:&quot;ACCEPT_AS_TOPIC&quot;,&quot;reason&quot;:null,&quot;clientVersion&quot;:${digestVersion_1}}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+            <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+            <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+            <stringProp name="HTTPSampler.protocol">http</stringProp>
+            <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+            <stringProp name="HTTPSampler.path">/athena/cognition/digests/${digestId_1}/decision</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+            <stringProp name="HTTPSampler.embedded_url_re"/>
+            <stringProp name="HTTPSampler.connect_timeout"/>
+            <stringProp name="HTTPSampler.response_timeout"/>
+          </HTTPSamplerProxy><hashTree>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 code=409" enabled="true">
+              <stringProp name="JSON_PATH">$.code</stringProp>
+              <stringProp name="EXPECTED_VALUE">409</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="断言 errorCode=COGNITION_STATE_CONFLICT" enabled="true">
+              <stringProp name="JSON_PATH">$.data.errorCode</stringProp>
+              <stringProp name="EXPECTED_VALUE">COGNITION_STATE_CONFLICT</stringProp>
+              <boolProp name="JSONVALIDATION">true</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+              <stringProp name="EXPECT_CONTENT_TYPE_STRING"/>
+            </JSONPathAssertion>
+            <hashTree/>
+          </hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS04-3-创建线索2用于KEEP测试" enabled="true">
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <stringProp name="Argument.name"/>
+                  <stringProp name="Argument.value">{&quot;type&quot;:&quot;ARTICLE_HIGHLIGHT&quot;,&quot;intent&quot;:&quot;RELATED&quot;,&quot;relationType&quot;:&quot;CURRENT&quot;,&quot;helpRequestType&quot;:&quot;OBSERVE&quot;,&quot;articleId&quot;:&quot;1024&quot;,&quot;articleTitle&quot;:&quot;经期前情绪变化值得怎样记录&quot;,&quot;articleType&quot;:100,&quot;selectedText&quot;:&quot;又一条经前情绪线索&quot;,&quot;suggestedTopicTitle&quot;:&quot;经前情绪变化${RUN_ID}&quot;,&quot;originalLabel&quot;:&quot;和我有关&quot;,&quot;occurredAt&quot;:&quot;2026-08-10T00:00:00+08:00&quot;,&quot;cycleRelation&quot;:&quot;BEFORE_PERIOD&quot;,&quot;severity&quot;:3,&quot;resolved&quot;:false}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+            <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+            <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+            <stringProp name="HTTPSampler.protocol">http</stringProp>
+            <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+            <stringProp name="HTTPSampler.path">/athena/cognition/clues</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+            <stringProp name="HTTPSampler.embedded_url_re"/>
+            <stringProp name="HTTPSampler.connect_timeout"/>
+            <stringProp name="HTTPSampler.response_timeout"/>
+          </HTTPSamplerProxy><hashTree>
+            <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="提取 clueId_2" enabled="true">
+              <stringProp name="JSONPostProcessor.referenceNames">clueId_2</stringProp>
+              <stringProp name="JSONPostProcessor.jsonPathExprs">$.data.clue.id</stringProp>
+              <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+              <stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>
+              <boolProp name="JSONPostProcessor.compute_concat">true</boolProp>
+            </JSONPostProcessor>
+            <hashTree/>
+          </hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS04-4-创建整理任务2" enabled="true">
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <stringProp name="Argument.name"/>
+                  <stringProp name="Argument.value">{&quot;triggerType&quot;:&quot;USER_REQUEST&quot;,&quot;clueIds&quot;:[&quot;${clueId_2}&quot;],&quot;suggestedTitle&quot;:&quot;经前情绪变化2&quot;}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+            <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+            <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+            <stringProp name="HTTPSampler.protocol">http</stringProp>
+            <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+            <stringProp name="HTTPSampler.path">/athena/cognition/digest-tasks</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+            <stringProp name="HTTPSampler.embedded_url_re"/>
+            <stringProp name="HTTPSampler.connect_timeout"/>
+            <stringProp name="HTTPSampler.response_timeout"/>
+          </HTTPSamplerProxy><hashTree>
+            <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="提取 digestId_2" enabled="true">
+              <stringProp name="JSONPostProcessor.referenceNames">digestId_2</stringProp>
+              <stringProp name="JSONPostProcessor.jsonPathExprs">$.data.digestId</stringProp>
+              <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+              <stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>
+              <boolProp name="JSONPostProcessor.compute_concat">true</boolProp>
+            </JSONPostProcessor>
+            <hashTree/>
+          </hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS04-5-查询digest2详情" enabled="true">
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
+              <collectionProp name="Arguments.arguments"/>
+            </elementProp>
+            <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+            <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+            <stringProp name="HTTPSampler.protocol">http</stringProp>
+            <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+            <stringProp name="HTTPSampler.path">/athena/cognition/digests/${digestId_2}</stringProp>
+            <stringProp name="HTTPSampler.method">GET</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+            <stringProp name="HTTPSampler.embedded_url_re"/>
+            <stringProp name="HTTPSampler.connect_timeout"/>
+            <stringProp name="HTTPSampler.response_timeout"/>
+          </HTTPSamplerProxy><hashTree>
+            <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="提取 digestVersion_2" enabled="true">
+              <stringProp name="JSONPostProcessor.referenceNames">digestVersion_2</stringProp>
+              <stringProp name="JSONPostProcessor.jsonPathExprs">$.data.version</stringProp>
+              <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+              <stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>
+              <boolProp name="JSONPostProcessor.compute_concat">true</boolProp>
+            </JSONPostProcessor>
+            <hashTree/>
+          </hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS04-6-决定KEEP_AS_KNOWLEDGE" enabled="true"><boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+<stringProp name="HTTPSampler.port">${PORT}</stringProp>
+<stringProp name="HTTPSampler.protocol">http</stringProp>
+<stringProp name="HTTPSampler.method">POST</stringProp>
+<stringProp name="HTTPSampler.path">/athena/cognition/digests/${digestId_2}/decision</stringProp>
+<stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+<stringProp name="HTTPSampler.follow_redirects">true</stringProp>
+<boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+<boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" enabled="true"><collectionProp name="Arguments.arguments"><elementProp name="" elementType="HTTPArgument">
+<boolProp name="HTTPArgument.always_encode">false</boolProp>
+<stringProp name="Argument.value">{&quot;decision&quot;:&quot;KEEP_AS_KNOWLEDGE&quot;,&quot;reason&quot;:null,&quot;clientVersion&quot;:${digestVersion_2}}</stringProp>
+<stringProp name="Argument.metadata">=</stringProp>
+<boolProp name="HTTPArgument.use_equals">false</boolProp>
+<stringProp name="Argument.name"/>
+</elementProp></collectionProp></elementProp>
+</HTTPSamplerProxy><hashTree>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.code</stringProp>
+<stringProp name="EXPECTED_VALUE">200</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.data.digest.status</stringProp>
+<stringProp name="EXPECTED_VALUE">KEPT_AS_KNOWLEDGE</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+<ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Response Assertion" enabled="true">
+<collectionProp name="Asserion.test_strings"><stringProp name="10001">&quot;topic&quot;:{&quot;id&quot;</stringProp></collectionProp>
+<stringProp name="Assertion.test_field">Assertion.response_data</stringProp>
+<intProp name="Assertion.test_type">6</intProp><boolProp name="Assertion.assume_success">false</boolProp><stringProp name="Assertion.custom_message"/></ResponseAssertion>
+<hashTree/>
+</hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS04-7-创建线索三" enabled="true"><boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+<stringProp name="HTTPSampler.port">${PORT}</stringProp>
+<stringProp name="HTTPSampler.protocol">http</stringProp>
+<stringProp name="HTTPSampler.method">POST</stringProp>
+<stringProp name="HTTPSampler.path">/athena/cognition/clues</stringProp>
+<stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+<stringProp name="HTTPSampler.follow_redirects">true</stringProp>
+<boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+<boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" enabled="true"><collectionProp name="Arguments.arguments"><elementProp name="" elementType="HTTPArgument">
+<boolProp name="HTTPArgument.always_encode">false</boolProp>
+<stringProp name="Argument.value">{&quot;type&quot;:&quot;ARTICLE_HIGHLIGHT&quot;,&quot;intent&quot;:&quot;RELATED&quot;,&quot;relationType&quot;:&quot;CURRENT&quot;,&quot;helpRequestType&quot;:&quot;OBSERVE&quot;,&quot;articleId&quot;:&quot;1024&quot;,&quot;articleTitle&quot;:&quot;经期前情绪变化值得怎样记录&quot;,&quot;articleType&quot;:100,&quot;selectedText&quot;:&quot;第三条经前情绪线索&quot;,&quot;suggestedTopicTitle&quot;:&quot;经前情绪变化${RUN_ID}&quot;,&quot;originalLabel&quot;:&quot;和我有关&quot;,&quot;cycleRelation&quot;:&quot;BEFORE_PERIOD&quot;,&quot;severity&quot;:2,&quot;resolved&quot;:false}</stringProp>
+<stringProp name="Argument.metadata">=</stringProp>
+<boolProp name="HTTPArgument.use_equals">false</boolProp>
+<stringProp name="Argument.name"/>
+</elementProp></collectionProp></elementProp>
+</HTTPSamplerProxy><hashTree>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.code</stringProp>
+<stringProp name="EXPECTED_VALUE">200</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="JSON Extractor" enabled="true">
+<stringProp name="JSONPostProcessor.referenceNames">clueId_3</stringProp>
+<stringProp name="JSONPostProcessor.jsonPathExprs">$.data.clue.id</stringProp>
+<stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+<stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>
+</JSONPostProcessor>
+<hashTree/>
+</hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS04-8-整理任务三" enabled="true"><boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+<stringProp name="HTTPSampler.port">${PORT}</stringProp>
+<stringProp name="HTTPSampler.protocol">http</stringProp>
+<stringProp name="HTTPSampler.method">POST</stringProp>
+<stringProp name="HTTPSampler.path">/athena/cognition/digest-tasks</stringProp>
+<stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+<stringProp name="HTTPSampler.follow_redirects">true</stringProp>
+<boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+<boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" enabled="true"><collectionProp name="Arguments.arguments"><elementProp name="" elementType="HTTPArgument">
+<boolProp name="HTTPArgument.always_encode">false</boolProp>
+<stringProp name="Argument.value">{&quot;triggerType&quot;:&quot;USER_REQUEST&quot;,&quot;clueIds&quot;:[&quot;${clueId_3}&quot;],&quot;suggestedTitle&quot;:&quot;经前情绪变化${RUN_ID}&quot;}</stringProp>
+<stringProp name="Argument.metadata">=</stringProp>
+<boolProp name="HTTPArgument.use_equals">false</boolProp>
+<stringProp name="Argument.name"/>
+</elementProp></collectionProp></elementProp>
+</HTTPSamplerProxy><hashTree>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.code</stringProp>
+<stringProp name="EXPECTED_VALUE">200</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="JSON Extractor" enabled="true">
+<stringProp name="JSONPostProcessor.referenceNames">digestId_3</stringProp>
+<stringProp name="JSONPostProcessor.jsonPathExprs">$.data.digestId</stringProp>
+<stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+<stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>
+</JSONPostProcessor>
+<hashTree/>
+</hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS04-9-查询草稿三" enabled="true"><boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+<stringProp name="HTTPSampler.port">${PORT}</stringProp>
+<stringProp name="HTTPSampler.protocol">http</stringProp>
+<stringProp name="HTTPSampler.method">GET</stringProp>
+<stringProp name="HTTPSampler.path">/athena/cognition/digests/${digestId_3}</stringProp>
+<stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+<stringProp name="HTTPSampler.follow_redirects">true</stringProp>
+<boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+<boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+<elementProp name="HTTPsamplers.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" enabled="true">
+<collectionProp name="Arguments.arguments"/>
+</elementProp>
+</HTTPSamplerProxy><hashTree>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.code</stringProp>
+<stringProp name="EXPECTED_VALUE">200</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="JSON Extractor" enabled="true">
+<stringProp name="JSONPostProcessor.referenceNames">digestVersion_3</stringProp>
+<stringProp name="JSONPostProcessor.jsonPathExprs">$.data.version</stringProp>
+<stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+<stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>
+</JSONPostProcessor>
+<hashTree/>
+</hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS04-10-决定REJECT" enabled="true"><boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+<stringProp name="HTTPSampler.port">${PORT}</stringProp>
+<stringProp name="HTTPSampler.protocol">http</stringProp>
+<stringProp name="HTTPSampler.method">POST</stringProp>
+<stringProp name="HTTPSampler.path">/athena/cognition/digests/${digestId_3}/decision</stringProp>
+<stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+<stringProp name="HTTPSampler.follow_redirects">true</stringProp>
+<boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+<boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" enabled="true"><collectionProp name="Arguments.arguments"><elementProp name="" elementType="HTTPArgument">
+<boolProp name="HTTPArgument.always_encode">false</boolProp>
+<stringProp name="Argument.value">{&quot;decision&quot;:&quot;REJECT&quot;,&quot;reason&quot;:null,&quot;clientVersion&quot;:${digestVersion_3}}</stringProp>
+<stringProp name="Argument.metadata">=</stringProp>
+<boolProp name="HTTPArgument.use_equals">false</boolProp>
+<stringProp name="Argument.name"/>
+</elementProp></collectionProp></elementProp>
+</HTTPSamplerProxy><hashTree>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.code</stringProp>
+<stringProp name="EXPECTED_VALUE">200</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.data.digest.status</stringProp>
+<stringProp name="EXPECTED_VALUE">REJECTED</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+<ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Response Assertion" enabled="true">
+<collectionProp name="Asserion.test_strings"><stringProp name="10003">&quot;topic&quot;:{&quot;id&quot;</stringProp></collectionProp>
+<stringProp name="Assertion.test_field">Assertion.response_data</stringProp>
+<intProp name="Assertion.test_type">6</intProp><boolProp name="Assertion.assume_success">false</boolProp><stringProp name="Assertion.custom_message"/></ResponseAssertion>
+<hashTree/>
+</hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS04-11-验证源线索DISMISSED" enabled="true"><boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+<stringProp name="HTTPSampler.port">${PORT}</stringProp>
+<stringProp name="HTTPSampler.protocol">http</stringProp>
+<stringProp name="HTTPSampler.method">GET</stringProp>
+<stringProp name="HTTPSampler.path">/athena/cognition/clues?view=ALL&amp;page=1&amp;pageSize=50</stringProp>
+<stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+<stringProp name="HTTPSampler.follow_redirects">true</stringProp>
+<boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+<boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+<elementProp name="HTTPsamplers.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" enabled="true">
+<collectionProp name="Arguments.arguments"/>
+</elementProp>
+</HTTPSamplerProxy><hashTree>
+<ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Response Assertion" enabled="true">
+<collectionProp name="Asserion.test_strings">
+<stringProp name="-1262558704">DISMISSED</stringProp>
+</collectionProp>
+<stringProp name="Assertion.test_field">Assertion.response_data</stringProp>
+<intProp name="Assertion.test_type">2</intProp><boolProp name="Assertion.assume_success">false</boolProp><stringProp name="Assertion.custom_message"/></ResponseAssertion>
+<hashTree/>
+</hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS05-1-提交行动反馈" enabled="true"><boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+<stringProp name="HTTPSampler.port">${PORT}</stringProp>
+<stringProp name="HTTPSampler.protocol">http</stringProp>
+<stringProp name="HTTPSampler.method">POST</stringProp>
+<stringProp name="HTTPSampler.path">/athena/cognition/actions/${actionId_1}/feedback</stringProp>
+<stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+<stringProp name="HTTPSampler.follow_redirects">true</stringProp>
+<boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+<boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" enabled="true"><collectionProp name="Arguments.arguments"><elementProp name="" elementType="HTTPArgument">
+<boolProp name="HTTPArgument.always_encode">false</boolProp>
+<stringProp name="Argument.value">{&quot;topicId&quot;:&quot;${topicId}&quot;,&quot;result&quot;:&quot;OCCURRED&quot;,&quot;note&quot;:&quot;今天下午轻微情绪低落&quot;,&quot;occurredAt&quot;:&quot;2026-08-21T18:20:00+08:00&quot;}</stringProp>
+<stringProp name="Argument.metadata">=</stringProp>
+<boolProp name="HTTPArgument.use_equals">false</boolProp>
+<stringProp name="Argument.name"/>
+</elementProp></collectionProp></elementProp>
+</HTTPSamplerProxy><hashTree>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.code</stringProp>
+<stringProp name="EXPECTED_VALUE">200</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.data.actionStatus</stringProp>
+<stringProp name="EXPECTED_VALUE">COMPLETED</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.data.refreshRequired</stringProp>
+<stringProp name="EXPECTED_VALUE">true</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.data.feedback.evidenceId</stringProp>
+<stringProp name="EXPECTED_VALUE"/>
+<boolProp name="JSONVALIDATION">false</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">true</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+</hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS05-2-重复反馈冲突" enabled="true"><boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+<stringProp name="HTTPSampler.port">${PORT}</stringProp>
+<stringProp name="HTTPSampler.protocol">http</stringProp>
+<stringProp name="HTTPSampler.method">POST</stringProp>
+<stringProp name="HTTPSampler.path">/athena/cognition/actions/${actionId_1}/feedback</stringProp>
+<stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+<stringProp name="HTTPSampler.follow_redirects">true</stringProp>
+<boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+<boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" enabled="true"><collectionProp name="Arguments.arguments"><elementProp name="" elementType="HTTPArgument">
+<boolProp name="HTTPArgument.always_encode">false</boolProp>
+<stringProp name="Argument.value">{&quot;topicId&quot;:&quot;${topicId}&quot;,&quot;result&quot;:&quot;OCCURRED&quot;,&quot;note&quot;:&quot;今天下午轻微情绪低落&quot;,&quot;occurredAt&quot;:&quot;2026-08-21T18:20:00+08:00&quot;}</stringProp>
+<stringProp name="Argument.metadata">=</stringProp>
+<boolProp name="HTTPArgument.use_equals">false</boolProp>
+<stringProp name="Argument.name"/>
+</elementProp></collectionProp></elementProp>
+</HTTPSamplerProxy><hashTree>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.code</stringProp>
+<stringProp name="EXPECTED_VALUE">409</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.data.errorCode</stringProp>
+<stringProp name="EXPECTED_VALUE">COGNITION_STATE_CONFLICT</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+</hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS06-1-健康首页" enabled="true"><boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+<stringProp name="HTTPSampler.port">${PORT}</stringProp>
+<stringProp name="HTTPSampler.protocol">http</stringProp>
+<stringProp name="HTTPSampler.method">GET</stringProp>
+<stringProp name="HTTPSampler.path">/athena/cognition/home</stringProp>
+<stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+<stringProp name="HTTPSampler.follow_redirects">true</stringProp>
+<boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+<boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+<elementProp name="HTTPsamplers.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" enabled="true">
+<collectionProp name="Arguments.arguments"/>
+</elementProp>
+</HTTPSamplerProxy><hashTree>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.code</stringProp>
+<stringProp name="EXPECTED_VALUE">200</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.data.activeTopic.id</stringProp>
+<stringProp name="EXPECTED_VALUE">${topicId}</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+<ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Response Assertion" enabled="true">
+<collectionProp name="Asserion.test_strings"><stringProp name="10002">&quot;summaryState&quot;:&quot;(ACTION_COMPLETED|OBSERVING)&quot;</stringProp></collectionProp>
+<stringProp name="Assertion.test_field">Assertion.response_data</stringProp>
+<intProp name="Assertion.test_type">2</intProp><boolProp name="Assertion.assume_success">false</boolProp><stringProp name="Assertion.custom_message"/></ResponseAssertion>
+<hashTree/>
+</hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS07-1-创建待撤销线索" enabled="true"><boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+<stringProp name="HTTPSampler.port">${PORT}</stringProp>
+<stringProp name="HTTPSampler.protocol">http</stringProp>
+<stringProp name="HTTPSampler.method">POST</stringProp>
+<stringProp name="HTTPSampler.path">/athena/cognition/clues</stringProp>
+<stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+<stringProp name="HTTPSampler.follow_redirects">true</stringProp>
+<boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+<boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" enabled="true"><collectionProp name="Arguments.arguments"><elementProp name="" elementType="HTTPArgument">
+<boolProp name="HTTPArgument.always_encode">false</boolProp>
+<stringProp name="Argument.value">{&quot;type&quot;:&quot;ARTICLE_HIGHLIGHT&quot;,&quot;intent&quot;:&quot;RELATED&quot;,&quot;relationType&quot;:&quot;CURRENT&quot;,&quot;helpRequestType&quot;:&quot;OBSERVE&quot;,&quot;articleId&quot;:&quot;1024&quot;,&quot;articleTitle&quot;:&quot;经期前情绪变化值得怎样记录&quot;,&quot;articleType&quot;:100,&quot;selectedText&quot;:&quot;待撤销的线索&quot;,&quot;suggestedTopicTitle&quot;:&quot;经前情绪变化${RUN_ID}&quot;,&quot;originalLabel&quot;:&quot;和我有关&quot;,&quot;cycleRelation&quot;:&quot;UNKNOWN&quot;}</stringProp>
+<stringProp name="Argument.metadata">=</stringProp>
+<boolProp name="HTTPArgument.use_equals">false</boolProp>
+<stringProp name="Argument.name"/>
+</elementProp></collectionProp></elementProp>
+</HTTPSamplerProxy><hashTree>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.code</stringProp>
+<stringProp name="EXPECTED_VALUE">200</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="JSON Extractor" enabled="true">
+<stringProp name="JSONPostProcessor.referenceNames">clueId_4</stringProp>
+<stringProp name="JSONPostProcessor.jsonPathExprs">$.data.clue.id</stringProp>
+<stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+<stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>
+</JSONPostProcessor>
+<hashTree/>
+</hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS07-2-撤销未入草稿线索" enabled="true"><boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+<stringProp name="HTTPSampler.port">${PORT}</stringProp>
+<stringProp name="HTTPSampler.protocol">http</stringProp>
+<stringProp name="HTTPSampler.method">DELETE</stringProp>
+<stringProp name="HTTPSampler.path">/athena/cognition/clues/${clueId_4}</stringProp>
+<stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+<stringProp name="HTTPSampler.follow_redirects">true</stringProp>
+<boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+<boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+<elementProp name="HTTPsamplers.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" enabled="true">
+<collectionProp name="Arguments.arguments"/>
+</elementProp>
+</HTTPSamplerProxy><hashTree>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.code</stringProp>
+<stringProp name="EXPECTED_VALUE">200</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+</hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS07-3-撤销已入草稿线索" enabled="true"><boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+<stringProp name="HTTPSampler.port">${PORT}</stringProp>
+<stringProp name="HTTPSampler.protocol">http</stringProp>
+<stringProp name="HTTPSampler.method">DELETE</stringProp>
+<stringProp name="HTTPSampler.path">/athena/cognition/clues/${clueId_1}</stringProp>
+<stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+<stringProp name="HTTPSampler.follow_redirects">true</stringProp>
+<boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+<boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+<elementProp name="HTTPsamplers.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" enabled="true">
+<collectionProp name="Arguments.arguments"/>
+</elementProp>
+</HTTPSamplerProxy><hashTree>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.code</stringProp>
+<stringProp name="EXPECTED_VALUE">409</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.data.errorCode</stringProp>
+<stringProp name="EXPECTED_VALUE">COGNITION_CLUE_IN_USE</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+</hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS07-4-伪造来源拒绝" enabled="true"><boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+<stringProp name="HTTPSampler.port">${PORT}</stringProp>
+<stringProp name="HTTPSampler.protocol">http</stringProp>
+<stringProp name="HTTPSampler.method">POST</stringProp>
+<stringProp name="HTTPSampler.path">/athena/cognition/clues</stringProp>
+<stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+<stringProp name="HTTPSampler.follow_redirects">true</stringProp>
+<boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+<boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" enabled="true"><collectionProp name="Arguments.arguments"><elementProp name="" elementType="HTTPArgument">
+<boolProp name="HTTPArgument.always_encode">false</boolProp>
+<stringProp name="Argument.value">{&quot;type&quot;:&quot;ARTICLE_HIGHLIGHT&quot;,&quot;intent&quot;:&quot;RELATED&quot;,&quot;relationType&quot;:&quot;CURRENT&quot;,&quot;helpRequestType&quot;:&quot;OBSERVE&quot;,&quot;articleId&quot;:&quot;1024&quot;,&quot;articleTitle&quot;:&quot;经期前情绪变化值得怎样记录&quot;,&quot;articleType&quot;:100,&quot;selectedText&quot;:&quot;待撤销的线索&quot;,&quot;suggestedTopicTitle&quot;:&quot;经前情绪变化${RUN_ID}&quot;,&quot;originalLabel&quot;:&quot;和我有关&quot;,&quot;cycleRelation&quot;:&quot;UNKNOWN&quot;,&quot;source&quot;:&quot;SQUARE&quot;}</stringProp>
+<stringProp name="Argument.metadata">=</stringProp>
+<boolProp name="HTTPArgument.use_equals">false</boolProp>
+<stringProp name="Argument.name"/>
+</elementProp></collectionProp></elementProp>
+</HTTPSamplerProxy><hashTree>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.code</stringProp>
+<stringProp name="EXPECTED_VALUE">400</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.data.errorCode</stringProp>
+<stringProp name="EXPECTED_VALUE">COGNITION_INVALID_ARGUMENT</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+</hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS07-5-非法枚举拒绝" enabled="true"><boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+<stringProp name="HTTPSampler.port">${PORT}</stringProp>
+<stringProp name="HTTPSampler.protocol">http</stringProp>
+<stringProp name="HTTPSampler.method">POST</stringProp>
+<stringProp name="HTTPSampler.path">/athena/cognition/clues</stringProp>
+<stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+<stringProp name="HTTPSampler.follow_redirects">true</stringProp>
+<boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+<boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+<elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" enabled="true"><collectionProp name="Arguments.arguments"><elementProp name="" elementType="HTTPArgument">
+<boolProp name="HTTPArgument.always_encode">false</boolProp>
+<stringProp name="Argument.value">{&quot;type&quot;:&quot;ARTICLE_HIGHLIGHT&quot;,&quot;intent&quot;:&quot;FOO&quot;,&quot;relationType&quot;:&quot;CURRENT&quot;,&quot;helpRequestType&quot;:&quot;OBSERVE&quot;,&quot;articleId&quot;:&quot;1024&quot;,&quot;articleTitle&quot;:&quot;经期前情绪变化值得怎样记录&quot;,&quot;articleType&quot;:100,&quot;selectedText&quot;:&quot;待撤销的线索&quot;,&quot;suggestedTopicTitle&quot;:&quot;经前情绪变化${RUN_ID}&quot;,&quot;originalLabel&quot;:&quot;和我有关&quot;,&quot;cycleRelation&quot;:&quot;UNKNOWN&quot;}</stringProp>
+<stringProp name="Argument.metadata">=</stringProp>
+<boolProp name="HTTPArgument.use_equals">false</boolProp>
+<stringProp name="Argument.name"/>
+</elementProp></collectionProp></elementProp>
+</HTTPSamplerProxy><hashTree>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.code</stringProp>
+<stringProp name="EXPECTED_VALUE">400</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Path Assertion" enabled="true">
+<stringProp name="JSON_PATH">$.data.errorCode</stringProp>
+<stringProp name="EXPECTED_VALUE">COGNITION_INVALID_ARGUMENT</stringProp>
+<boolProp name="JSONVALIDATION">true</boolProp>
+<boolProp name="ISREGEX">false</boolProp>
+<boolProp name="EXPECT_NULL">false</boolProp>
+</JSONPathAssertion>
+<hashTree/>
+</hashTree><HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="TS07-6-未带token拦截" enabled="true"><boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+<stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+<stringProp name="HTTPSampler.port">${PORT}</stringProp>
+<stringProp name="HTTPSampler.protocol">http</stringProp>
+<stringProp name="HTTPSampler.method">GET</stringProp>
+<stringProp name="HTTPSampler.path">/athena/cognition/home</stringProp>
+<stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+<stringProp name="HTTPSampler.follow_redirects">true</stringProp>
+<boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+<boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+<elementProp name="HTTPsamplers.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" enabled="true">
+<collectionProp name="Arguments.arguments"/>
+</elementProp>
+</HTTPSamplerProxy><hashTree>
+<HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
+<collectionProp name="HeaderManager.headers"><elementProp name="" elementType="Header"><stringProp name="Header.name">Authorization</stringProp><stringProp name="Header.value">Bearer invalid-token-for-test</stringProp></elementProp>
+<elementProp name="" elementType="Header">
+<stringProp name="Header.name">Content-Type</stringProp>
+<stringProp name="Header.value">application/json</stringProp>
+</elementProp>
+</collectionProp>
+</HeaderManager>
+<hashTree/>
+<ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Response Assertion" enabled="true">
+<collectionProp name="Asserion.test_strings">
+<stringProp name="-1262558702">summaryState</stringProp>
+</collectionProp>
+<stringProp name="Assertion.test_field">Assertion.response_data</stringProp>
+<intProp name="Assertion.test_type">6</intProp><boolProp name="Assertion.assume_success">false</boolProp><stringProp name="Assertion.custom_message"/></ResponseAssertion>
+<hashTree/>
+</hashTree>
+        
+<ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree" enabled="true">
+<boolProp name="saveEncoding">true</boolProp>
+<stringProp name="TestPlan.comments">查看结果树监听器</stringProp>
+<intProp name="Limit">0</intProp>
+<stringProp name="filename"/>
+</ResultCollector>
+<hashTree/>
+<ResultCollector guiclass="SummaryReport" testclass="ResultCollector" testname="Summary Report" enabled="true">
+<boolProp name="saveEncoding">true</boolProp>
+<stringProp name="TestPlan.comments">汇总报告监听器</stringProp>
+<intProp name="Limit">0</intProp>
+<stringProp name="filename"/>
+</ResultCollector>
+<hashTree/>
+</hashTree>
+</hashTree>
+</hashTree>
+</jmeterTestPlan>

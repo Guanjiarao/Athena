@@ -424,7 +424,7 @@ public class CognitionJdbcRepository {
                 INSERT INTO cognition_topic
                 (user_id,source_digest_id,title,domain,maturity,user_progress,risk_status,stage_understanding,
                  known_facts,open_questions,evidence_count,article_clue_count,body_record_count,cycle_count,last_updated_at)
-                VALUES (?,?,?,?,?,'OBSERVING','NONE',?,?,?,?,?,?,?)
+                VALUES (?,?,?,?,?,'OBSERVING','NONE',?,?,?,?,?,?,?,?)
                 """, userId, sourceDigestId, title, domain, maturity.name(), stageUnderstanding, knownFactsJson,
                 openQuestionsJson, evidenceCount, articleClueCount, bodyRecordCount, cycleCount,
                 Timestamp.from(Instant.now()));

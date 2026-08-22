@@ -191,10 +191,14 @@ public class CognitionService {
         TriggerType triggerType = request.triggerType() == null ? TriggerType.USER_REQUEST : request.triggerType();
 
         List<ClueRow> entryClues = List.of();
+        List<Long> entryIds = List.of();
         if (request.clueIds() != null && !request.clueIds().isEmpty()) {
-            List<Long> entryIds = parseIds(CognitionIds.CLUE, request.clueIds());
+            entryIds = parseIds(CognitionIds.CLUE, request.clueIds());
             entryClues = repository.findClues(userId, entryIds);
             if (entryClues.size() != entryIds.size()) throw CognitionException.notFound();
+            // Section 12: entry clue already inside an open digest -> COGNITION_TASK_RUNNING,
+            // checked before the no-valid-evidence gate so repeat taps get the right conflict code
+            if (repository.hasOpenDigestForClues(userId, entryIds)) throw CognitionException.taskRunning();
         }
 
         // Section 8.6: expand from the entry clue to the whole candidate group
@@ -334,10 +338,12 @@ public class CognitionService {
     public DigestDecisionView decideDigest(long userId, String digestExternalId, DigestDecisionRequest request) {
         long digestId = CognitionIds.parse(CognitionIds.DIGEST, digestExternalId);
         DigestRow digest = repository.findDigest(userId, digestId, true).orElseThrow(CognitionException::notFound);
+        // Section 7.4 / TC-11: an already-decided digest reports COGNITION_STATE_CONFLICT
+        // before any version check, so a double-submit never looks like a version problem
+        CognitionStateMachine.requireReadyDigest(digestExternalId, digest.status());
         if (request.clientVersion() != null && request.clientVersion() != digest.version()) {
             throw CognitionException.versionConflict(digestExternalId, String.valueOf(digest.version()));
         }
-        CognitionStateMachine.requireReadyDigest(digestExternalId, digest.status());
         repository.insertDecisionLog(userId, digestId, request.decision(), request.reason(), request.clientVersion());
 
         List<ClueRow> clues = repository.findDigestClues(userId, digestId);

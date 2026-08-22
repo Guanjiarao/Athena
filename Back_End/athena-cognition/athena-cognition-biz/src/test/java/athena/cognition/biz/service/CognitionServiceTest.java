@@ -460,8 +460,6 @@ class CognitionServiceTest {
         void openDigestOnSameCluesBlocksNewTask() {
             ClueRow clue = clueRow(1L, ClueIntent.RELATED, ClueStatus.PENDING);
             when(repository.findClues(USER_ID, List.of(1L))).thenReturn(List.of(clue));
-            when(repository.findPendingRelatedCluesForCandidate(USER_ID, null, "经前情绪变化"))
-                    .thenReturn(List.of(clue));
             when(repository.hasOpenDigestForClues(USER_ID, List.of(1L))).thenReturn(true);
 
             CognitionException ex = assertThrows(CognitionException.class, () -> service.createDigestTask(
