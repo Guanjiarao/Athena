@@ -36,6 +36,21 @@
 **/.gradle-user-home/
 **/.gradle-user/
 
+local.properties
+.idea/
+.DS_Store
+build/              # 去掉 /，表示忽略所有叫做 build 的文件夹
+captures/
+.externalNativeBuild/
+.cxx/
+
+# --- AI tool local dirs ---
+docs/.codebuddy/
+docs/.workbuddy/
+
+# --- third-party eval tool clone ---
+eval/
+
 # 本地/发布敏感文件
 *.jks
 *.keystore
@@ -49,9 +64,14 @@
 images/
 **/docs_assets/
 **/marketing/
-Back_End/athena-rag/resources/nageoffer-nginx-2.0.1/
 Back_End/athena-rag/resources/eval/outputs/
 .gradle-local/
 .android-local/
 .verify-classes/
 .verify-heytap/
+
+# --- AI tool local dirs (any module) ---
+**/.claude/
+**/.cursor/
+**/.agents/
+skills-lock.json

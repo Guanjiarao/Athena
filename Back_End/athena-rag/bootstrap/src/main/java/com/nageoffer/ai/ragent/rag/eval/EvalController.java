@@ -63,12 +63,14 @@ public class EvalController {
         List<String> contexts = uniqueChunks.stream()
                 .map(RetrievedChunk::getText)
                 .collect(Collectors.toList());
-        List<String> docIds = lookupDocIds(chunkIds);
+        List<String> contextDocIds = lookupContextDocIds(chunkIds);
+        List<String> docIds = distinctNonBlank(contextDocIds);
 
         return EvalResponse.builder()
                 .retrievedDocIds(docIds)
                 .retrievedChunkIds(chunkIds)
                 .retrievedContexts(contexts)
+                .retrievedContextDocIds(contextDocIds)
                 .mcpContext(rc == null ? null : rc.getMcpContext())
                 .hasMcp(rc != null && rc.hasMcp())
                 .hasKb(rc != null && rc.hasKb())
@@ -95,25 +97,33 @@ public class EvalController {
     }
 
     /**
-     * 通过 chunkId 反查 t_knowledge_chunk.docId，保持输入 chunkIds 的顺序后再按 docId 去重保留首次出现
+     * 通过 chunkId 反查 t_knowledge_chunk.docId，保持输入 chunkIds 的顺序，保留 null，不去重。
      */
-    private List<String> lookupDocIds(List<String> chunkIds) {
+    private List<String> lookupContextDocIds(List<String> chunkIds) {
         if (CollUtil.isEmpty(chunkIds)) {
             return Collections.emptyList();
         }
         List<KnowledgeChunkDO> chunks = knowledgeChunkMapper.selectByIds(chunkIds);
         if (CollUtil.isEmpty(chunks)) {
-            return Collections.emptyList();
+            return Collections.nCopies(chunkIds.size(), null);
         }
         Map<String, String> chunkIdToDocId = chunks.stream()
-                .filter(c -> StrUtil.isNotBlank(c.getId()) && StrUtil.isNotBlank(c.getDocId()))
+                .filter(c -> StrUtil.isNotBlank(c.getId()))
                 .collect(Collectors.toMap(
                         KnowledgeChunkDO::getId,
                         KnowledgeChunkDO::getDocId,
                         (a, b) -> a));
-        Set<String> seen = new LinkedHashSet<>();
         return chunkIds.stream()
                 .map(chunkIdToDocId::get)
+                .collect(Collectors.toList());
+    }
+
+    private List<String> distinctNonBlank(List<String> docIds) {
+        if (CollUtil.isEmpty(docIds)) {
+            return Collections.emptyList();
+        }
+        Set<String> seen = new LinkedHashSet<>();
+        return docIds.stream()
                 .filter(StrUtil::isNotBlank)
                 .filter(seen::add)
                 .collect(Collectors.toList());

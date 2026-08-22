@@ -14,26 +14,34 @@ class FixedDigestGeneratorTest {
 
     @Test
     void questionClueIsNotRewrittenAsBodyFact() {
-        ClueView question = clue(MarkIntent.QUESTION);
-
-        DigestGenerator.GeneratedDigest result = generator.generate(List.of(question));
+        DigestGenerator.GeneratedDigest result = generator.generate(List.of(clue(ClueIntent.QUESTION)), null);
 
         assertThat(result.title()).contains("问题");
-        assertThat(result.uncertainty()).contains("不能确认").contains("不能说明原因");
+        assertThat(result.uncertainty()).contains("不能").contains("诊断");
         assertThat(result.commonPoint()).doesNotContain("你出现了");
+        assertThat(result.generatorVersion()).isEqualTo("fixed-v1");
     }
 
     @Test
     void relatedArticleMarkKeepsExplicitUncertainty() {
-        DigestGenerator.GeneratedDigest result = generator.generate(List.of(clue(MarkIntent.RELATED)));
+        DigestGenerator.GeneratedDigest result = generator.generate(List.of(clue(ClueIntent.RELATED)), null);
 
-        assertThat(result.possibleLink()).contains("初步联系");
+        assertThat(result.possibleRelation()).contains("初步联系");
         assertThat(result.uncertainty()).contains("不能").contains("诊断");
     }
 
-    private ClueView clue(MarkIntent intent) {
-        return new ClueView(1, ClueType.ARTICLE_MARK, intent, RelationDetail.UNCERTAIN_OBSERVE,
-                "OBSERVE", "a-1", "文章", "reviewed", "摘录", "COMMON", "这常见吗",
-                null, Instant.now(), ClueStatus.PENDING, Instant.now());
+    @Test
+    void suggestedTitleWins() {
+        DigestGenerator.GeneratedDigest result = generator.generate(List.of(clue(ClueIntent.RELATED)), " 经前情绪变化 ");
+
+        assertThat(result.title()).isEqualTo("经前情绪变化");
+    }
+
+    private ClueView clue(ClueIntent intent) {
+        return new ClueView("clue_1", ClueType.ARTICLE_HIGHLIGHT, intent, RelationType.OBSERVE,
+                HelpRequestType.OBSERVE, "1024", "文章", 100, "摘录",
+                QuestionType.IS_COMMON, "这常见吗", null, CycleRelation.UNKNOWN, null, null,
+                ClueSource.KNOWLEDGE_ARTICLE, ClueStatus.PENDING, null, null, "和我有关",
+                Instant.now(), Instant.now());
     }
 }

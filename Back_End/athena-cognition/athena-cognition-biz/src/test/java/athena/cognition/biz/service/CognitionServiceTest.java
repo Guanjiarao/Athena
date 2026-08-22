@@ -1,91 +1,1336 @@
 package athena.cognition.biz.service;
 
+import athena.cognition.biz.bodyrecord.BodyRecordEvidenceProvider;
+import athena.cognition.biz.bodyrecord.BodyRecordEvidenceProvider.ConfirmedBodyRecord;
 import athena.cognition.biz.domain.CognitionException;
 import athena.cognition.biz.domain.CognitionModels.*;
 import athena.cognition.biz.generator.DigestGenerator;
 import athena.cognition.biz.repository.CognitionJdbcRepository;
+import athena.cognition.biz.repository.CognitionJdbcRepository.ClueRow;
 import athena.cognition.biz.repository.CognitionJdbcRepository.DigestRow;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CognitionServiceTest {
 
+    private static final long USER_ID = 7L;
+
     @Mock
     private CognitionJdbcRepository repository;
     @Mock
     private DigestGenerator generator;
+    @Mock
+    private BodyRecordEvidenceProvider bodyRecordEvidenceProvider;
 
     private CognitionService service;
 
     @BeforeEach
     void setUp() {
-        service = new CognitionService(repository, generator, new ObjectMapper().findAndRegisterModules());
+        service = new CognitionService(repository, generator, bodyRecordEvidenceProvider,
+                new ObjectMapper().findAndRegisterModules());
+        // default: every referenced daily_record is alive; liveness tests override this
+        lenient().when(bodyRecordEvidenceProvider.filterExistingRecordIds(anyLong(), anyCollection()))
+                .thenAnswer(invocation -> new HashSet<>(invocation.getArgument(1)));
     }
 
-    @Test
-    void savingKnowledgeNeverCreatesTopicOrAction() {
-        long userId = 7L;
-        long digestId = 9L;
-        DigestRow digest = digest(digestId, DigestStatus.PENDING_CONFIRMATION);
-        when(repository.findIdempotency(eq(userId), anyString(), eq("key-1"))).thenReturn(Optional.empty());
-        when(repository.findDigest(userId, digestId, true)).thenReturn(Optional.of(digest));
+    // ---------- section 6: three marker save rules ----------
 
-        DigestDecisionView result = service.decideDigest(userId, digestId, "key-1",
-                new DigestDecisionRequest(DigestDecision.SAVE_KNOWLEDGE, null));
+    @Nested
+    class MarkerSaveRules {
 
-        assertThat(result.topicId()).isNull();
-        assertThat(result.actionId()).isNull();
-        assertThat(result.digestStatus()).isEqualTo(DigestStatus.SAVED_KNOWLEDGE);
-        verify(repository).saveDigestAsKnowledge(userId, digest, null);
-        verify(repository, never()).acceptDigest(anyLong(), any());
+        @Test
+        void relatedCurrentIsSavedAsPending() {
+            ClueCreateRequest request = marker(ClueIntent.RELATED, RelationType.CURRENT);
+            stubInsertAndFind(1L, ClueIntent.RELATED, ClueStatus.PENDING);
+
+            ClueCreateView result = service.createClue(USER_ID, request);
+
+            ArgumentCaptor<ClueIntent> intent = ArgumentCaptor.forClass(ClueIntent.class);
+            ArgumentCaptor<ClueStatus> status = ArgumentCaptor.forClass(ClueStatus.class);
+            verify(repository).insertClue(eq(USER_ID), eq(request), intent.capture(), status.capture(), any(), any());
+            assertThat(intent.getValue()).isEqualTo(ClueIntent.RELATED);
+            assertThat(status.getValue()).isEqualTo(ClueStatus.PENDING);
+            assertThat(result.digestTask().triggered()).isFalse();
+            assertThat(result.digestTask().taskId()).isNull();
+        }
+
+        @Test
+        void relationKnowledgeOnlyIsSavedOrganizedAndOutOfThreshold() {
+            ClueCreateRequest request = marker(ClueIntent.RELATED, RelationType.KNOWLEDGE_ONLY);
+            stubInsertAndFind(2L, ClueIntent.KNOWLEDGE_ONLY, ClueStatus.ORGANIZED);
+
+            service.createClue(USER_ID, request);
+
+            ArgumentCaptor<ClueIntent> intent = ArgumentCaptor.forClass(ClueIntent.class);
+            ArgumentCaptor<ClueStatus> status = ArgumentCaptor.forClass(ClueStatus.class);
+            verify(repository).insertClue(eq(USER_ID), eq(request), intent.capture(), status.capture(), any(), any());
+            assertThat(intent.getValue()).isEqualTo(ClueIntent.KNOWLEDGE_ONLY);
+            assertThat(status.getValue()).isEqualTo(ClueStatus.ORGANIZED);
+        }
+
+        @Test
+        void questionIsSavedPendingAndNeverCreatesDigest() {
+            ClueCreateRequest request = new ClueCreateRequest(
+                    ClueType.ARTICLE_HIGHLIGHT, ClueIntent.QUESTION, null, HelpRequestType.KNOWLEDGE,
+                    "1024", "文章", 100, "选中文字", QuestionType.IS_COMMON, "这是否常见？",
+                    null, CycleRelation.UNKNOWN, null, null, ClueSource.KNOWLEDGE_ARTICLE,
+                    null, null, "我有疑问");
+            stubInsertAndFind(3L, ClueIntent.QUESTION, ClueStatus.PENDING);
+
+            ClueCreateView result = service.createClue(USER_ID, request);
+
+            ArgumentCaptor<ClueStatus> status = ArgumentCaptor.forClass(ClueStatus.class);
+            verify(repository).insertClue(eq(USER_ID), eq(request), eq(ClueIntent.QUESTION), status.capture(), any(), any());
+            assertThat(status.getValue()).isEqualTo(ClueStatus.PENDING);
+            assertThat(result.digestTask().triggered()).isFalse();
+        }
+
+        @Test
+        void questionRequiresTypeOrText() {
+            ClueCreateRequest request = new ClueCreateRequest(
+                    ClueType.ARTICLE_HIGHLIGHT, ClueIntent.QUESTION, null, HelpRequestType.KNOWLEDGE,
+                    "1024", "文章", 100, "选中文字", null, null,
+                    null, null, null, null, null, null, null, "我有疑问");
+
+            CognitionException ex = assertThrows(CognitionException.class, () -> service.createClue(USER_ID, request));
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.INVALID_ARGUMENT);
+        }
+
+        @Test
+        void severityOutsideRangeIsRejected() {
+            ClueCreateRequest request = new ClueCreateRequest(
+                    ClueType.ARTICLE_HIGHLIGHT, ClueIntent.RELATED, RelationType.CURRENT, HelpRequestType.OBSERVE,
+                    "1024", "文章", 100, "选中文字", null, null,
+                    null, null, 11, null, null, null, null, "和我有关");
+
+            CognitionException ex = assertThrows(CognitionException.class, () -> service.createClue(USER_ID, request));
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.INVALID_ARGUMENT);
+        }
+
+        @Test
+        void blankSelectedTextIsRejected() {
+            ClueCreateRequest request = new ClueCreateRequest(
+                    ClueType.ARTICLE_HIGHLIGHT, ClueIntent.RELATED, RelationType.CURRENT, HelpRequestType.OBSERVE,
+                    "1024", "文章", 100, "  ", null, null,
+                    null, null, null, null, null, null, null, "和我有关");
+
+            assertThrows(CognitionException.class, () -> service.createClue(USER_ID, request));
+        }
+
+        @Test
+        void tc03RelatedObserveIsSavedAsPending() {
+            ClueCreateRequest request = new ClueCreateRequest(
+                    ClueType.ARTICLE_HIGHLIGHT, ClueIntent.RELATED, RelationType.OBSERVE, HelpRequestType.OBSERVE,
+                    "1024", "文章", 100, "选中文字", null, null,
+                    null, CycleRelation.UNKNOWN, null, null, ClueSource.KNOWLEDGE_ARTICLE,
+                    null, "经前情绪变化", "和我有关");
+            stubInsertAndFind(4L, ClueIntent.RELATED, ClueStatus.PENDING);
+
+            ClueCreateView result = service.createClue(USER_ID, request);
+
+            assertThat(result.clue().status()).isEqualTo(ClueStatus.PENDING);
+            assertThat(result.digestTask().triggered()).isFalse();
+        }
+
+        @Test
+        void tc22ForgedNonArticleSourceIsRejected() {
+            // a forged square post can never ride the article-only clue entry (section 13.6)
+            ClueCreateRequest request = new ClueCreateRequest(
+                    ClueType.BODY_RECORD, ClueIntent.RELATED, RelationType.CURRENT, HelpRequestType.OBSERVE,
+                    null, "广场帖子", null, "伪造内容", null, null,
+                    null, null, null, null, null, null, null, "和我有关");
+
+            CognitionException ex = assertThrows(CognitionException.class, () -> service.createClue(USER_ID, request));
+
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.INVALID_ARGUMENT);
+            verify(repository, never()).insertClue(anyLong(), any(), any(), any(), any(), any());
+        }
+
+        private ClueCreateRequest marker(ClueIntent intent, RelationType relationType) {
+            return new ClueCreateRequest(
+                    ClueType.ARTICLE_HIGHLIGHT, intent, relationType, HelpRequestType.OBSERVE,
+                    "1024", "文章", 100, "选中文字", null, null,
+                    null, CycleRelation.BEFORE_PERIOD, 3, false, ClueSource.KNOWLEDGE_ARTICLE,
+                    null, "经前情绪变化", "和我有关");
+        }
+
+        private void stubInsertAndFind(long id, ClueIntent intent, ClueStatus status) {
+            when(repository.insertClue(eq(USER_ID), any(), any(), any(), any(), any())).thenReturn(id);
+            when(repository.findClue(USER_ID, id)).thenReturn(Optional.of(clueRow(id, intent, status)));
+        }
     }
 
-    @Test
-    void decidedDigestCannotBeDecidedAgainWithAnotherKey() {
-        long userId = 7L;
-        long digestId = 9L;
-        when(repository.findIdempotency(eq(userId), anyString(), eq("another-key"))).thenReturn(Optional.empty());
-        when(repository.findDigest(userId, digestId, true)).thenReturn(Optional.of(digest(digestId, DigestStatus.ACCEPTED)));
+    // ---------- section 6.4: revoke rules ----------
 
-        assertThrows(CognitionException.class, () -> service.decideDigest(userId, digestId, "another-key",
-                new DigestDecisionRequest(DigestDecision.REJECT, null)));
+    @Nested
+    class RevokeRules {
 
-        verify(repository, never()).rejectDigest(anyLong(), any(), any());
+        @Test
+        void pendingClueNotInDigestCanBeRevoked() {
+            when(repository.findClue(USER_ID, 1L))
+                    .thenReturn(Optional.of(clueRow(1L, ClueIntent.RELATED, ClueStatus.PENDING)));
+            when(repository.isClueUsedInDigest(USER_ID, 1L)).thenReturn(false);
+
+            String result = service.deleteClue(USER_ID, "clue_1");
+
+            assertThat(result).isEqualTo("clue_1");
+            verify(repository).logicalDeleteClue(USER_ID, 1L);
+        }
+
+        @Test
+        void knowledgeOnlyClueNotInDigestCanBeRevoked() {
+            when(repository.findClue(USER_ID, 2L))
+                    .thenReturn(Optional.of(clueRow(2L, ClueIntent.KNOWLEDGE_ONLY, ClueStatus.ORGANIZED)));
+            when(repository.isClueUsedInDigest(USER_ID, 2L)).thenReturn(false);
+
+            service.deleteClue(USER_ID, "clue_2");
+
+            verify(repository).logicalDeleteClue(USER_ID, 2L);
+        }
+
+        @Test
+        void clueInDigestCannotBeRevoked() {
+            when(repository.findClue(USER_ID, 3L))
+                    .thenReturn(Optional.of(clueRow(3L, ClueIntent.RELATED, ClueStatus.PROCESSING)));
+            when(repository.isClueUsedInDigest(USER_ID, 3L)).thenReturn(true);
+
+            CognitionException ex = assertThrows(CognitionException.class,
+                    () -> service.deleteClue(USER_ID, "clue_3"));
+
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.CLUE_IN_USE);
+            assertThat(ex.semanticCode()).isEqualTo(409);
+            verify(repository, never()).logicalDeleteClue(anyLong(), anyLong());
+        }
+
+        @Test
+        void dismissedClueCannotBeRevoked() {
+            when(repository.findClue(USER_ID, 4L))
+                    .thenReturn(Optional.of(clueRow(4L, ClueIntent.RELATED, ClueStatus.DISMISSED)));
+            when(repository.isClueUsedInDigest(USER_ID, 4L)).thenReturn(false);
+
+            CognitionException ex = assertThrows(CognitionException.class,
+                    () -> service.deleteClue(USER_ID, "clue_4"));
+
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.STATE_CONFLICT);
+            verify(repository, never()).logicalDeleteClue(anyLong(), anyLong());
+        }
+
+        @Test
+        void malformedClueIdIsInvalidArgument() {
+            CognitionException ex = assertThrows(CognitionException.class,
+                    () -> service.deleteClue(USER_ID, "topic_9"));
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.INVALID_ARGUMENT);
+        }
     }
 
-    @Test
-    void digestTaskRejectsClueIdsNotOwnedByCurrentUser() {
-        long userId = 7L;
-        when(repository.findIdempotency(eq(userId), anyString(), eq("key-2"))).thenReturn(Optional.empty());
-        when(repository.findClues(userId, List.of(1L, 2L))).thenReturn(List.of(clue(1L)));
+    // ---------- section 7.2: digest decision ----------
 
-        assertThrows(CognitionException.class, () -> service.createDigestTask(userId, "key-2",
-                new DigestTaskCreateRequest(List.of(1L, 2L))));
+    @Nested
+    class DigestDecisions {
 
-        verify(repository, never()).insertTask(anyLong());
+        @Test
+        void keepAsKnowledgeNeverCreatesTopicOrAction() {
+            DigestRow ready = digestRow(9L, DigestStatus.READY, 1);
+            DigestRow decided = digestRow(9L, DigestStatus.KEPT_AS_KNOWLEDGE, 2);
+            when(repository.findDigest(USER_ID, 9L, true)).thenReturn(Optional.of(ready));
+            when(repository.findDigest(USER_ID, 9L, false)).thenReturn(Optional.of(decided));
+            when(repository.findDigestClues(USER_ID, 9L)).thenReturn(List.of());
+
+            DigestDecisionView result = service.decideDigest(USER_ID, "digest_9",
+                    new DigestDecisionRequest(DigestDecision.KEEP_AS_KNOWLEDGE, null, 1));
+
+            assertThat(result.topic()).isNull();
+            assertThat(result.action()).isNull();
+            assertThat(result.digest().status()).isEqualTo(DigestStatus.KEPT_AS_KNOWLEDGE);
+            verify(repository, never()).insertTopic(anyLong(), anyLong(), any(), any(), any(), any(), any(), any(),
+                    anyInt(), anyInt(), anyInt(), anyInt());
+            verify(repository, never()).insertAction(anyLong(), anyLong(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        void rejectMarksSourceCluesDismissed() {
+            DigestRow ready = digestRow(9L, DigestStatus.READY, 1);
+            DigestRow decided = digestRow(9L, DigestStatus.REJECTED, 2);
+            when(repository.findDigest(USER_ID, 9L, true)).thenReturn(Optional.of(ready));
+            when(repository.findDigest(USER_ID, 9L, false)).thenReturn(Optional.of(decided));
+            when(repository.findDigestClues(USER_ID, 9L))
+                    .thenReturn(List.of(clueRow(1L, ClueIntent.RELATED, ClueStatus.PROCESSING)));
+
+            DigestDecisionView result = service.decideDigest(USER_ID, "digest_9",
+                    new DigestDecisionRequest(DigestDecision.REJECT, null, null));
+
+            assertThat(result.digest().status()).isEqualTo(DigestStatus.REJECTED);
+            verify(repository).updateClueStatus(USER_ID, List.of(1L), ClueStatus.DISMISSED);
+        }
+
+        @Test
+        void decidedDigestCannotBeDecidedAgain() {
+            when(repository.findDigest(USER_ID, 9L, true))
+                    .thenReturn(Optional.of(digestRow(9L, DigestStatus.ACCEPTED, 2)));
+
+            CognitionException ex = assertThrows(CognitionException.class, () -> service.decideDigest(
+                    USER_ID, "digest_9", new DigestDecisionRequest(DigestDecision.REJECT, null, 2)));
+
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.STATE_CONFLICT);
+            assertThat(ex.currentStatus()).isEqualTo("ACCEPTED");
+        }
+
+        @Test
+        void staleClientVersionIsRejected() {
+            when(repository.findDigest(USER_ID, 9L, true))
+                    .thenReturn(Optional.of(digestRow(9L, DigestStatus.READY, 3)));
+
+            CognitionException ex = assertThrows(CognitionException.class, () -> service.decideDigest(
+                    USER_ID, "digest_9", new DigestDecisionRequest(DigestDecision.ACCEPT_AS_TOPIC, null, 1)));
+
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.VERSION_CONFLICT);
+        }
+
+        @Test
+        void acceptDigestComputesMaturityAndDomainFromEvidence() {
+            when(repository.findDigest(USER_ID, 9L, true))
+                    .thenReturn(Optional.of(digestRow(9L, DigestStatus.READY, 1)));
+            when(repository.findDigestClues(USER_ID, 9L)).thenReturn(List.of(
+                    clueRow(1L, ClueIntent.RELATED, ClueStatus.PROCESSING),
+                    clueRow(2L, ClueIntent.RELATED, ClueStatus.PROCESSING)));
+            // 1 article clue + 2 confirmed body records across two cycles
+            when(repository.findDigestEvidence(USER_ID, 9L)).thenReturn(List.of(
+                    evidenceRow(1L, EvidenceSourceType.CLUE, null, Instant.parse("2026-08-10T04:00:00Z")),
+                    evidenceRow(2L, EvidenceSourceType.BODY_RECORD, null, Instant.parse("2026-06-10T04:00:00Z")),
+                    evidenceRow(3L, EvidenceSourceType.BODY_RECORD, null, Instant.parse("2026-07-11T04:00:00Z"))));
+            when(repository.insertTopic(eq(USER_ID), eq(9L), eq("经前情绪变化"), eq("MOOD"),
+                    eq(Maturity.REPEATED_PATTERN), any(), any(), any(),
+                    eq(3), eq(1), eq(2), eq(3))).thenReturn(7001L);
+            when(repository.insertAction(eq(USER_ID), eq(7001L), any(), any(), eq(ActionType.RECORD_BODY),
+                    any(), any())).thenReturn(8001L);
+            when(repository.findTopic(USER_ID, 7001L, false)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.TopicRow(7001L, 9L, "经前情绪变化", "MOOD",
+                            Maturity.REPEATED_PATTERN, UserProgress.OBSERVING, RiskStatus.NONE, "可能联系",
+                            "[]", "[]", 3, 1, 2, 3, 8001L, Instant.now(), 1, Instant.now())));
+            when(repository.findAction(USER_ID, 8001L, false)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.ActionRow(8001L, 7001L, "记录一次相关身体变化", "记录一次",
+                            ActionType.RECORD_BODY, ActionStatus.PENDING, null, null, Instant.now())));
+            when(repository.findDigest(USER_ID, 9L, false))
+                    .thenReturn(Optional.of(digestRow(9L, DigestStatus.ACCEPTED, 2)));
+
+            DigestDecisionView result = service.decideDigest(USER_ID, "digest_9",
+                    new DigestDecisionRequest(DigestDecision.ACCEPT_AS_TOPIC, null, 1));
+
+            assertThat(result.digest().status()).isEqualTo(DigestStatus.ACCEPTED);
+            assertThat(result.topic().maturity()).isEqualTo(Maturity.REPEATED_PATTERN);
+            assertThat(result.topic().domain()).isEqualTo("MOOD");
+            assertThat(result.topic().userProgress()).isEqualTo(UserProgress.OBSERVING);
+            assertThat(result.topic().evidenceCount()).isEqualTo(3);
+            assertThat(result.action().id()).isEqualTo("action_8001");
+            verify(repository).linkTopicEvidence(USER_ID, 7001L, List.of(1L, 2L, 3L));
+        }
+
+        @Test
+        void acceptDigestRetiresDeadBodyRecordEvidence() {
+            when(repository.findDigest(USER_ID, 9L, true))
+                    .thenReturn(Optional.of(digestRow(9L, DigestStatus.READY, 1)));
+            when(repository.findDigestClues(USER_ID, 9L)).thenReturn(List.of(
+                    clueRow(1L, ClueIntent.RELATED, ClueStatus.PROCESSING),
+                    clueRow(2L, ClueIntent.RELATED, ClueStatus.PROCESSING)));
+            // the BODY_RECORD evidence references a deleted daily_record
+            when(repository.findDigestEvidence(USER_ID, 9L)).thenReturn(List.of(
+                    evidenceRow(1L, EvidenceSourceType.CLUE, null, Instant.parse("2026-08-10T04:00:00Z")),
+                    evidenceRow(2L, EvidenceSourceType.BODY_RECORD, null, Instant.parse("2026-06-10T04:00:00Z"))));
+            when(bodyRecordEvidenceProvider.filterExistingRecordIds(USER_ID, List.of("src_2")))
+                    .thenReturn(Set.of());
+            when(repository.insertTopic(eq(USER_ID), eq(9L), eq("经前情绪变化"), eq("MOOD"),
+                    eq(Maturity.CLUE), any(), any(), any(), eq(1), eq(1), eq(0), eq(1))).thenReturn(7001L);
+            when(repository.insertAction(eq(USER_ID), eq(7001L), any(), any(), eq(ActionType.RECORD_BODY),
+                    any(), any())).thenReturn(8001L);
+            when(repository.findTopic(USER_ID, 7001L, false)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.TopicRow(7001L, 9L, "经前情绪变化", "MOOD",
+                            Maturity.CLUE, UserProgress.OBSERVING, RiskStatus.NONE, "可能联系",
+                            "[]", "[]", 1, 1, 0, 1, 8001L, Instant.now(), 1, Instant.now())));
+            when(repository.findAction(USER_ID, 8001L, false)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.ActionRow(8001L, 7001L, "记录一次相关身体变化", "记录一次",
+                            ActionType.RECORD_BODY, ActionStatus.PENDING, null, null, Instant.now())));
+            when(repository.findDigest(USER_ID, 9L, false))
+                    .thenReturn(Optional.of(digestRow(9L, DigestStatus.ACCEPTED, 2)));
+
+            DigestDecisionView result = service.decideDigest(USER_ID, "digest_9",
+                    new DigestDecisionRequest(DigestDecision.ACCEPT_AS_TOPIC, null, 1));
+
+            assertThat(result.topic().maturity()).isEqualTo(Maturity.CLUE);
+            verify(repository).deactivateEvidence(USER_ID, List.of(2L));
+            // dead evidence is neither linked to the topic nor counted
+            verify(repository).linkTopicEvidence(USER_ID, 7001L, List.of(1L));
+        }
+
+        @Test
+        void tc02PastSelfReportEntersKnownFactsOnAccept() {
+            when(repository.findDigest(USER_ID, 9L, true))
+                    .thenReturn(Optional.of(digestRow(9L, DigestStatus.READY, 1)));
+            when(repository.findDigestClues(USER_ID, 9L))
+                    .thenReturn(List.of(clueRowWithRelation(1L, RelationType.PAST)));
+            when(repository.findDigestEvidence(USER_ID, 9L)).thenReturn(List.of(clueEvidence(1L)));
+            when(repository.insertTopic(eq(USER_ID), eq(9L), any(), any(), any(), any(),
+                    argThat(json -> json != null && json.contains("以前出现过")), any(),
+                    eq(1), eq(1), eq(0), eq(1))).thenReturn(7001L);
+            when(repository.insertAction(eq(USER_ID), eq(7001L), any(), any(), eq(ActionType.RECORD_BODY),
+                    any(), any())).thenReturn(8001L);
+            when(repository.findTopic(USER_ID, 7001L, false)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.TopicRow(7001L, 9L, "经前情绪变化", "MOOD",
+                            Maturity.CLUE, UserProgress.OBSERVING, RiskStatus.NONE, "可能联系",
+                            "[]", "[]", 1, 1, 0, 1, 8001L, Instant.now(), 1, Instant.now())));
+            when(repository.findAction(USER_ID, 8001L, false)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.ActionRow(8001L, 7001L, "记录一次相关身体变化", "记录一次",
+                            ActionType.RECORD_BODY, ActionStatus.PENDING, null, null, Instant.now())));
+            when(repository.findDigest(USER_ID, 9L, false))
+                    .thenReturn(Optional.of(digestRow(9L, DigestStatus.ACCEPTED, 2)));
+
+            DigestDecisionView result = service.decideDigest(USER_ID, "digest_9",
+                    new DigestDecisionRequest(DigestDecision.ACCEPT_AS_TOPIC, null, 1));
+
+            // PAST self report becomes a knownFact only at accept time, and the clue is organized
+            assertThat(result.topic()).isNotNull();
+            verify(repository).updateClueStatus(USER_ID, List.of(1L), ClueStatus.ORGANIZED);
+        }
+
+        @Test
+        void tc03ObserveCluesParticipateButNeverEnterKnownFacts() {
+            when(repository.findDigest(USER_ID, 9L, true))
+                    .thenReturn(Optional.of(digestRow(9L, DigestStatus.READY, 1)));
+            when(repository.findDigestClues(USER_ID, 9L)).thenReturn(List.of(
+                    clueRowWithRelation(1L, RelationType.OBSERVE), clueRowWithRelation(2L, RelationType.OBSERVE)));
+            when(repository.findDigestEvidence(USER_ID, 9L))
+                    .thenReturn(List.of(clueEvidence(1L), clueEvidence(2L)));
+            // OBSERVE means "not sure": knownFacts must stay empty (section 6.1)
+            when(repository.insertTopic(eq(USER_ID), eq(9L), any(), any(), any(), any(),
+                    eq("[]"), any(), eq(2), eq(2), eq(0), eq(1))).thenReturn(7001L);
+            when(repository.insertAction(eq(USER_ID), eq(7001L), any(), any(), eq(ActionType.RECORD_BODY),
+                    any(), any())).thenReturn(8001L);
+            when(repository.findTopic(USER_ID, 7001L, false)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.TopicRow(7001L, 9L, "经前情绪变化", "MOOD",
+                            Maturity.CLUE, UserProgress.OBSERVING, RiskStatus.NONE, "可能联系",
+                            "[]", "[]", 2, 2, 0, 1, 8001L, Instant.now(), 1, Instant.now())));
+            when(repository.findAction(USER_ID, 8001L, false)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.ActionRow(8001L, 7001L, "记录一次相关身体变化", "记录一次",
+                            ActionType.RECORD_BODY, ActionStatus.PENDING, null, null, Instant.now())));
+            when(repository.findDigest(USER_ID, 9L, false))
+                    .thenReturn(Optional.of(digestRow(9L, DigestStatus.ACCEPTED, 2)));
+
+            DigestDecisionView result = service.decideDigest(USER_ID, "digest_9",
+                    new DigestDecisionRequest(DigestDecision.ACCEPT_AS_TOPIC, null, 1));
+
+            assertThat(result.topic()).isNotNull();
+            verify(repository).updateClueStatus(USER_ID, List.of(1L, 2L), ClueStatus.ORGANIZED);
+        }
     }
 
-    private DigestRow digest(long id, DigestStatus status) {
-        return new DigestRow(id, 4, status, "主题", "共同点", "可能联系", "仍不确定", "记录一次",
-                GeneratorType.FIXED_V1, "fixed-v1.0", 1, Instant.now(), null);
+    // ---------- section 8.6: digest task ----------
+
+    @Nested
+    class DigestTasks {
+
+        @Test
+        void taskWithoutValidRelatedCluesFails() {
+            when(repository.findPendingRelatedCluesForCandidate(USER_ID, null, "经前情绪变化"))
+                    .thenReturn(List.of());
+
+            CognitionException ex = assertThrows(CognitionException.class, () -> service.createDigestTask(
+                    USER_ID, new DigestTaskCreateRequest(TriggerType.USER_REQUEST, null, "经前情绪变化")));
+
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.NO_VALID_EVIDENCE);
+        }
+
+        @Test
+        void openDigestOnSameCluesBlocksNewTask() {
+            ClueRow clue = clueRow(1L, ClueIntent.RELATED, ClueStatus.PENDING);
+            when(repository.findClues(USER_ID, List.of(1L))).thenReturn(List.of(clue));
+            when(repository.hasOpenDigestForClues(USER_ID, List.of(1L))).thenReturn(true);
+
+            CognitionException ex = assertThrows(CognitionException.class, () -> service.createDigestTask(
+                    USER_ID, new DigestTaskCreateRequest(TriggerType.USER_REQUEST, List.of("clue_1"), null)));
+
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.TASK_RUNNING);
+        }
+
+        @Test
+        void taskRejectsClueIdsNotOwnedByCurrentUser() {
+            when(repository.findClues(USER_ID, List.of(1L, 2L)))
+                    .thenReturn(List.of(clueRow(1L, ClueIntent.RELATED, ClueStatus.PENDING)));
+
+            assertThrows(CognitionException.class, () -> service.createDigestTask(USER_ID,
+                    new DigestTaskCreateRequest(TriggerType.USER_REQUEST, List.of("clue_1", "clue_2"), null)));
+
+            verify(repository, never()).insertTask(anyLong(), any(), any());
+        }
+
+        @Test
+        void tc06UserRequestedTaskBuildsTraceableReadyDigest() {
+            ClueRow clue = clueRow(1L, ClueIntent.RELATED, ClueStatus.PENDING);
+            when(repository.findClues(USER_ID, List.of(1L))).thenReturn(List.of(clue));
+            when(repository.findPendingRelatedCluesForCandidate(USER_ID, null, "经前情绪变化"))
+                    .thenReturn(List.of(clue));
+            when(repository.hasOpenDigestForClues(USER_ID, List.of(1L))).thenReturn(false);
+            when(repository.insertTask(USER_ID, TriggerType.USER_REQUEST, "fixed-v1")).thenReturn(100L);
+            when(repository.insertDigest(eq(USER_ID), any(), eq("fixed-v1"))).thenReturn(200L);
+            when(repository.insertEvidence(eq(USER_ID), eq(EvidenceSourceType.CLUE), eq("clue_1"),
+                    eq(FactLevel.SELF_REPORTED), any(), any())).thenReturn(300L);
+            when(generator.generate(any(), any())).thenReturn(
+                    new DigestGenerator.GeneratedDigest("经前情绪变化", "共同点", "可能联系", "仍不确定",
+                            "记录一次", "fixed-v1"));
+            when(repository.findTask(USER_ID, 100L)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.TaskRow(100L, 200L, DigestTaskStatus.SUCCEEDED,
+                            TriggerType.USER_REQUEST, "fixed-v1", 0, null, Instant.now())));
+            when(repository.findDigest(USER_ID, 200L, false))
+                    .thenReturn(Optional.of(digestRow(200L, DigestStatus.READY, 1)));
+
+            DigestTaskView result = service.createDigestTask(USER_ID,
+                    new DigestTaskCreateRequest(TriggerType.USER_REQUEST, List.of("clue_1"), null));
+
+            assertThat(result.taskId()).isEqualTo("task_100");
+            assertThat(result.digestId()).isEqualTo("digest_200");
+            assertThat(result.status()).isEqualTo(DigestTaskStatus.SUCCEEDED);
+            assertThat(result.digestStatus()).isEqualTo(DigestStatus.READY);
+            // evidence is traceable back to the real clue id chain (section 17)
+            verify(repository).linkDigestClues(USER_ID, 200L, List.of(1L));
+            verify(repository).updateClueStatus(USER_ID, List.of(1L), ClueStatus.PROCESSING);
+            verify(repository).linkDigestEvidence(USER_ID, 200L, List.of(300L));
+            verify(repository).completeDigest(eq(USER_ID), eq(200L), any(), any(), any(), any());
+        }
     }
 
-    private ClueView clue(long id) {
-        return new ClueView(id, ClueType.ARTICLE_MARK, MarkIntent.RELATED, RelationDetail.UNCERTAIN_OBSERVE,
-                "OBSERVE", "a-1", "文章", "reviewed", "摘录", null, null, null,
-                Instant.now(), ClueStatus.PENDING, Instant.now());
+    // ---------- section 10.1 / TC-07: automatic thresholds ----------
+
+    @Nested
+    class AutoThreshold {
+
+        @Test
+        void rule1TriggersOnThirdRelatedClueInCandidateGroup() {
+            ClueCreateRequest request = relatedRequest("经前情绪变化");
+            ClueRow saved = clueRow(3L, ClueIntent.RELATED, ClueStatus.PENDING);
+            when(repository.insertClue(eq(USER_ID), any(), any(), any(), any(), any())).thenReturn(3L);
+            when(repository.findClue(USER_ID, 3L)).thenReturn(Optional.of(saved));
+            when(repository.findPendingRelatedCluesForCandidate(USER_ID, null, "经前情绪变化"))
+                    .thenReturn(List.of(clueRow(1L, ClueIntent.RELATED, ClueStatus.PENDING),
+                            clueRow(2L, ClueIntent.RELATED, ClueStatus.PENDING), saved));
+            when(repository.hasOpenDigestForClues(USER_ID, List.of(1L, 2L, 3L))).thenReturn(false);
+            when(repository.insertTask(USER_ID, TriggerType.RULE_THRESHOLD, "fixed-v1")).thenReturn(100L);
+            when(repository.insertDigest(eq(USER_ID), any(), eq("fixed-v1"))).thenReturn(200L);
+            when(generator.generate(any(), any())).thenReturn(generated());
+            when(repository.findTask(USER_ID, 100L)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.TaskRow(100L, 200L, DigestTaskStatus.SUCCEEDED,
+                            TriggerType.RULE_THRESHOLD, "fixed-v1", 0, null, Instant.now())));
+            when(repository.findDigest(USER_ID, 200L, false))
+                    .thenReturn(Optional.of(digestRow(200L, DigestStatus.READY, 1)));
+
+            ClueCreateView result = service.createClue(USER_ID, request);
+
+            assertThat(result.digestTask().triggered()).isTrue();
+            assertThat(result.digestTask().taskId()).isEqualTo("task_100");
+            assertThat(result.digestTask().digestId()).isEqualTo("digest_200");
+            assertThat(result.digestTask().status()).isEqualTo(DigestTaskStatus.SUCCEEDED);
+            verify(repository).insertTask(USER_ID, TriggerType.RULE_THRESHOLD, "fixed-v1");
+            verify(repository).updateClueStatus(USER_ID, List.of(1L, 2L, 3L), ClueStatus.PROCESSING);
+        }
+
+        @Test
+        void belowThresholdDoesNotTrigger() {
+            ClueCreateRequest request = relatedRequest("经前情绪变化");
+            when(repository.insertClue(eq(USER_ID), any(), any(), any(), any(), any())).thenReturn(1L);
+            when(repository.findClue(USER_ID, 1L))
+                    .thenReturn(Optional.of(clueRow(1L, ClueIntent.RELATED, ClueStatus.PENDING)));
+            when(repository.findPendingRelatedCluesForCandidate(USER_ID, null, "经前情绪变化"))
+                    .thenReturn(List.of(clueRow(1L, ClueIntent.RELATED, ClueStatus.PENDING)));
+
+            ClueCreateView result = service.createClue(USER_ID, request);
+
+            assertThat(result.digestTask().triggered()).isFalse();
+            assertThat(result.digestTask().taskId()).isNull();
+            verify(repository, never()).insertTask(anyLong(), any(), any());
+        }
+
+        @Test
+        void questionAndKnowledgeOnlyNeverCountIntoThreshold() {
+            ClueCreateRequest question = new ClueCreateRequest(
+                    ClueType.ARTICLE_HIGHLIGHT, ClueIntent.QUESTION, null, HelpRequestType.KNOWLEDGE,
+                    "1024", "文章", 100, "选中文字", QuestionType.IS_COMMON, "这是否常见？",
+                    null, null, null, null, null, null, "经前情绪变化", "我有疑问");
+            when(repository.insertClue(eq(USER_ID), any(), any(), any(), any(), any())).thenReturn(5L, 6L);
+            when(repository.findClue(USER_ID, 5L))
+                    .thenReturn(Optional.of(clueRow(5L, ClueIntent.QUESTION, ClueStatus.PENDING)));
+            when(repository.findClue(USER_ID, 6L))
+                    .thenReturn(Optional.of(clueRow(6L, ClueIntent.KNOWLEDGE_ONLY, ClueStatus.ORGANIZED)));
+            ClueCreateRequest knowledge = new ClueCreateRequest(
+                    ClueType.ARTICLE_HIGHLIGHT, ClueIntent.KNOWLEDGE_ONLY, RelationType.KNOWLEDGE_ONLY,
+                    HelpRequestType.SAVE_ONLY, "1024", "文章", 100, "选中文字", null, null,
+                    null, null, null, null, null, null, "经前情绪变化", "保存为知识");
+
+            assertThat(service.createClue(USER_ID, question).digestTask().triggered()).isFalse();
+            assertThat(service.createClue(USER_ID, knowledge).digestTask().triggered()).isFalse();
+
+            verify(repository, never()).findPendingRelatedCluesForCandidate(anyLong(), any(), any());
+            verify(repository, never()).insertTask(anyLong(), any(), any());
+        }
+
+        @Test
+        void openDigestBlocksDuplicateAutomaticTask() {
+            ClueCreateRequest request = relatedRequest("经前情绪变化");
+            ClueRow saved = clueRow(3L, ClueIntent.RELATED, ClueStatus.PENDING);
+            when(repository.insertClue(eq(USER_ID), any(), any(), any(), any(), any())).thenReturn(3L);
+            when(repository.findClue(USER_ID, 3L)).thenReturn(Optional.of(saved));
+            when(repository.findPendingRelatedCluesForCandidate(USER_ID, null, "经前情绪变化"))
+                    .thenReturn(List.of(clueRow(1L, ClueIntent.RELATED, ClueStatus.PENDING),
+                            clueRow(2L, ClueIntent.RELATED, ClueStatus.PENDING), saved));
+            when(repository.hasOpenDigestForClues(USER_ID, List.of(1L, 2L, 3L))).thenReturn(true);
+
+            ClueCreateView result = service.createClue(USER_ID, request);
+
+            assertThat(result.digestTask().triggered()).isFalse();
+            verify(repository, never()).insertTask(anyLong(), any(), any());
+        }
+
+        @Test
+        void rule2FiresWhenProviderConfirmsBodyRecord() {
+            ClueCreateRequest request = relatedRequest("经前情绪变化");
+            ClueRow saved = clueRow(2L, ClueIntent.RELATED, ClueStatus.PENDING);
+            when(repository.insertClue(eq(USER_ID), any(), any(), any(), any(), any())).thenReturn(2L);
+            when(repository.findClue(USER_ID, 2L)).thenReturn(Optional.of(saved));
+            when(repository.findPendingRelatedCluesForCandidate(USER_ID, null, "经前情绪变化"))
+                    .thenReturn(List.of(clueRow(1L, ClueIntent.RELATED, ClueStatus.PENDING), saved));
+            when(bodyRecordEvidenceProvider.findConfirmedBodyRecords(USER_ID, null, "经前情绪变化"))
+                    .thenReturn(List.of(new ConfirmedBodyRecord("2001", "经期前记录过轻微情绪波动", Instant.now())));
+            when(repository.hasOpenDigestForClues(USER_ID, List.of(1L, 2L))).thenReturn(false);
+            when(repository.insertTask(USER_ID, TriggerType.RULE_THRESHOLD, "fixed-v1")).thenReturn(100L);
+            when(repository.insertDigest(eq(USER_ID), any(), eq("fixed-v1"))).thenReturn(200L);
+            when(generator.generate(any(), any())).thenReturn(generated());
+            when(repository.findTask(USER_ID, 100L)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.TaskRow(100L, 200L, DigestTaskStatus.SUCCEEDED,
+                            TriggerType.RULE_THRESHOLD, "fixed-v1", 0, null, Instant.now())));
+            when(repository.findDigest(USER_ID, 200L, false))
+                    .thenReturn(Optional.of(digestRow(200L, DigestStatus.READY, 1)));
+
+            ClueCreateView result = service.createClue(USER_ID, request);
+
+            assertThat(result.digestTask().triggered()).isTrue();
+            verify(repository).insertEvidence(eq(USER_ID), eq(EvidenceSourceType.BODY_RECORD), eq("2001"),
+                    eq(FactLevel.SELF_REPORTED), any(), any());
+        }
+
+        @Test
+        void rule2StaysInertWhenProviderConfirmsNothing() {
+            ClueCreateRequest request = relatedRequest("经前情绪变化");
+            ClueRow saved = clueRow(2L, ClueIntent.RELATED, ClueStatus.PENDING);
+            when(repository.insertClue(eq(USER_ID), any(), any(), any(), any(), any())).thenReturn(2L);
+            when(repository.findClue(USER_ID, 2L)).thenReturn(Optional.of(saved));
+            when(repository.findPendingRelatedCluesForCandidate(USER_ID, null, "经前情绪变化"))
+                    .thenReturn(List.of(clueRow(1L, ClueIntent.RELATED, ClueStatus.PENDING), saved));
+
+            ClueCreateView result = service.createClue(USER_ID, request);
+
+            assertThat(result.digestTask().triggered()).isFalse();
+            verify(repository, never()).insertTask(anyLong(), any(), any());
+        }
+
+        @Test
+        void emptyCandidateGroupDoesNotAutoMerge() {
+            ClueCreateRequest request = relatedRequest(null);
+            ClueRow saved = new ClueRow(7L, ClueType.ARTICLE_HIGHLIGHT, ClueIntent.RELATED, RelationType.CURRENT,
+                    HelpRequestType.OBSERVE, "1024", "文章", 100, "选中文字", null, null, null,
+                    CycleRelation.UNKNOWN, null, null, ClueSource.KNOWLEDGE_ARTICLE, ClueStatus.PENDING,
+                    null, null, "和我有关", Instant.now(), Instant.now());
+            when(repository.insertClue(eq(USER_ID), any(), any(), any(), any(), any())).thenReturn(7L);
+            when(repository.findClue(USER_ID, 7L)).thenReturn(Optional.of(saved));
+
+            ClueCreateView result = service.createClue(USER_ID, request);
+
+            assertThat(result.digestTask().triggered()).isFalse();
+            verify(repository, never()).findPendingRelatedCluesForCandidate(anyLong(), any(), any());
+            verify(repository, never()).insertTask(anyLong(), any(), any());
+        }
+
+        private ClueCreateRequest relatedRequest(String suggestedTopicTitle) {
+            return new ClueCreateRequest(
+                    ClueType.ARTICLE_HIGHLIGHT, ClueIntent.RELATED, RelationType.CURRENT, HelpRequestType.OBSERVE,
+                    "1024", "文章", 100, "选中文字", null, null,
+                    null, CycleRelation.BEFORE_PERIOD, 3, false, ClueSource.KNOWLEDGE_ARTICLE,
+                    null, suggestedTopicTitle, "和我有关");
+        }
+
+        private DigestGenerator.GeneratedDigest generated() {
+            return new DigestGenerator.GeneratedDigest("经前情绪变化", "共同点", "可能联系", "仍不确定",
+                    "记录一次", "fixed-v1");
+        }
+    }
+
+    // ---------- section 12 / TC-19: generation failure and retry ----------
+
+    @Nested
+    class FailureAndRetry {
+
+        @Test
+        void failedGenerationKeepsFailureStateQueryableAndCluesProcessing() {
+            ClueRow clue = clueRow(1L, ClueIntent.RELATED, ClueStatus.PENDING);
+            when(repository.findClues(USER_ID, List.of(1L))).thenReturn(List.of(clue));
+            when(repository.findPendingRelatedCluesForCandidate(USER_ID, null, "经前情绪变化"))
+                    .thenReturn(List.of(clue));
+            when(repository.hasOpenDigestForClues(USER_ID, List.of(1L))).thenReturn(false);
+            when(repository.insertTask(USER_ID, TriggerType.USER_REQUEST, "fixed-v1")).thenReturn(100L);
+            when(repository.insertDigest(eq(USER_ID), any(), eq("fixed-v1"))).thenReturn(200L);
+            when(generator.generate(any(), any())).thenThrow(new RuntimeException("boom"));
+            when(repository.findTask(USER_ID, 100L)).thenReturn(Optional.of(
+                    taskRow(100L, 200L, DigestTaskStatus.FAILED, 0, CognitionException.GENERATION_FAILED)));
+            CognitionJdbcRepository.DigestRow failedDigest = new CognitionJdbcRepository.DigestRow(200L,
+                    "经前情绪变化", DigestStatus.FAILED, null, null, null, null, "fixed-v1", null,
+                    CognitionException.GENERATION_FAILED, null, 1, Instant.now());
+            when(repository.findDigest(USER_ID, 200L, false)).thenReturn(Optional.of(failedDigest));
+
+            DigestTaskView result = service.createDigestTask(USER_ID,
+                    new DigestTaskCreateRequest(TriggerType.USER_REQUEST, List.of("clue_1"), null));
+
+            assertThat(result.status()).isEqualTo(DigestTaskStatus.FAILED);
+            assertThat(result.digestStatus()).isEqualTo(DigestStatus.FAILED);
+            assertThat(result.failureCode()).isEqualTo(CognitionException.GENERATION_FAILED);
+            verify(repository).failDigest(USER_ID, 200L, CognitionException.GENERATION_FAILED);
+            verify(repository).markTaskFailed(USER_ID, 100L, 200L, CognitionException.GENERATION_FAILED);
+            // Section 12 V1: source clues stay PROCESSING, nothing else is created
+            verify(repository).updateClueStatus(USER_ID, List.of(1L), ClueStatus.PROCESSING);
+            verify(repository, never()).updateClueStatus(eq(USER_ID), any(), eq(ClueStatus.PENDING));
+            verify(repository, never()).insertTopic(anyLong(), anyLong(), any(), any(), any(), any(), any(), any(),
+                    anyInt(), anyInt(), anyInt(), anyInt());
+            verify(repository, never()).insertAction(anyLong(), anyLong(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        void retryOfNonFailedTaskReturnsStateConflict() {
+            when(repository.findTaskForUpdate(USER_ID, 100L)).thenReturn(Optional.of(
+                    taskRow(100L, 200L, DigestTaskStatus.SUCCEEDED, 1, null)));
+
+            CognitionException ex = assertThrows(CognitionException.class,
+                    () -> service.retryTask(USER_ID, "task_100"));
+
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.STATE_CONFLICT);
+            assertThat(ex.currentStatus()).isEqualTo("SUCCEEDED");
+            verify(repository, never()).markTaskRunning(anyLong(), anyLong(), anyBoolean());
+            verify(generator, never()).generate(any(), any());
+        }
+
+        @Test
+        void retryReusesOriginalDigestAndEvidence() {
+            when(repository.findTaskForUpdate(USER_ID, 100L)).thenReturn(Optional.of(
+                    taskRow(100L, 200L, DigestTaskStatus.FAILED, 0, CognitionException.GENERATION_FAILED)));
+            when(repository.findDigest(USER_ID, 200L, true))
+                    .thenReturn(Optional.of(digestRow(200L, DigestStatus.FAILED, 1)));
+            when(repository.findDigestClues(USER_ID, 200L)).thenReturn(List.of(
+                    clueRow(1L, ClueIntent.RELATED, ClueStatus.PROCESSING),
+                    clueRow(2L, ClueIntent.RELATED, ClueStatus.PROCESSING)));
+            when(generator.generate(any(), any())).thenReturn(
+                    new DigestGenerator.GeneratedDigest("经前情绪变化", "共同点", "可能联系", "仍不确定",
+                            "记录一次", "fixed-v1"));
+            when(repository.findTask(USER_ID, 100L)).thenReturn(Optional.of(
+                    taskRow(100L, 200L, DigestTaskStatus.SUCCEEDED, 1, null)));
+            when(repository.findDigest(USER_ID, 200L, false))
+                    .thenReturn(Optional.of(digestRow(200L, DigestStatus.READY, 2)));
+
+            DigestTaskView result = service.retryTask(USER_ID, "task_100");
+
+            assertThat(result.status()).isEqualTo(DigestTaskStatus.SUCCEEDED);
+            assertThat(result.digestId()).isEqualTo("digest_200");
+            assertThat(result.digestStatus()).isEqualTo(DigestStatus.READY);
+            assertThat(result.retryCount()).isEqualTo(1);
+            assertThat(result.failureCode()).isNull();
+            verify(repository).markTaskRunning(USER_ID, 100L, true);
+            verify(repository).markDigestProcessing(USER_ID, 200L);
+            verify(repository).completeDigest(eq(USER_ID), eq(200L), any(), any(), any(), any());
+            // no duplicate digest / evidence / clue membership
+            verify(repository, never()).insertTask(anyLong(), any(), any());
+            verify(repository, never()).insertDigest(anyLong(), any(), any());
+            verify(repository, never()).insertEvidence(anyLong(), any(), any(), any(), any(), any());
+            verify(repository, never()).linkDigestClues(anyLong(), anyLong(), any());
+        }
+
+        @Test
+        void secondRetryAfterSuccessConflictsWithoutSideEffects() {
+            when(repository.findTaskForUpdate(USER_ID, 100L)).thenReturn(
+                    Optional.of(taskRow(100L, 200L, DigestTaskStatus.FAILED, 0, CognitionException.GENERATION_FAILED)),
+                    Optional.of(taskRow(100L, 200L, DigestTaskStatus.SUCCEEDED, 1, null)));
+            when(repository.findDigest(USER_ID, 200L, true))
+                    .thenReturn(Optional.of(digestRow(200L, DigestStatus.FAILED, 1)));
+            when(repository.findDigestClues(USER_ID, 200L))
+                    .thenReturn(List.of(clueRow(1L, ClueIntent.RELATED, ClueStatus.PROCESSING)));
+            when(generator.generate(any(), any())).thenReturn(
+                    new DigestGenerator.GeneratedDigest("经前情绪变化", "共同点", "可能联系", "仍不确定",
+                            "记录一次", "fixed-v1"));
+            when(repository.findTask(USER_ID, 100L)).thenReturn(Optional.of(
+                    taskRow(100L, 200L, DigestTaskStatus.SUCCEEDED, 1, null)));
+            when(repository.findDigest(USER_ID, 200L, false))
+                    .thenReturn(Optional.of(digestRow(200L, DigestStatus.READY, 2)));
+
+            service.retryTask(USER_ID, "task_100");
+            CognitionException ex = assertThrows(CognitionException.class,
+                    () -> service.retryTask(USER_ID, "task_100"));
+
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.STATE_CONFLICT);
+            verify(generator, times(1)).generate(any(), any());
+            verify(repository, never()).insertDigest(anyLong(), any(), any());
+            verify(repository, never()).insertEvidence(anyLong(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        void duplicateFeedbackStillConflicts() {
+            CognitionJdbcRepository.ActionRow action = new CognitionJdbcRepository.ActionRow(9L, 5L, "记录一次",
+                    "补充时间和程度", ActionType.RECORD_BODY, ActionStatus.PENDING, null, null, Instant.now());
+            when(repository.findAction(USER_ID, 9L, true)).thenReturn(Optional.of(action));
+            when(repository.findFeedbackByAction(USER_ID, 9L)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.FeedbackRow(30L, 9L, 5L, ActionFeedbackResult.OCCURRED, null,
+                            Instant.now(), Instant.now(), 40L)));
+
+            CognitionException ex = assertThrows(CognitionException.class, () -> service.submitFeedback(
+                    USER_ID, "action_9", new FeedbackRequest("topic_5", ActionFeedbackResult.OCCURRED, null, null)));
+
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.STATE_CONFLICT);
+            verify(repository, never()).insertFeedback(anyLong(), anyLong(), anyLong(), any(), any(), any());
+        }
+
+        private CognitionJdbcRepository.TaskRow taskRow(long id, Long digestId, DigestTaskStatus status,
+                                                        int retryCount, String failureCode) {
+            return new CognitionJdbcRepository.TaskRow(id, digestId, status, TriggerType.USER_REQUEST,
+                    "fixed-v1", retryCount, failureCode, Instant.now());
+        }
+    }
+
+    // ---------- section 7.3 / TC-12~16: action feedback ----------
+
+    @Nested
+    class ActionFeedbackRules {
+
+        @Test
+        void tc12OccurredCompletesActionCreatesEvidenceAndRefreshesTopic() {
+            stubPendingAction();
+            stubCurrentTopic(Maturity.CLUE);
+            CognitionJdbcRepository.FeedbackRow saved = new CognitionJdbcRepository.FeedbackRow(30L, 9L, 5L,
+                    ActionFeedbackResult.OCCURRED, "今天下午出现过轻微情绪低落",
+                    Instant.parse("2026-08-13T10:20:00Z"), Instant.now(), 40L);
+            when(repository.findFeedbackByAction(USER_ID, 9L)).thenReturn(Optional.empty(), Optional.of(saved));
+            when(repository.insertFeedback(eq(USER_ID), eq(9L), eq(5L), eq(ActionFeedbackResult.OCCURRED),
+                    any(), any())).thenReturn(30L);
+            when(repository.insertEvidence(eq(USER_ID), eq(EvidenceSourceType.ACTION_FEEDBACK), eq("feedback_30"),
+                    eq(FactLevel.SELF_REPORTED), any(), any())).thenReturn(40L);
+            when(repository.findTopicEvidence(USER_ID, 5L)).thenReturn(List.of(
+                    clueEvidence(1L), evidenceRow(40L, EvidenceSourceType.ACTION_FEEDBACK,
+                            ActionFeedbackResult.OCCURRED, Instant.parse("2026-08-13T10:20:00Z"))));
+            when(repository.findTopic(USER_ID, 5L, false)).thenReturn(Optional.of(topicRow(5L, 3)));
+
+            FeedbackResultView result = service.submitFeedback(USER_ID, "action_9",
+                    new FeedbackRequest("topic_5", ActionFeedbackResult.OCCURRED, "今天下午出现过轻微情绪低落",
+                            Instant.parse("2026-08-13T10:20:00Z")));
+
+            assertThat(result.feedback().id()).isEqualTo("feedback_30");
+            assertThat(result.feedback().evidenceId()).isEqualTo("evidence_40");
+            assertThat(result.actionStatus()).isEqualTo(ActionStatus.COMPLETED);
+            assertThat(result.topicVersion()).isEqualTo(3);
+            assertThat(result.refreshRequired()).isTrue();
+            verify(repository).linkTopicEvidence(USER_ID, 5L, List.of(40L));
+            verify(repository).updateActionStatus(USER_ID, 9L, ActionStatus.COMPLETED);
+            verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L),
+                    argThat(text -> text != null && text.contains("出现过")),
+                    eq(Maturity.INSUFFICIENT), eq(2), eq(1), eq(1), eq(1));
+        }
+
+        @Test
+        void tc13NotOccurredCreatesObservationEvidenceWithoutEndingTopic() {
+            stubPendingAction();
+            stubCurrentTopic(Maturity.CLUE);
+            CognitionJdbcRepository.FeedbackRow saved = new CognitionJdbcRepository.FeedbackRow(31L, 9L, 5L,
+                    ActionFeedbackResult.NOT_OCCURRED, null, Instant.now(), Instant.now(), 41L);
+            when(repository.findFeedbackByAction(USER_ID, 9L)).thenReturn(Optional.empty(), Optional.of(saved));
+            when(repository.insertFeedback(eq(USER_ID), eq(9L), eq(5L), eq(ActionFeedbackResult.NOT_OCCURRED),
+                    any(), any())).thenReturn(31L);
+            when(repository.insertEvidence(eq(USER_ID), eq(EvidenceSourceType.ACTION_FEEDBACK), eq("feedback_31"),
+                    eq(FactLevel.OBSERVED), any(), any())).thenReturn(41L);
+            when(repository.findTopicEvidence(USER_ID, 5L)).thenReturn(List.of(
+                    clueEvidence(1L), evidenceRow(41L, EvidenceSourceType.ACTION_FEEDBACK,
+                            ActionFeedbackResult.NOT_OCCURRED, Instant.now())));
+            when(repository.findTopic(USER_ID, 5L, false)).thenReturn(Optional.of(topicRow(5L, 3)));
+
+            FeedbackResultView result = service.submitFeedback(USER_ID, "action_9",
+                    new FeedbackRequest("topic_5", ActionFeedbackResult.NOT_OCCURRED, null, null));
+
+            // NOT_OCCURRED is a valid observation: evidence created, action completed,
+            // but nothing closes or ends the topic
+            assertThat(result.feedback().evidenceId()).isEqualTo("evidence_41");
+            assertThat(result.actionStatus()).isEqualTo(ActionStatus.COMPLETED);
+            verify(repository).insertEvidence(eq(USER_ID), eq(EvidenceSourceType.ACTION_FEEDBACK), any(),
+                    eq(FactLevel.OBSERVED), any(), any());
+            verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L),
+                    argThat(text -> text != null && text.contains("没有出现")),
+                    eq(Maturity.INSUFFICIENT), eq(2), eq(1), eq(1), eq(1));
+        }
+
+        @Test
+        void tc14UncertainKeepsEvidenceWithoutRaisingMaturity() {
+            stubPendingAction();
+            stubCurrentTopic(Maturity.CLUE);
+            CognitionJdbcRepository.FeedbackRow saved = new CognitionJdbcRepository.FeedbackRow(32L, 9L, 5L,
+                    ActionFeedbackResult.UNCERTAIN, null, Instant.now(), Instant.now(), 42L);
+            when(repository.findFeedbackByAction(USER_ID, 9L)).thenReturn(Optional.empty(), Optional.of(saved));
+            when(repository.insertFeedback(eq(USER_ID), eq(9L), eq(5L), eq(ActionFeedbackResult.UNCERTAIN),
+                    any(), any())).thenReturn(32L);
+            when(repository.insertEvidence(eq(USER_ID), eq(EvidenceSourceType.ACTION_FEEDBACK), eq("feedback_32"),
+                    eq(FactLevel.OBSERVED), any(), any())).thenReturn(42L);
+            when(repository.findTopicEvidence(USER_ID, 5L)).thenReturn(List.of(
+                    clueEvidence(1L), evidenceRow(42L, EvidenceSourceType.ACTION_FEEDBACK,
+                            ActionFeedbackResult.UNCERTAIN, Instant.now())));
+            when(repository.findTopic(USER_ID, 5L, false)).thenReturn(Optional.of(topicRow(5L, 3)));
+
+            FeedbackResultView result = service.submitFeedback(USER_ID, "action_9",
+                    new FeedbackRequest("topic_5", ActionFeedbackResult.UNCERTAIN, null, null));
+
+            assertThat(result.feedback().evidenceId()).isEqualTo("evidence_42");
+            assertThat(result.actionStatus()).isEqualTo(ActionStatus.COMPLETED);
+            // UNCERTAIN evidence is saved but excluded from maturity: stays CLUE
+            verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L),
+                    argThat(text -> text != null && text.contains("不确定")),
+                    eq(Maturity.CLUE), eq(2), eq(1), eq(1), eq(1));
+        }
+
+        @Test
+        void tc15SkippedHasNoEvidenceAndNoCounterIncrease() {
+            stubPendingAction();
+            stubCurrentTopic(Maturity.CLUE);
+            CognitionJdbcRepository.FeedbackRow saved = new CognitionJdbcRepository.FeedbackRow(33L, 9L, 5L,
+                    ActionFeedbackResult.SKIPPED, null, Instant.now(), Instant.now(), null);
+            when(repository.findFeedbackByAction(USER_ID, 9L)).thenReturn(Optional.empty(), Optional.of(saved));
+            when(repository.insertFeedback(eq(USER_ID), eq(9L), eq(5L), eq(ActionFeedbackResult.SKIPPED),
+                    any(), any())).thenReturn(33L);
+            when(repository.findTopicEvidence(USER_ID, 5L)).thenReturn(List.of(clueEvidence(1L)));
+            when(repository.findTopic(USER_ID, 5L, false)).thenReturn(Optional.of(topicRow(5L, 2)));
+
+            FeedbackResultView result = service.submitFeedback(USER_ID, "action_9",
+                    new FeedbackRequest("topic_5", ActionFeedbackResult.SKIPPED, null, null));
+
+            assertThat(result.feedback().evidenceId()).isNull();
+            assertThat(result.actionStatus()).isEqualTo(ActionStatus.SKIPPED);
+            verify(repository, never()).insertEvidence(anyLong(), any(), any(), any(), any(), any());
+            verify(repository, never()).linkTopicEvidence(anyLong(), anyLong(), any());
+            // stageUnderstanding stays (null keeps current text); counters unchanged
+            verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L), isNull(),
+                    eq(Maturity.CLUE), eq(1), eq(1), eq(0), eq(1));
+            // occurredAt defaults to submission time when the frontend omits it
+            ArgumentCaptor<Instant> occurredAt = ArgumentCaptor.forClass(Instant.class);
+            verify(repository).insertFeedback(eq(USER_ID), eq(9L), eq(5L), eq(ActionFeedbackResult.SKIPPED),
+                    any(), occurredAt.capture());
+            assertThat(occurredAt.getValue()).isNotNull();
+        }
+
+        @Test
+        void feedbackAcrossTwoCyclesRaisesMaturity() {
+            stubPendingAction();
+            stubCurrentTopic(Maturity.CLUE);
+            CognitionJdbcRepository.FeedbackRow saved = new CognitionJdbcRepository.FeedbackRow(34L, 9L, 5L,
+                    ActionFeedbackResult.OCCURRED, null, Instant.parse("2026-07-11T04:00:00Z"),
+                    Instant.now(), 44L);
+            when(repository.findFeedbackByAction(USER_ID, 9L)).thenReturn(Optional.empty(), Optional.of(saved));
+            when(repository.insertFeedback(eq(USER_ID), eq(9L), eq(5L), eq(ActionFeedbackResult.OCCURRED),
+                    any(), any())).thenReturn(34L);
+            when(repository.insertEvidence(eq(USER_ID), eq(EvidenceSourceType.ACTION_FEEDBACK), eq("feedback_34"),
+                    eq(FactLevel.SELF_REPORTED), any(), any())).thenReturn(44L);
+            when(repository.findTopicEvidence(USER_ID, 5L)).thenReturn(List.of(
+                    clueEvidence(1L),
+                    evidenceRow(43L, EvidenceSourceType.ACTION_FEEDBACK, ActionFeedbackResult.OCCURRED,
+                            Instant.parse("2026-06-10T04:00:00Z")),
+                    evidenceRow(44L, EvidenceSourceType.ACTION_FEEDBACK, ActionFeedbackResult.OCCURRED,
+                            Instant.parse("2026-07-11T04:00:00Z"))));
+            when(repository.findTopic(USER_ID, 5L, false)).thenReturn(Optional.of(topicRow(5L, 3)));
+
+            service.submitFeedback(USER_ID, "action_9",
+                    new FeedbackRequest("topic_5", ActionFeedbackResult.OCCURRED, null,
+                            Instant.parse("2026-07-11T04:00:00Z")));
+
+            verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L), any(),
+                    eq(Maturity.REPEATED_PATTERN), eq(3), eq(1), eq(2), eq(3));
+        }
+
+        @Test
+        void singleNotOccurredNeverDowngradesMaturity() {
+            stubPendingAction();
+            stubCurrentTopic(Maturity.REPEATED_PATTERN);
+            CognitionJdbcRepository.FeedbackRow saved = new CognitionJdbcRepository.FeedbackRow(35L, 9L, 5L,
+                    ActionFeedbackResult.NOT_OCCURRED, null, Instant.now(), Instant.now(), 45L);
+            when(repository.findFeedbackByAction(USER_ID, 9L)).thenReturn(Optional.empty(), Optional.of(saved));
+            when(repository.insertFeedback(eq(USER_ID), eq(9L), eq(5L), eq(ActionFeedbackResult.NOT_OCCURRED),
+                    any(), any())).thenReturn(35L);
+            when(repository.insertEvidence(eq(USER_ID), eq(EvidenceSourceType.ACTION_FEEDBACK), eq("feedback_35"),
+                    eq(FactLevel.OBSERVED), any(), any())).thenReturn(45L);
+            when(repository.findTopicEvidence(USER_ID, 5L)).thenReturn(List.of(
+                    clueEvidence(1L), evidenceRow(45L, EvidenceSourceType.ACTION_FEEDBACK,
+                            ActionFeedbackResult.NOT_OCCURRED, Instant.now())));
+            when(repository.findTopic(USER_ID, 5L, false)).thenReturn(Optional.of(topicRow(5L, 3)));
+
+            service.submitFeedback(USER_ID, "action_9",
+                    new FeedbackRequest("topic_5", ActionFeedbackResult.NOT_OCCURRED, null, null));
+
+            verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L), any(),
+                    eq(Maturity.REPEATED_PATTERN), eq(2), eq(1), eq(1), eq(1));
+        }
+
+        @Test
+        void deadBodyRecordEvidenceIsRetiredAndExcludedFromCounters() {
+            stubPendingAction();
+            stubCurrentTopic(Maturity.CLUE);
+            CognitionJdbcRepository.FeedbackRow saved = new CognitionJdbcRepository.FeedbackRow(36L, 9L, 5L,
+                    ActionFeedbackResult.OCCURRED, null, Instant.parse("2026-08-13T04:00:00Z"),
+                    Instant.now(), 46L);
+            when(repository.findFeedbackByAction(USER_ID, 9L)).thenReturn(Optional.empty(), Optional.of(saved));
+            when(repository.insertFeedback(eq(USER_ID), eq(9L), eq(5L), eq(ActionFeedbackResult.OCCURRED),
+                    any(), any())).thenReturn(36L);
+            when(repository.insertEvidence(eq(USER_ID), eq(EvidenceSourceType.ACTION_FEEDBACK), eq("feedback_36"),
+                    eq(FactLevel.SELF_REPORTED), any(), any())).thenReturn(46L);
+            // the BODY_RECORD evidence references a daily_record that no longer exists
+            when(repository.findTopicEvidence(USER_ID, 5L)).thenReturn(List.of(
+                    evidenceRow(1L, EvidenceSourceType.CLUE, null, Instant.parse("2026-08-10T04:00:00Z")),
+                    evidenceRow(2L, EvidenceSourceType.BODY_RECORD, null, Instant.parse("2026-06-10T04:00:00Z")),
+                    evidenceRow(46L, EvidenceSourceType.ACTION_FEEDBACK, ActionFeedbackResult.OCCURRED,
+                            Instant.parse("2026-08-13T04:00:00Z"))));
+            when(bodyRecordEvidenceProvider.filterExistingRecordIds(USER_ID, List.of("src_2")))
+                    .thenReturn(Set.of());
+            when(repository.findTopic(USER_ID, 5L, false)).thenReturn(Optional.of(topicRow(5L, 3)));
+
+            service.submitFeedback(USER_ID, "action_9",
+                    new FeedbackRequest("topic_5", ActionFeedbackResult.OCCURRED, null,
+                            Instant.parse("2026-08-13T04:00:00Z")));
+
+            // retired (active=0), never physically deleted; counters and maturity exclude it
+            verify(repository).deactivateEvidence(USER_ID, List.of(2L));
+            verify(repository).updateTopicAfterFeedback(eq(USER_ID), eq(5L), any(),
+                    eq(Maturity.INSUFFICIENT), eq(2), eq(1), eq(1), eq(1));
+        }
+
+        private void stubPendingAction() {
+            when(repository.findAction(USER_ID, 9L, true)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.ActionRow(9L, 5L, "记录一次相关身体变化", "补充出现时间和程度",
+                            ActionType.RECORD_BODY, ActionStatus.PENDING, null, null, Instant.now())));
+        }
+
+        private void stubCurrentTopic(Maturity maturity) {
+            when(repository.findTopic(USER_ID, 5L, true)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.TopicRow(5L, 3L, "经前情绪变化", "MOOD", maturity,
+                            UserProgress.OBSERVING, RiskStatus.NONE, "阶段理解", "[]", "[]",
+                            1, 1, 0, 1, 9L, Instant.now(), 1, Instant.now())));
+        }
+
+        private CognitionJdbcRepository.TopicRow topicRow(long id, int version) {
+            return new CognitionJdbcRepository.TopicRow(id, 3L, "经前情绪变化", "MOOD", Maturity.CLUE,
+                    UserProgress.OBSERVING, RiskStatus.NONE, "阶段理解", "[]", "[]",
+                    1, 1, 0, 1, 9L, Instant.now(), version, Instant.now());
+        }
+    }
+
+    // ---------- section 13.3 / TC-21: user isolation ----------
+
+    @Nested
+    class UserIsolation {
+
+        @Test
+        void foreignDigestReadsAsUnifiedNotFound() {
+            // repository always filters by user_id, so another user's id reads as empty
+            when(repository.findDigest(USER_ID, 9L, false)).thenReturn(Optional.empty());
+
+            CognitionException ex = assertThrows(CognitionException.class,
+                    () -> service.getDigest(USER_ID, "digest_9"));
+
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.NOT_FOUND);
+            assertThat(ex.semanticCode()).isEqualTo(404);
+        }
+
+        @Test
+        void foreignTopicReadsAsUnifiedNotFound() {
+            when(repository.findTopic(USER_ID, 5L, false)).thenReturn(Optional.empty());
+
+            CognitionException ex = assertThrows(CognitionException.class,
+                    () -> service.getTopic(USER_ID, "topic_5"));
+
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.NOT_FOUND);
+        }
+
+        @Test
+        void foreignClueRevokeReadsAsUnifiedNotFound() {
+            when(repository.findClue(USER_ID, 1L)).thenReturn(Optional.empty());
+
+            CognitionException ex = assertThrows(CognitionException.class,
+                    () -> service.deleteClue(USER_ID, "clue_1"));
+
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.NOT_FOUND);
+            verify(repository, never()).logicalDeleteClue(anyLong(), anyLong());
+        }
+
+        @Test
+        void decisionOnForeignDigestReadsAsUnifiedNotFound() {
+            when(repository.findDigest(USER_ID, 9L, true)).thenReturn(Optional.empty());
+
+            CognitionException ex = assertThrows(CognitionException.class, () -> service.decideDigest(
+                    USER_ID, "digest_9", new DigestDecisionRequest(DigestDecision.REJECT, null, null)));
+
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.NOT_FOUND);
+        }
+
+        @Test
+        void feedbackWithMismatchedTopicReadsAsNotFoundWithoutLeak() {
+            // the action exists but belongs to another topic: say "not found", never
+            // reveal that the action id itself is valid (section 13.3)
+            when(repository.findAction(USER_ID, 9L, true)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.ActionRow(9L, 6L, "记录一次", "描述",
+                            ActionType.RECORD_BODY, ActionStatus.PENDING, null, null, Instant.now())));
+
+            CognitionException ex = assertThrows(CognitionException.class, () -> service.submitFeedback(
+                    USER_ID, "action_9", new FeedbackRequest("topic_5", ActionFeedbackResult.OCCURRED, null, null)));
+
+            assertThat(ex.errorCode()).isEqualTo(CognitionException.NOT_FOUND);
+            verify(repository, never()).insertFeedback(anyLong(), anyLong(), anyLong(), any(), any(), any());
+        }
+    }
+
+    // ---------- section 8.11 / TC-20: home summary state selection ----------
+
+    @Nested
+    class HomeSummaryStates {
+
+        @Test
+        void digestReadyWins() {
+            stubCounts(1L, 0);
+            when(repository.findPrimaryTopic(USER_ID)).thenReturn(Optional.empty());
+            when(repository.hasDigestWithStatus(USER_ID, DigestStatus.READY)).thenReturn(true);
+
+            HomeView view = service.getHome(USER_ID);
+
+            assertThat(view.summaryState()).isEqualTo(HomeSummaryState.DIGEST_READY);
+            assertThat(view.headline()).isEqualTo("有一份整理草稿等待确认");
+            assertThat(view.pendingDigestCount()).isEqualTo(1);
+            assertThat(view.activeTopic()).isNull();
+            assertThat(view.latestInsight()).isNull();
+        }
+
+        @Test
+        void digestReadyBeatsExistingTopic() {
+            stubCounts(1L, 0);
+            when(repository.findPrimaryTopic(USER_ID)).thenReturn(Optional.of(homeTopicRow()));
+            when(repository.hasDigestWithStatus(USER_ID, DigestStatus.READY)).thenReturn(true);
+
+            HomeView view = service.getHome(USER_ID);
+
+            assertThat(view.summaryState()).isEqualTo(HomeSummaryState.DIGEST_READY);
+        }
+
+        @Test
+        void digestProcessing() {
+            stubCounts(1L, 0);
+            when(repository.findPrimaryTopic(USER_ID)).thenReturn(Optional.empty());
+            when(repository.hasDigestWithStatus(USER_ID, DigestStatus.READY)).thenReturn(false);
+            when(repository.hasProcessingTask(USER_ID)).thenReturn(true);
+
+            assertThat(service.getHome(USER_ID).summaryState()).isEqualTo(HomeSummaryState.DIGEST_PROCESSING);
+        }
+
+        @Test
+        void digestFailedWhenLatestTaskFailed() {
+            stubCounts(0L, 1);
+            when(repository.findPrimaryTopic(USER_ID)).thenReturn(Optional.empty());
+            when(repository.hasDigestWithStatus(USER_ID, DigestStatus.READY)).thenReturn(false);
+            when(repository.hasProcessingTask(USER_ID)).thenReturn(false);
+            when(repository.findLatestTask(USER_ID)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.TaskRow(100L, 200L, DigestTaskStatus.FAILED,
+                            TriggerType.USER_REQUEST, "fixed-v1", 0, CognitionException.GENERATION_FAILED,
+                            Instant.now())));
+
+            HomeView view = service.getHome(USER_ID);
+
+            assertThat(view.summaryState()).isEqualTo(HomeSummaryState.DIGEST_FAILED);
+            assertThat(view.failedTaskCount()).isEqualTo(1);
+        }
+
+        @Test
+        void actionCompleted() {
+            stubTopicBranch(homeActionRow(ActionStatus.COMPLETED));
+
+            HomeView view = service.getHome(USER_ID);
+
+            assertThat(view.summaryState()).isEqualTo(HomeSummaryState.ACTION_COMPLETED);
+            assertThat(view.headline()).isEqualTo("这次观察已完成，阶段理解已更新");
+            assertThat(view.nextAction()).isNull();
+            assertThat(view.activeTopic().id()).isEqualTo("topic_5");
+            assertThat(view.activeTopic().maturity()).isEqualTo(Maturity.EARLY_LINK);
+            assertThat(view.activeTopic().userProgress()).isEqualTo(UserProgress.OBSERVING);
+            assertThat(view.activeTopic().riskStatus()).isEqualTo(RiskStatus.NONE);
+            assertThat(view.activeTopic().evidenceCount()).isEqualTo(3);
+            assertThat(view.activeTopic().cycleCount()).isEqualTo(1);
+            assertThat(view.activeTopic().nextActionId()).isEqualTo("action_9");
+            assertThat(view.latestInsight().title()).isEqualTo("经前情绪变化");
+            assertThat(view.latestInsight().body()).contains("初步联系");
+            assertThat(view.latestInsight().evidenceCount()).isEqualTo(3);
+            assertThat(view.latestInsight().uncertainty()).contains("还不能确定");
+        }
+
+        @Test
+        void observingWithPendingNextAction() {
+            stubTopicBranch(homeActionRow(ActionStatus.PENDING));
+
+            HomeView view = service.getHome(USER_ID);
+
+            assertThat(view.summaryState()).isEqualTo(HomeSummaryState.OBSERVING);
+            assertThat(view.headline()).isEqualTo("Athena 正在理解你的身体变化");
+            assertThat(view.nextAction().id()).isEqualTo("action_9");
+            assertThat(view.nextAction().status()).isEqualTo(ActionStatus.PENDING);
+            assertThat(view.nextAction().feedbackOptions()).containsExactly(
+                    ActionFeedbackResult.OCCURRED, ActionFeedbackResult.NOT_OCCURRED,
+                    ActionFeedbackResult.UNCERTAIN, ActionFeedbackResult.SKIPPED);
+        }
+
+        @Test
+        void buildingBaselineWithOnlyPendingRelatedClues() {
+            stubNoDigestBranch();
+            when(repository.countClues(USER_ID, ClueListView.PENDING, null, null, null)).thenReturn(2L);
+
+            assertThat(service.getHome(USER_ID).summaryState()).isEqualTo(HomeSummaryState.BUILDING_BASELINE);
+        }
+
+        @Test
+        void digestKeptAsKnowledgeIsShortTermFeedback() {
+            stubNoDigestBranch();
+            when(repository.countClues(USER_ID, ClueListView.PENDING, null, null, null)).thenReturn(0L);
+            when(repository.findLatestDecision(USER_ID)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.DecisionLogRow(9L, DigestDecision.KEEP_AS_KNOWLEDGE, Instant.now())));
+
+            HomeView view = service.getHome(USER_ID);
+
+            assertThat(view.summaryState()).isEqualTo(HomeSummaryState.DIGEST_KEPT_AS_KNOWLEDGE);
+            assertThat(view.headline()).isEqualTo("这次整理已保存为知识");
+        }
+
+        @Test
+        void digestRejectedIsShortTermFeedback() {
+            stubNoDigestBranch();
+            when(repository.countClues(USER_ID, ClueListView.PENDING, null, null, null)).thenReturn(0L);
+            when(repository.findLatestDecision(USER_ID)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.DecisionLogRow(9L, DigestDecision.REJECT, Instant.now())));
+
+            assertThat(service.getHome(USER_ID).summaryState()).isEqualTo(HomeSummaryState.DIGEST_REJECTED);
+        }
+
+        @Test
+        void tc20EmptyUserGetsEmptyStateWithNulls() {
+            stubNoDigestBranch();
+            when(repository.countClues(USER_ID, ClueListView.PENDING, null, null, null)).thenReturn(0L);
+            when(repository.findLatestDecision(USER_ID)).thenReturn(Optional.empty());
+
+            HomeView view = service.getHome(USER_ID);
+
+            assertThat(view.summaryState()).isEqualTo(HomeSummaryState.EMPTY);
+            assertThat(view.headline()).isEqualTo("还没有可展示的身体认知摘要");
+            assertThat(view.asOf()).isNotNull();
+            assertThat(view.latestInsight()).isNull();
+            assertThat(view.activeTopic()).isNull();
+            assertThat(view.nextAction()).isNull();
+            assertThat(view.pendingDigestCount()).isZero();
+            assertThat(view.failedTaskCount()).isZero();
+        }
+
+        @Test
+        void staleDecisionFallsBackToEmpty() {
+            stubNoDigestBranch();
+            when(repository.countClues(USER_ID, ClueListView.PENDING, null, null, null)).thenReturn(0L);
+            when(repository.findLatestDecision(USER_ID)).thenReturn(Optional.of(
+                    new CognitionJdbcRepository.DecisionLogRow(9L, DigestDecision.REJECT,
+                            Instant.now().minus(java.time.Duration.ofDays(2)))));
+
+            // an old reject must not occupy the home state forever
+            assertThat(service.getHome(USER_ID).summaryState()).isEqualTo(HomeSummaryState.EMPTY);
+        }
+
+        @Test
+        void freshDecisionYieldsToNewPendingClues() {
+            stubNoDigestBranch();
+            when(repository.countClues(USER_ID, ClueListView.PENDING, null, null, null)).thenReturn(1L);
+
+            // even right after a reject, new baseline data takes over
+            assertThat(service.getHome(USER_ID).summaryState()).isEqualTo(HomeSummaryState.BUILDING_BASELINE);
+        }
+
+        private void stubCounts(long pendingDigests, int failedTasks) {
+            when(repository.countPendingDigests(USER_ID)).thenReturn(pendingDigests);
+            when(repository.countFailedTasks(USER_ID)).thenReturn(failedTasks);
+        }
+
+        private void stubNoDigestBranch() {
+            stubCounts(0L, 0);
+            when(repository.findPrimaryTopic(USER_ID)).thenReturn(Optional.empty());
+            when(repository.hasDigestWithStatus(USER_ID, DigestStatus.READY)).thenReturn(false);
+            when(repository.hasProcessingTask(USER_ID)).thenReturn(false);
+        }
+
+        private void stubTopicBranch(CognitionJdbcRepository.ActionRow nextAction) {
+            stubCounts(0L, 0);
+            when(repository.findPrimaryTopic(USER_ID)).thenReturn(Optional.of(homeTopicRow()));
+            when(repository.hasDigestWithStatus(USER_ID, DigestStatus.READY)).thenReturn(false);
+            when(repository.hasProcessingTask(USER_ID)).thenReturn(false);
+            when(repository.findAction(USER_ID, 9L, false)).thenReturn(Optional.of(nextAction));
+        }
+
+        private CognitionJdbcRepository.TopicRow homeTopicRow() {
+            return new CognitionJdbcRepository.TopicRow(5L, 3L, "经前情绪变化", "MOOD", Maturity.EARLY_LINK,
+                    UserProgress.OBSERVING, RiskStatus.NONE, "这些线索出现初步联系，但仍需继续观察。",
+                    "[\"用户确认现在出现过与该线索类似的情况\"]", "[\"还不能确定这种联系是否会重复\"]",
+                    3, 2, 1, 1, 9L, Instant.now(), 2, Instant.now());
+        }
+
+        private CognitionJdbcRepository.ActionRow homeActionRow(ActionStatus status) {
+            return new CognitionJdbcRepository.ActionRow(9L, 5L, "记录一次相关身体变化", "补充出现时间和程度",
+                    ActionType.RECORD_BODY, status, null,
+                    "[\"OCCURRED\",\"NOT_OCCURRED\",\"UNCERTAIN\",\"SKIPPED\"]", Instant.now());
+        }
+    }
+
+    // ---------- fixtures ----------
+
+    private ClueRow clueRow(long id, ClueIntent intent, ClueStatus status) {
+        return new ClueRow(id, ClueType.ARTICLE_HIGHLIGHT, intent, RelationType.CURRENT, HelpRequestType.OBSERVE,
+                "1024", "文章", 100, "选中文字", null, null, null, CycleRelation.UNKNOWN, null, null,
+                ClueSource.KNOWLEDGE_ARTICLE, status, null, "经前情绪变化", "和我有关",
+                Instant.now(), Instant.now());
+    }
+
+    private DigestRow digestRow(long id, DigestStatus status, int version) {
+        return new DigestRow(id, "经前情绪变化", status, "共同点", "可能联系", "仍不确定", "记录一次",
+                "fixed-v1", Instant.now(), null, null, version, Instant.now());
+    }
+
+    private CognitionJdbcRepository.EvidenceRow evidenceRow(long id, EvidenceSourceType sourceType,
+                                                            ActionFeedbackResult feedbackResult, Instant occurredAt) {
+        return new CognitionJdbcRepository.EvidenceRow(id, sourceType, "src_" + id, FactLevel.SELF_REPORTED,
+                "摘要", occurredAt, Instant.now(), true, null, null, null, feedbackResult);
+    }
+
+    private CognitionJdbcRepository.EvidenceRow clueEvidence(long id) {
+        return evidenceRow(id, EvidenceSourceType.CLUE, null, Instant.now());
+    }
+
+    private ClueRow clueRowWithRelation(long id, RelationType relationType) {
+        return new ClueRow(id, ClueType.ARTICLE_HIGHLIGHT, ClueIntent.RELATED, relationType,
+                HelpRequestType.OBSERVE, "1024", "文章", 100, "选中文字", null, null, null,
+                CycleRelation.UNKNOWN, null, null, ClueSource.KNOWLEDGE_ARTICLE, ClueStatus.PROCESSING,
+                null, "经前情绪变化", "和我有关", Instant.now(), Instant.now());
     }
 }

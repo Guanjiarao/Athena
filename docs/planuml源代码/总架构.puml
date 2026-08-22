@@ -1,0 +1,105 @@
+@startuml Athena_Architecture
+
+skinparam backgroundColor #FAFAFA
+skinparam monochrome false
+skinparam shadowing false
+skinparam defaultFontSize 12
+skinparam titleFontSize 16
+skinparam titleFontColor #2C3E50
+skinparam noteBackgroundColor #EAF2FB
+skinparam noteBorderColor #7CB9E8
+skinparam arrowColor #7F8C8D
+skinparam arrowThickness 1.2
+
+skinparam package {
+  BackgroundColor #EBF5FB
+  BorderColor #5DADE2
+  HeaderBackgroundColor #5DADE2
+  HeaderFontColor white
+  FontSize 13
+}
+
+skinparam component {
+  BackgroundColor #F8F9FA
+  BorderColor #BDC3C7
+}
+
+skinparam database {
+  BackgroundColor #F8F9FA
+  BorderColor #BDC3C7
+}
+
+skinparam node {
+  BackgroundColor #F8F9FA
+  BorderColor #BDC3C7
+}
+
+skinparam queue {
+  BackgroundColor #F8F9FA
+  BorderColor #BDC3C7
+}
+
+skinparam storage {
+  BackgroundColor #F8F9FA
+  BorderColor #BDC3C7
+}
+
+title Athena 智慧健康平台 - 四层微服务架构
+
+package "用户入口层" {
+  component "admin_web_front\n管理员网站端" as admin
+  component "athena_app_front\nAndroid 用户端" as app
+  component "athena_rag_front\nRAG 智能问答前端" as ragFront
+}
+
+package "API 网关层" {
+  component "athena-gateway\n[Sa-Token 鉴权 / 路由转发 / userId 透传]" as gateway
+}
+
+package "后端业务服务层" {
+  component "userauth\n登录用户" as userauth
+  component "ground\n内容广场" as ground
+  component "comment\n评论互动" as comment
+  component "relation\n关注粉丝" as relation
+  component "rag\nAI/RAG 问答知识库" as rag
+  component "record\n健康记录" as record
+  component "insight\n洞察报告" as insight
+  component "oss\n文件存储" as oss
+}
+
+package "基础设施层" {
+  database "MySQL" as mysql
+  database "Redis" as redis
+  node "Nacos" as nacos
+  queue "RocketMQ" as rocketmq
+  storage "对象存储" as ossStorage
+  database "向量库" as vectorDB
+  node "LLM" as llm
+
+  note bottom of mysql
+    全部服务注册到 Nacos
+    统一访问 MySQL + Redis
+  end note
+}
+
+admin --> gateway
+app --> gateway
+ragFront --> gateway
+
+gateway --> userauth
+gateway --> ground
+gateway --> comment
+gateway --> relation
+gateway --> rag
+gateway --> record
+gateway --> insight
+gateway --> oss
+
+rag --> vectorDB : 向量检索
+rag --> llm : 大模型调用
+oss --> ossStorage : 文件存取
+comment ..> rocketmq : 异步写聚合
+ground ..> rocketmq 
+rag ..> rocketmq : 异步任务
+
+@enduml

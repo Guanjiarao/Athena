@@ -1,5 +1,6 @@
 package athena.cognition.biz.repository;
 
+import athena.cognition.biz.domain.CognitionIds;
 import athena.cognition.biz.domain.CognitionModels.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -13,11 +14,16 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+/**
+ * JDBC persistence for the 11 contract tables (cognition-contract-v1.md section 11).
+ * Internal ids are numeric; external string ids (clue_1001 form) are assembled in
+ * the service layer via {@link CognitionIds}.
+ */
 @Repository
 public class CognitionJdbcRepository {
 
@@ -29,320 +35,518 @@ public class CognitionJdbcRepository {
         this.namedJdbc = new NamedParameterJdbcTemplate(jdbc);
     }
 
-    public long insertClue(long userId, ClueCreateRequest request) {
+    // ---------- clue ----------
+
+    public long insertClue(long userId, ClueCreateRequest request, ClueIntent intent, ClueStatus status,
+                           HelpRequestType helpRequestType, CycleRelation cycleRelation) {
         String sql = """
-                INSERT INTO tb_cognition_clue
-                (user_id, clue_type, mark_intent, relation_detail, desired_help, article_id, article_title,
-                 source_name, excerpt, question_type, question_text, body_record_id, occurred_at, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')
+                INSERT INTO cognition_clue
+                (user_id, type, intent, relation_type, help_request_type, article_id, article_title, article_type,
+                 selected_text, question_type, question_text, occurred_at, cycle_relation, severity, resolved,
+                 source, status, suggested_topic_id, suggested_topic_title, original_label)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """;
         KeyHolder key = new GeneratedKeyHolder();
         jdbc.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             ps.setLong(1, userId);
-            ps.setString(2, request.clueType().name());
-            ps.setString(3, enumName(request.markIntent()));
-            ps.setString(4, enumName(request.relationDetail()));
-            ps.setString(5, request.desiredHelp());
+            ps.setString(2, request.type().name());
+            ps.setString(3, intent.name());
+            ps.setString(4, enumName(request.relationType()));
+            ps.setString(5, helpRequestType.name());
             ps.setString(6, request.articleId());
             ps.setString(7, request.articleTitle());
-            ps.setString(8, request.sourceName());
-            ps.setString(9, request.excerpt());
-            ps.setString(10, request.questionType());
+            ps.setObject(8, request.articleType());
+            ps.setString(9, request.selectedText());
+            ps.setString(10, enumName(request.questionType()));
             ps.setString(11, request.questionText());
-            if (request.bodyRecordId() == null) ps.setObject(12, null); else ps.setLong(12, request.bodyRecordId());
-            ps.setTimestamp(13, Timestamp.from(request.occurredAt()));
+            ps.setTimestamp(12, request.occurredAt() == null ? null : Timestamp.from(request.occurredAt()));
+            ps.setString(13, cycleRelation.name());
+            ps.setObject(14, request.severity());
+            ps.setObject(15, request.resolved());
+            ps.setString(16, ClueSource.KNOWLEDGE_ARTICLE.name());
+            ps.setString(17, status.name());
+            ps.setString(18, request.suggestedTopicId());
+            ps.setString(19, request.suggestedTopicTitle());
+            ps.setString(20, request.originalLabel());
             return ps;
         }, key);
         return requiredKey(key);
     }
 
-    public Optional<ClueView> findClue(long userId, long clueId) {
-        return first(jdbc.query("SELECT * FROM tb_cognition_clue WHERE user_id=? AND id=?", CLUE_ROW, userId, clueId));
+    public Optional<ClueRow> findClue(long userId, long clueId) {
+        return first(jdbc.query("SELECT * FROM cognition_clue WHERE user_id=? AND id=? AND deleted=0",
+                CLUE_ROW, userId, clueId));
     }
 
-    public List<ClueView> findClues(long userId, List<Long> clueIds) {
+    public List<ClueRow> findClues(long userId, List<Long> clueIds) {
         if (clueIds.isEmpty()) return List.of();
-        return namedJdbc.query("SELECT * FROM tb_cognition_clue WHERE user_id=:userId AND id IN (:ids) ORDER BY id",
+        return namedJdbc.query("SELECT * FROM cognition_clue WHERE user_id=:userId AND id IN (:ids) AND deleted=0 ORDER BY id",
                 new MapSqlParameterSource("userId", userId).addValue("ids", clueIds), CLUE_ROW);
     }
 
-    public List<ClueView> listClues(long userId, ClueSection section, Long cursor, int limit) {
-        String condition = switch (section) {
-            case PENDING -> "status IN ('PENDING','IN_DIGEST') AND (mark_intent IS NULL OR mark_intent <> 'QUESTION')";
-            case ORGANIZED -> "status IN ('ORGANIZED','KNOWLEDGE_ONLY')";
-            case QUESTIONS -> "mark_intent='QUESTION' AND status <> 'WITHDRAWN'";
-        };
-        long before = cursor == null ? Long.MAX_VALUE : cursor;
-        return jdbc.query("SELECT * FROM tb_cognition_clue WHERE user_id=? AND id<? AND " + condition + " ORDER BY id DESC LIMIT ?",
-                CLUE_ROW, userId, before, limit);
+    /** Section 8.3 view + optional precise filters, page is 1-based. */
+    public List<ClueRow> listClues(long userId, ClueListView view, ClueIntent intent, ClueStatus status,
+                                   String articleId, int offset, int limit) {
+        Clause clause = clueClause(userId, view, intent, status, articleId);
+        return jdbc.query(clause.sql + " ORDER BY id DESC LIMIT ? OFFSET ?",
+                CLUE_ROW, clause.argsWith(limit, offset));
     }
 
-    public long insertTask(long userId) {
-        String sql = "INSERT INTO tb_cognition_digest_task (user_id,status,generator_type) VALUES (?,'PENDING','FIXED_V1')";
-        return insertAndReturnKey(sql, userId);
+    public long countClues(long userId, ClueListView view, ClueIntent intent, ClueStatus status, String articleId) {
+        Clause clause = clueClause(userId, view, intent, status, articleId);
+        return Objects.requireNonNull(jdbc.queryForObject(
+                clause.countSql(), Long.class, clause.args()));
     }
 
-    public void linkTaskClues(long userId, long taskId, List<Long> clueIds) {
-        jdbc.batchUpdate("INSERT INTO tb_cognition_digest_task_clue (user_id,digest_task_id,clue_id) VALUES (?,?,?)",
-                clueIds, clueIds.size(), (ps, clueId) -> {
-                    ps.setLong(1, userId);
-                    ps.setLong(2, taskId);
-                    ps.setLong(3, clueId);
-                });
-        MapSqlParameterSource params = new MapSqlParameterSource("userId", userId).addValue("ids", clueIds);
-        namedJdbc.update("UPDATE tb_cognition_clue SET status='IN_DIGEST', version=version+1 WHERE user_id=:userId AND id IN (:ids) AND status='PENDING'", params);
+    private record Clause(String sql, String countSql, Object[] args) {
+        Object[] argsWith(Object... extra) {
+            Object[] all = new Object[args.length + extra.length];
+            System.arraycopy(args, 0, all, 0, args.length);
+            System.arraycopy(extra, 0, all, args.length, extra.length);
+            return all;
+        }
     }
 
-    public void markTaskRunning(long userId, long taskId) {
-        jdbc.update("UPDATE tb_cognition_digest_task SET status='RUNNING',attempt_count=attempt_count+1,started_at=?,failure_code=NULL,failure_message=NULL,version=version+1 WHERE user_id=? AND id=?",
-                Timestamp.from(Instant.now()), userId, taskId);
+    private Clause clueClause(long userId, ClueListView view, ClueIntent intent, ClueStatus status, String articleId) {
+        StringBuilder where = new StringBuilder(" FROM cognition_clue WHERE user_id=? AND deleted=0");
+        List<Object> args = new ArrayList<>();
+        args.add(userId);
+        if (view != null) {
+            switch (view) {
+                case PENDING -> where.append(" AND intent='RELATED' AND status='PENDING'");
+                case ORGANIZED -> where.append(" AND status='ORGANIZED'");
+                case QUESTIONS -> where.append(" AND intent='QUESTION'");
+                case ALL -> {
+                }
+            }
+        }
+        if (intent != null) {
+            where.append(" AND intent=?");
+            args.add(intent.name());
+        }
+        if (status != null) {
+            where.append(" AND status=?");
+            args.add(status.name());
+        }
+        if (articleId != null && !articleId.isBlank()) {
+            where.append(" AND article_id=?");
+            args.add(articleId);
+        }
+        return new Clause("SELECT *" + where, "SELECT COUNT(*)" + where, args.toArray());
     }
 
-    public void markTaskSucceeded(long userId, long taskId) {
-        jdbc.update("UPDATE tb_cognition_digest_task SET status='SUCCEEDED',finished_at=?,version=version+1 WHERE user_id=? AND id=?",
-                Timestamp.from(Instant.now()), userId, taskId);
+    /** Section 10.1 deterministic candidate grouping: RELATED + PENDING clues of the same group. */
+    public List<ClueRow> findPendingRelatedCluesForCandidate(long userId, String suggestedTopicId, String suggestedTopicTitle) {
+        if (suggestedTopicId != null && !suggestedTopicId.isBlank()) {
+            return jdbc.query("""
+                    SELECT * FROM cognition_clue
+                    WHERE user_id=? AND deleted=0 AND intent='RELATED' AND status='PENDING' AND suggested_topic_id=?
+                    ORDER BY id
+                    """, CLUE_ROW, userId, suggestedTopicId);
+        }
+        if (suggestedTopicTitle != null && !suggestedTopicTitle.isBlank()) {
+            return jdbc.query("""
+                    SELECT * FROM cognition_clue
+                    WHERE user_id=? AND deleted=0 AND intent='RELATED' AND status='PENDING'
+                      AND TRIM(suggested_topic_title)=TRIM(?)
+                    ORDER BY id
+                    """, CLUE_ROW, userId, suggestedTopicTitle);
+        }
+        return List.of();
     }
 
-    public void markTaskFailed(long userId, long taskId, String failureCode, String safeMessage) {
-        jdbc.update("UPDATE tb_cognition_digest_task SET status='FAILED',failure_code=?,failure_message=?,finished_at=?,version=version+1 WHERE user_id=? AND id=?",
-                failureCode, safeMessage, Timestamp.from(Instant.now()), userId, taskId);
+    public void updateClueStatus(long userId, List<Long> clueIds, ClueStatus status) {
+        if (clueIds.isEmpty()) return;
+        namedJdbc.update("UPDATE cognition_clue SET status=:status, version=version+1 WHERE user_id=:userId AND id IN (:ids) AND deleted=0",
+                new MapSqlParameterSource("userId", userId).addValue("ids", clueIds).addValue("status", status.name()));
     }
 
-    public Optional<TaskRow> findTask(long userId, long taskId) {
-        return first(jdbc.query("""
-                        SELECT t.*, d.id AS digest_id FROM tb_cognition_digest_task t
-                        LEFT JOIN tb_cognition_digest d ON d.digest_task_id=t.id
-                        WHERE t.user_id=? AND t.id=?
-                        """, TASK_ROW, userId, taskId));
+    public void logicalDeleteClue(long userId, long clueId) {
+        jdbc.update("UPDATE cognition_clue SET deleted=1, version=version+1 WHERE user_id=? AND id=? AND deleted=0",
+                userId, clueId);
     }
 
-    public List<ClueView> findTaskClues(long userId, long taskId) {
-        return jdbc.query("""
-                SELECT c.* FROM tb_cognition_clue c
-                JOIN tb_cognition_digest_task_clue tc ON tc.clue_id=c.id
-                WHERE tc.user_id=? AND tc.digest_task_id=? ORDER BY c.id
-                """, CLUE_ROW, userId, taskId);
+    /** A clue referenced by any digest cannot be revoked (section 6.4). */
+    public boolean isClueUsedInDigest(long userId, long clueId) {
+        Long count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM cognition_digest_clue WHERE user_id=? AND clue_id=?", Long.class, userId, clueId);
+        return count != null && count > 0;
     }
 
-    public long insertDigest(long userId, long taskId, athena.cognition.biz.generator.DigestGenerator.GeneratedDigest generated) {
-        String sql = """
-                INSERT INTO tb_cognition_digest
-                (user_id,digest_task_id,status,title,common_point,possible_link,uncertainty,suggested_action,generator_type,generator_version)
-                VALUES (?,?,'PENDING_CONFIRMATION',?,?,?,?,?,'FIXED_V1',?)
-                """;
-        KeyHolder key = new GeneratedKeyHolder();
-        jdbc.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-            ps.setLong(1, userId);
-            ps.setLong(2, taskId);
-            ps.setString(3, generated.title());
-            ps.setString(4, generated.commonPoint());
-            ps.setString(5, generated.possibleLink());
-            ps.setString(6, generated.uncertainty());
-            ps.setString(7, generated.suggestedAction());
-            ps.setString(8, generated.generatorVersion());
-            return ps;
-        }, key);
-        return requiredKey(key);
+    // ---------- digest ----------
+
+    public long insertDigest(long userId, String title, String generatorVersion) {
+        return insertAndReturnKey(
+                "INSERT INTO cognition_digest (user_id,title,status,generator_version) VALUES (?,?,'PROCESSING',?)",
+                userId, title, generatorVersion);
     }
 
-    public void insertEvidence(long userId, long digestId, List<ClueView> clues) {
-        jdbc.batchUpdate("INSERT INTO tb_cognition_evidence (user_id,digest_id,clue_id,evidence_level,evidence_role) VALUES (?,?,?, ?,?)",
-                clues, clues.size(), (ps, clue) -> {
-                    ps.setLong(1, userId);
-                    ps.setLong(2, digestId);
-                    ps.setLong(3, clue.clueId());
-                    ps.setString(4, clue.clueType() == ClueType.BODY_RECORD ? "HIGH" : "LOW");
-                    ps.setString(5, clue.markIntent() == MarkIntent.QUESTION ? "QUESTION_CONTEXT" : "OBSERVATION_CONTEXT");
-                });
+    public void completeDigest(long userId, long digestId, String commonPoint, String possibleRelation,
+                               String uncertainty, String suggestedAction) {
+        jdbc.update("""
+                UPDATE cognition_digest
+                SET status='READY', common_point=?, possible_relation=?, uncertainty=?, suggested_action=?,
+                    generated_at=?, failure_code=NULL, version=version+1
+                WHERE user_id=? AND id=?
+                """, commonPoint, possibleRelation, uncertainty, suggestedAction,
+                Timestamp.from(Instant.now()), userId, digestId);
+    }
+
+    public void updateDigestTitle(long userId, long digestId, String title) {
+        jdbc.update("UPDATE cognition_digest SET title=? WHERE user_id=? AND id=?", title, userId, digestId);
+    }
+
+    public void markDigestProcessing(long userId, long digestId) {
+        jdbc.update("UPDATE cognition_digest SET status='PROCESSING', failure_code=NULL, version=version+1 WHERE user_id=? AND id=?",
+                userId, digestId);
+    }
+
+    public void failDigest(long userId, long digestId, String failureCode) {
+        jdbc.update("UPDATE cognition_digest SET status='FAILED', failure_code=?, version=version+1 WHERE user_id=? AND id=?",
+                failureCode, userId, digestId);
+    }
+
+    public void decideDigest(long userId, long digestId, DigestStatus status) {
+        jdbc.update("UPDATE cognition_digest SET status=?, version=version+1 WHERE user_id=? AND id=?",
+                status.name(), userId, digestId);
     }
 
     public Optional<DigestRow> findDigest(long userId, long digestId, boolean forUpdate) {
         String suffix = forUpdate ? " FOR UPDATE" : "";
-        return first(jdbc.query("SELECT * FROM tb_cognition_digest WHERE user_id=? AND id=?" + suffix, DIGEST_ROW, userId, digestId));
+        return first(jdbc.query("SELECT * FROM cognition_digest WHERE user_id=? AND id=? AND deleted=0" + suffix,
+                DIGEST_ROW, userId, digestId));
     }
 
-    public Optional<DigestRow> findDigestByTask(long userId, long taskId) {
-        return first(jdbc.query("SELECT * FROM tb_cognition_digest WHERE user_id=? AND digest_task_id=?", DIGEST_ROW, userId, taskId));
+    public List<DigestRow> listDigests(long userId, DigestStatus status, int offset, int limit) {
+        if (status == null) {
+            return jdbc.query("SELECT * FROM cognition_digest WHERE user_id=? AND deleted=0 ORDER BY id DESC LIMIT ? OFFSET ?",
+                    DIGEST_ROW, userId, limit, offset);
+        }
+        return jdbc.query("SELECT * FROM cognition_digest WHERE user_id=? AND status=? AND deleted=0 ORDER BY id DESC LIMIT ? OFFSET ?",
+                DIGEST_ROW, userId, status.name(), limit, offset);
     }
 
-    public List<DigestRow> listDigests(long userId, DigestStatus status, Long cursor, int limit) {
-        long before = cursor == null ? Long.MAX_VALUE : cursor;
-        return jdbc.query("SELECT * FROM tb_cognition_digest WHERE user_id=? AND status=? AND id<? ORDER BY id DESC LIMIT ?",
-                DIGEST_ROW, userId, status.name(), before, limit);
+    public long countDigests(long userId, DigestStatus status) {
+        if (status == null) {
+            return Objects.requireNonNull(jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM cognition_digest WHERE user_id=? AND deleted=0", Long.class, userId));
+        }
+        return Objects.requireNonNull(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM cognition_digest WHERE user_id=? AND status=? AND deleted=0", Long.class, userId, status.name()));
     }
 
-    public List<EvidenceView> findDigestEvidence(long userId, long digestId) {
-        return jdbc.query("SELECT id,clue_id,evidence_level,evidence_role FROM tb_cognition_evidence WHERE user_id=? AND digest_id=? ORDER BY id",
-                (rs, row) -> new EvidenceView(rs.getLong("id"), rs.getLong("clue_id"), rs.getString("evidence_level"), rs.getString("evidence_role")),
-                userId, digestId);
+    /** Latest open digest (READY first, then PROCESSING) for the inbox aggregate. */
+    public Optional<DigestRow> findActiveDigest(long userId) {
+        return first(jdbc.query("""
+                SELECT * FROM cognition_digest
+                WHERE user_id=? AND deleted=0 AND status IN ('READY','PROCESSING')
+                ORDER BY CASE status WHEN 'READY' THEN 0 ELSE 1 END, id DESC LIMIT 1
+                """, DIGEST_ROW, userId));
     }
 
-    public long acceptDigest(long userId, DigestRow digest) {
-        long topicId = insertAndReturnKey("""
-                INSERT INTO tb_cognition_topic
-                (user_id,source_digest_id,title,summary,uncertainty,maturity,progress,risk_status)
-                VALUES (?,?,?,?,?,'CLUE','FOLLOWING','NONE')
-                """, userId, digest.id(), digest.title(), digest.possibleLink(), digest.uncertainty());
-        long actionId = insertAndReturnKey("""
-                INSERT INTO tb_cognition_action (user_id,topic_id,title,instruction,status,due_at)
-                VALUES (?,?,?,?,'PENDING',?)
-                """, userId, topicId, "完成一次观察记录", digest.suggestedAction(), Timestamp.from(Instant.now().plus(7, ChronoUnit.DAYS)));
-        jdbc.update("UPDATE tb_cognition_digest SET status='ACCEPTED',decided_at=?,version=version+1 WHERE user_id=? AND id=?",
-                Timestamp.from(Instant.now()), userId, digest.id());
-        jdbc.update("UPDATE tb_cognition_evidence SET topic_id=? WHERE user_id=? AND digest_id=?", topicId, userId, digest.id());
+    public boolean hasDigestWithStatus(long userId, DigestStatus status) {
+        Long count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM cognition_digest WHERE user_id=? AND status=? AND deleted=0",
+                Long.class, userId, status.name());
+        return count != null && count > 0;
+    }
+
+    public long countPendingDigests(long userId) {
+        return Objects.requireNonNull(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM cognition_digest WHERE user_id=? AND deleted=0 AND status IN ('READY','PROCESSING')",
+                Long.class, userId));
+    }
+
+    // ---------- digest <-> clue ----------
+
+    public void linkDigestClues(long userId, long digestId, List<Long> clueIds) {
+        jdbc.batchUpdate("INSERT INTO cognition_digest_clue (user_id,digest_id,clue_id) VALUES (?,?,?)",
+                clueIds, clueIds.size(), (ps, clueId) -> {
+                    ps.setLong(1, userId);
+                    ps.setLong(2, digestId);
+                    ps.setLong(3, clueId);
+                });
+    }
+
+    public List<Long> findDigestClueIds(long userId, long digestId) {
+        return jdbc.query("SELECT clue_id FROM cognition_digest_clue WHERE user_id=? AND digest_id=? ORDER BY clue_id",
+                (rs, row) -> rs.getLong("clue_id"), userId, digestId);
+    }
+
+    public List<ClueRow> findDigestClues(long userId, long digestId) {
+        return jdbc.query("""
+                SELECT c.* FROM cognition_clue c
+                JOIN cognition_digest_clue dc ON dc.clue_id=c.id
+                WHERE dc.user_id=? AND dc.digest_id=? ORDER BY c.id
+                """, CLUE_ROW, userId, digestId);
+    }
+
+    /** Section 10.1: at most one open digest per candidate topic group. */
+    public boolean hasOpenDigestForClues(long userId, List<Long> clueIds) {
+        if (clueIds.isEmpty()) return false;
+        Long count = namedJdbc.queryForObject("""
+                SELECT COUNT(*) FROM cognition_digest_clue dc
+                JOIN cognition_digest d ON d.id=dc.digest_id
+                WHERE dc.user_id=:userId AND dc.clue_id IN (:ids)
+                  AND d.deleted=0 AND d.status IN ('PROCESSING','READY')
+                """, new MapSqlParameterSource("userId", userId).addValue("ids", clueIds), Long.class);
+        return count != null && count > 0;
+    }
+
+    // ---------- evidence ----------
+
+    public long insertEvidence(long userId, EvidenceSourceType sourceType, String sourceId, FactLevel factLevel,
+                               String summary, Instant occurredAt) {
+        return insertAndReturnKey("""
+                INSERT INTO cognition_evidence (user_id,source_type,source_id,fact_level,summary,occurred_at,linked_at)
+                VALUES (?,?,?,?,?,?,?)
+                """, userId, sourceType.name(), sourceId, factLevel.name(), summary,
+                occurredAt == null ? null : Timestamp.from(occurredAt), Timestamp.from(Instant.now()));
+    }
+
+    public void linkDigestEvidence(long userId, long digestId, List<Long> evidenceIds) {
+        jdbc.batchUpdate("INSERT INTO cognition_digest_evidence (user_id,digest_id,evidence_id) VALUES (?,?,?)",
+                evidenceIds, evidenceIds.size(), (ps, evidenceId) -> {
+                    ps.setLong(1, userId);
+                    ps.setLong(2, digestId);
+                    ps.setLong(3, evidenceId);
+                });
+    }
+
+    public void linkTopicEvidence(long userId, long topicId, List<Long> evidenceIds) {
+        jdbc.batchUpdate("INSERT INTO cognition_topic_evidence (user_id,topic_id,evidence_id) VALUES (?,?,?)",
+                evidenceIds, evidenceIds.size(), (ps, evidenceId) -> {
+                    ps.setLong(1, userId);
+                    ps.setLong(2, topicId);
+                    ps.setLong(3, evidenceId);
+                });
+    }
+
+    /** Section 4.4: retire evidence whose source is gone; never physically delete. */
+    public void deactivateEvidence(long userId, List<Long> evidenceIds) {
+        if (evidenceIds.isEmpty()) return;
+        namedJdbc.update("UPDATE cognition_evidence SET active=0 WHERE user_id=:userId AND id IN (:ids)",
+                new MapSqlParameterSource("userId", userId).addValue("ids", evidenceIds));
+    }
+
+    private static final String EVIDENCE_SELECT = """
+            SELECT e.*, c.article_id AS clue_article_id, c.article_title AS clue_article_title,
+                   c.article_type AS clue_article_type, af.result AS feedback_result
+            FROM cognition_evidence e
+            LEFT JOIN cognition_clue c ON e.source_type='CLUE'
+                AND c.id=CAST(SUBSTRING_INDEX(e.source_id, '_', -1) AS UNSIGNED)
+            LEFT JOIN cognition_action_feedback af ON af.evidence_id=e.id
+            """;
+
+    public List<EvidenceRow> findDigestEvidence(long userId, long digestId) {
+        return jdbc.query(EVIDENCE_SELECT + """
+                JOIN cognition_digest_evidence de ON de.evidence_id=e.id
+                WHERE de.user_id=? AND de.digest_id=? AND e.deleted=0 ORDER BY e.id
+                """, EVIDENCE_ROW, userId, digestId);
+    }
+
+    public List<EvidenceRow> findTopicEvidence(long userId, long topicId) {
+        return jdbc.query(EVIDENCE_SELECT + """
+                JOIN cognition_topic_evidence te ON te.evidence_id=e.id
+                WHERE te.user_id=? AND te.topic_id=? AND e.deleted=0 AND e.active=1 ORDER BY e.id
+                """, EVIDENCE_ROW, userId, topicId);
+    }
+
+    // ---------- digest task ----------
+
+    public long insertTask(long userId, TriggerType triggerType, String generatorVersion) {
+        return insertAndReturnKey(
+                "INSERT INTO cognition_digest_task (user_id,status,trigger_type,generator_version) VALUES (?,'PENDING',?,?)",
+                userId, triggerType.name(), generatorVersion);
+    }
+
+    public Optional<TaskRow> findTask(long userId, long taskId) {
+        return first(jdbc.query("SELECT * FROM cognition_digest_task WHERE user_id=? AND id=? AND deleted=0",
+                TASK_ROW, userId, taskId));
+    }
+
+    /** Row lock for re-entrant-safe retry (section 12). */
+    public Optional<TaskRow> findTaskForUpdate(long userId, long taskId) {
+        return first(jdbc.query("SELECT * FROM cognition_digest_task WHERE user_id=? AND id=? AND deleted=0 FOR UPDATE",
+                TASK_ROW, userId, taskId));
+    }
+
+    /**
+     * Retry bumps retry_count only: trigger_type keeps the original value
+     * (RULE_THRESHOLD / USER_REQUEST) so the task record stays truthful about
+     * how the digest was first triggered. The RETRY enum value is reserved for
+     * a future manual re-trigger that creates a new task record.
+     */
+    public void markTaskRunning(long userId, long taskId, boolean retry) {
         jdbc.update("""
-                UPDATE tb_cognition_clue c JOIN tb_cognition_evidence e ON e.clue_id=c.id
-                SET c.status='ORGANIZED',c.version=c.version+1 WHERE e.user_id=? AND e.digest_id=? AND c.user_id=?
-                """, userId, digest.id(), userId);
-        insertTopicVersion(userId, topicId, 1, digest.possibleLink(), digest.uncertainty(),
-                CognitionMaturity.CLUE, TopicProgress.FOLLOWING, RiskStatus.NONE, "DIGEST_ACCEPTED");
-        insertDecision(userId, digest.id(), DigestDecision.ACCEPT_TOPIC, null, topicId);
-        return actionId;
+                UPDATE cognition_digest_task
+                SET status='RUNNING', retry_count=retry_count+?, failure_code=NULL, version=version+1
+                WHERE user_id=? AND id=?
+                """, retry ? 1 : 0, userId, taskId);
     }
 
-    public void saveDigestAsKnowledge(long userId, DigestRow digest, String reasonCode) {
-        jdbc.update("UPDATE tb_cognition_digest SET status='SAVED_KNOWLEDGE',decided_at=?,version=version+1 WHERE user_id=? AND id=?",
-                Timestamp.from(Instant.now()), userId, digest.id());
-        updateDigestCluesStatus(userId, digest.id(), ClueStatus.KNOWLEDGE_ONLY);
-        insertDecision(userId, digest.id(), DigestDecision.SAVE_KNOWLEDGE, reasonCode, null);
+    public void markTaskSucceeded(long userId, long taskId, long digestId) {
+        jdbc.update("UPDATE cognition_digest_task SET status='SUCCEEDED', digest_id=?, version=version+1 WHERE user_id=? AND id=?",
+                digestId, userId, taskId);
     }
 
-    public void rejectDigest(long userId, DigestRow digest, String reasonCode) {
-        jdbc.update("UPDATE tb_cognition_digest SET status='REJECTED',decided_at=?,version=version+1 WHERE user_id=? AND id=?",
-                Timestamp.from(Instant.now()), userId, digest.id());
-        updateDigestCluesStatus(userId, digest.id(), ClueStatus.REJECTED);
-        insertDecision(userId, digest.id(), DigestDecision.REJECT, reasonCode, null);
+    public void markTaskFailed(long userId, long taskId, long digestId, String failureCode) {
+        jdbc.update("UPDATE cognition_digest_task SET status='FAILED', digest_id=?, failure_code=?, version=version+1 WHERE user_id=? AND id=?",
+                digestId, failureCode, userId, taskId);
     }
 
-    private void updateDigestCluesStatus(long userId, long digestId, ClueStatus status) {
-        jdbc.update("""
-                UPDATE tb_cognition_clue c JOIN tb_cognition_evidence e ON e.clue_id=c.id
-                SET c.status=?,c.version=c.version+1 WHERE e.user_id=? AND e.digest_id=? AND c.user_id=?
-                """, status.name(), userId, digestId, userId);
+    public Optional<TaskRow> findLatestTask(long userId) {
+        return first(jdbc.query(
+                "SELECT * FROM cognition_digest_task WHERE user_id=? AND deleted=0 ORDER BY id DESC LIMIT 1",
+                TASK_ROW, userId));
     }
 
-    private void insertDecision(long userId, long digestId, DigestDecision decision, String reasonCode, Long topicId) {
-        jdbc.update("INSERT INTO tb_cognition_digest_decision (user_id,digest_id,decision,reason_code,topic_id) VALUES (?,?,?,?,?)",
-                userId, digestId, decision.name(), reasonCode, topicId);
+    public boolean hasProcessingTask(long userId) {
+        Long count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM cognition_digest_task WHERE user_id=? AND deleted=0 AND status IN ('PENDING','RUNNING')",
+                Long.class, userId);
+        return count != null && count > 0;
+    }
+
+    public int countFailedTasks(long userId) {
+        return Objects.requireNonNull(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM cognition_digest_task WHERE user_id=? AND deleted=0 AND status='FAILED'",
+                Integer.class, userId));
+    }
+
+    // ---------- topic ----------
+
+    public long insertTopic(long userId, long sourceDigestId, String title, String domain, Maturity maturity,
+                            String stageUnderstanding, String knownFactsJson, String openQuestionsJson,
+                            int evidenceCount, int articleClueCount, int bodyRecordCount, int cycleCount) {
+        return insertAndReturnKey("""
+                INSERT INTO cognition_topic
+                (user_id,source_digest_id,title,domain,maturity,user_progress,risk_status,stage_understanding,
+                 known_facts,open_questions,evidence_count,article_clue_count,body_record_count,cycle_count,last_updated_at)
+                VALUES (?,?,?,?,?,'OBSERVING','NONE',?,?,?,?,?,?,?,?)
+                """, userId, sourceDigestId, title, domain, maturity.name(), stageUnderstanding, knownFactsJson,
+                openQuestionsJson, evidenceCount, articleClueCount, bodyRecordCount, cycleCount,
+                Timestamp.from(Instant.now()));
     }
 
     public Optional<TopicRow> findTopic(long userId, long topicId, boolean forUpdate) {
-        return first(jdbc.query("SELECT * FROM tb_cognition_topic WHERE user_id=? AND id=?" + (forUpdate ? " FOR UPDATE" : ""),
+        String suffix = forUpdate ? " FOR UPDATE" : "";
+        return first(jdbc.query("SELECT * FROM cognition_topic WHERE user_id=? AND id=? AND deleted=0" + suffix,
                 TOPIC_ROW, userId, topicId));
     }
 
     public Optional<TopicRow> findTopicByDigest(long userId, long digestId) {
-        return first(jdbc.query("SELECT * FROM tb_cognition_topic WHERE user_id=? AND source_digest_id=?", TOPIC_ROW, userId, digestId));
+        return first(jdbc.query("SELECT * FROM cognition_topic WHERE user_id=? AND source_digest_id=? AND deleted=0",
+                TOPIC_ROW, userId, digestId));
     }
 
-    public List<TopicRow> listTopics(long userId, TopicProgress progress, Long cursor, int limit) {
-        long before = cursor == null ? Long.MAX_VALUE : cursor;
-        if (progress == null) {
-            return jdbc.query("SELECT * FROM tb_cognition_topic WHERE user_id=? AND id<? ORDER BY id DESC LIMIT ?", TOPIC_ROW, userId, before, limit);
-        }
-        return jdbc.query("SELECT * FROM tb_cognition_topic WHERE user_id=? AND progress=? AND id<? ORDER BY id DESC LIMIT ?",
-                TOPIC_ROW, userId, progress.name(), before, limit);
+    public List<TopicRow> listTopics(long userId, int offset, int limit) {
+        return jdbc.query("SELECT * FROM cognition_topic WHERE user_id=? AND deleted=0 ORDER BY id DESC LIMIT ? OFFSET ?",
+                TOPIC_ROW, userId, limit, offset);
     }
 
-    public void updateTopicProgress(long userId, TopicRow topic, TopicProgress progress) {
-        int nextVersion = topic.currentVersion() + 1;
-        jdbc.update("UPDATE tb_cognition_topic SET progress=?,current_version=?,version=version+1 WHERE user_id=? AND id=?",
-                progress.name(), nextVersion, userId, topic.id());
-        insertTopicVersion(userId, topic.id(), nextVersion, topic.summary(), topic.uncertainty(), topic.maturity(), progress,
-                topic.riskStatus(), "USER_PROGRESS_CHANGED");
+    public long countTopics(long userId) {
+        return Objects.requireNonNull(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM cognition_topic WHERE user_id=? AND deleted=0", Long.class, userId));
     }
 
-    public List<ActionView> findTopicActions(long userId, long topicId) {
-        return jdbc.query("SELECT * FROM tb_cognition_action WHERE user_id=? AND topic_id=? ORDER BY id DESC", ACTION_ROW, userId, topicId);
+    public void updateTopicNextAction(long userId, long topicId, long actionId) {
+        jdbc.update("UPDATE cognition_topic SET next_action_id=? WHERE user_id=? AND id=?", actionId, userId, topicId);
     }
 
-    public List<FeedbackView> findTopicFeedback(long userId, long topicId) {
-        return jdbc.query("SELECT * FROM tb_cognition_feedback WHERE user_id=? AND topic_id=? ORDER BY id DESC", FEEDBACK_ROW, userId, topicId);
-    }
-
-    public List<TopicVersionView> findTopicVersions(long userId, long topicId) {
-        return jdbc.query("SELECT * FROM tb_cognition_topic_version WHERE user_id=? AND topic_id=? ORDER BY version_no DESC",
-                (rs, row) -> new TopicVersionView(rs.getInt("version_no"), rs.getString("summary"), rs.getString("uncertainty"),
-                        CognitionMaturity.valueOf(rs.getString("maturity")), TopicProgress.valueOf(rs.getString("progress")),
-                        RiskStatus.valueOf(rs.getString("risk_status")), rs.getString("change_reason"), instant(rs.getTimestamp("created_at"))),
-                userId, topicId);
-    }
-
-    public Optional<ActionView> findAction(long userId, long actionId, boolean forUpdate) {
-        return first(jdbc.query("SELECT * FROM tb_cognition_action WHERE user_id=? AND id=?" + (forUpdate ? " FOR UPDATE" : ""),
-                ACTION_ROW, userId, actionId));
-    }
-
-    public Optional<ActionView> findFirstTopicAction(long userId, long topicId) {
-        return first(jdbc.query("SELECT * FROM tb_cognition_action WHERE user_id=? AND topic_id=? ORDER BY id LIMIT 1", ACTION_ROW, userId, topicId));
-    }
-
-    public Optional<FeedbackView> findFeedbackByAction(long userId, long actionId) {
-        return first(jdbc.query("SELECT * FROM tb_cognition_feedback WHERE user_id=? AND action_id=?", FEEDBACK_ROW, userId, actionId));
-    }
-
-    public long insertFeedback(long userId, ActionView action, FeedbackRequest request) {
-        long id = insertAndReturnKey("""
-                INSERT INTO tb_cognition_feedback (user_id,action_id,topic_id,accuracy,completed,note)
-                VALUES (?,?,?,?,?,?)
-                """, userId, action.actionId(), action.topicId(), request.accuracy().name(), request.completed(), request.note());
-        ActionStatus status = request.completed() ? ActionStatus.COMPLETED : ActionStatus.SKIPPED;
-        jdbc.update("UPDATE tb_cognition_action SET status=?,completed_at=?,version=version+1 WHERE user_id=? AND id=?",
-                status.name(), Timestamp.from(Instant.now()), userId, action.actionId());
-
-        TopicRow topic = findTopic(userId, action.topicId(), true).orElseThrow();
-        int nextVersion = topic.currentVersion() + 1;
-        jdbc.update("UPDATE tb_cognition_topic SET current_version=?,version=version+1 WHERE user_id=? AND id=?",
-                nextVersion, userId, topic.id());
-        insertTopicVersion(userId, topic.id(), nextVersion, topic.summary(), topic.uncertainty(), topic.maturity(),
-                topic.progress(), topic.riskStatus(), "ACTION_FEEDBACK");
-        return id;
-    }
-
-    private void insertTopicVersion(long userId, long topicId, int version, String summary, String uncertainty,
-                                    CognitionMaturity maturity, TopicProgress progress, RiskStatus risk, String reason) {
+    /**
+     * Section 7.3: after feedback the topic version and lastUpdatedAt always
+     * bump; counters are recomputed from linked evidence by the caller,
+     * stageUnderstanding follows a simple per-result text rule (null keeps the
+     * current text, used for SKIPPED) and maturity is the caller-computed
+     * higher-of value (section 10.2, never downgrades).
+     */
+    public void updateTopicAfterFeedback(long userId, long topicId, String stageUnderstanding, Maturity maturity,
+                                         int evidenceCount, int articleClueCount, int bodyRecordCount, int cycleCount) {
         jdbc.update("""
-                INSERT INTO tb_cognition_topic_version
-                (user_id,topic_id,version_no,summary,uncertainty,maturity,progress,risk_status,change_reason)
-                VALUES (?,?,?,?,?,?,?,?,?)
-                """, userId, topicId, version, summary, uncertainty, maturity.name(), progress.name(), risk.name(), reason);
-    }
-
-    public int countPendingDigests(long userId) {
-        return Objects.requireNonNull(jdbc.queryForObject("SELECT COUNT(*) FROM tb_cognition_digest WHERE user_id=? AND status='PENDING_CONFIRMATION'", Integer.class, userId));
-    }
-
-    public int countFailedTasks(long userId) {
-        return Objects.requireNonNull(jdbc.queryForObject("SELECT COUNT(*) FROM tb_cognition_digest_task WHERE user_id=? AND status='FAILED'", Integer.class, userId));
+                UPDATE cognition_topic
+                SET version=version+1, last_updated_at=?, maturity=?,
+                    stage_understanding=COALESCE(?, stage_understanding),
+                    evidence_count=?, article_clue_count=?, body_record_count=?, cycle_count=?
+                WHERE user_id=? AND id=?
+                """, Timestamp.from(Instant.now()), maturity.name(), stageUnderstanding,
+                evidenceCount, articleClueCount, bodyRecordCount, cycleCount, userId, topicId);
     }
 
     public Optional<TopicRow> findPrimaryTopic(long userId) {
         return first(jdbc.query("""
-                SELECT * FROM tb_cognition_topic WHERE user_id=? AND progress IN ('FOLLOWING','OBSERVING')
-                ORDER BY CASE risk_status WHEN 'PROFESSIONAL_HELP' THEN 1 WHEN 'WATCH' THEN 2 ELSE 3 END, updated_at DESC LIMIT 1
+                SELECT * FROM cognition_topic WHERE user_id=? AND deleted=0
+                  AND user_progress IN ('FOLLOWING','OBSERVING','PENDING_CONFIRMATION')
+                ORDER BY last_updated_at DESC LIMIT 1
                 """, TOPIC_ROW, userId));
     }
 
-    public Optional<ActionView> findNextAction(long userId) {
-        return first(jdbc.query("SELECT * FROM tb_cognition_action WHERE user_id=? AND status='PENDING' ORDER BY due_at,id LIMIT 1", ACTION_ROW, userId));
+    // ---------- action ----------
+
+    public long insertAction(long userId, long topicId, String title, String description, ActionType actionType,
+                             Instant dueAt, String feedbackOptionsJson) {
+        return insertAndReturnKey("""
+                INSERT INTO cognition_action (user_id,topic_id,title,description,action_type,status,due_at,feedback_options)
+                VALUES (?,?,?,?,?,'PENDING',?,?)
+                """, userId, topicId, title, description, actionType.name(),
+                dueAt == null ? null : Timestamp.from(dueAt), feedbackOptionsJson);
     }
 
-    public Optional<IdempotencyRow> findIdempotency(long userId, String operation, String key) {
-        return first(jdbc.query("SELECT * FROM tb_cognition_idempotency WHERE user_id=? AND operation=? AND idempotency_key=? AND expires_at>?",
-                (rs, row) -> new IdempotencyRow(rs.getString("request_hash"), rs.getString("resource_type"),
-                        nullableLong(rs, "resource_id")), userId, operation, key, Timestamp.from(Instant.now())));
+    public Optional<ActionRow> findAction(long userId, long actionId, boolean forUpdate) {
+        String suffix = forUpdate ? " FOR UPDATE" : "";
+        return first(jdbc.query("SELECT * FROM cognition_action WHERE user_id=? AND id=? AND deleted=0" + suffix,
+                ACTION_ROW, userId, actionId));
     }
 
-    public void insertIdempotency(long userId, String operation, String key, String requestHash, String resourceType, long resourceId) {
-        jdbc.update("""
-                INSERT INTO tb_cognition_idempotency
-                (user_id,operation,idempotency_key,request_hash,resource_type,resource_id,expires_at)
-                VALUES (?,?,?,?,?,?,?)
-                """, userId, operation, key, requestHash, resourceType, resourceId,
-                Timestamp.from(Instant.now().plus(30, ChronoUnit.DAYS)));
+    public void updateActionStatus(long userId, long actionId, ActionStatus status) {
+        jdbc.update("UPDATE cognition_action SET status=?, version=version+1 WHERE user_id=? AND id=?",
+                status.name(), userId, actionId);
     }
+
+    // ---------- action feedback ----------
+
+    public long insertFeedback(long userId, long actionId, long topicId, ActionFeedbackResult result,
+                               String note, Instant occurredAt) {
+        return insertAndReturnKey("""
+                INSERT INTO cognition_action_feedback (user_id,action_id,topic_id,result,note,occurred_at)
+                VALUES (?,?,?,?,?,?)
+                """, userId, actionId, topicId, result.name(), note, Timestamp.from(occurredAt));
+    }
+
+    public void updateFeedbackEvidence(long userId, long feedbackId, long evidenceId) {
+        jdbc.update("UPDATE cognition_action_feedback SET evidence_id=? WHERE user_id=? AND id=?",
+                evidenceId, userId, feedbackId);
+    }
+
+    public Optional<FeedbackRow> findFeedbackByAction(long userId, long actionId) {
+        return first(jdbc.query(
+                "SELECT * FROM cognition_action_feedback WHERE user_id=? AND action_id=? AND deleted=0",
+                FEEDBACK_ROW, userId, actionId));
+    }
+
+    public List<FeedbackRow> findRecentFeedback(long userId, long topicId, int limit) {
+        return jdbc.query(
+                "SELECT * FROM cognition_action_feedback WHERE user_id=? AND topic_id=? AND deleted=0 ORDER BY id DESC LIMIT ?",
+                FEEDBACK_ROW, userId, topicId, limit);
+    }
+
+    // ---------- decision log ----------
+
+    public void insertDecisionLog(long userId, long digestId, DigestDecision decision, String reason, Integer clientVersion) {
+        jdbc.update("INSERT INTO cognition_decision_log (user_id,digest_id,decision,reason,client_version) VALUES (?,?,?,?,?)",
+                userId, digestId, decision.name(), reason, clientVersion);
+    }
+
+    public Optional<DecisionLogRow> findLatestDecision(long userId) {
+        return first(jdbc.query(
+                "SELECT * FROM cognition_decision_log WHERE user_id=? ORDER BY id DESC LIMIT 1",
+                (rs, row) -> new DecisionLogRow(rs.getLong("digest_id"),
+                        DigestDecision.valueOf(rs.getString("decision")), instant(rs.getTimestamp("created_at"))),
+                userId));
+    }
+
+    // ---------- helpers ----------
 
     private long insertAndReturnKey(String sql, Object... args) {
         KeyHolder key = new GeneratedKeyHolder();
@@ -373,58 +577,116 @@ public class CognitionJdbcRepository {
         return rs.wasNull() ? null : value;
     }
 
+    private static Integer nullableInt(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
+        int value = rs.getInt(column);
+        return rs.wasNull() ? null : value;
+    }
+
+    private static Boolean nullableBoolean(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
+        boolean value = rs.getBoolean(column);
+        return rs.wasNull() ? null : value;
+    }
+
     private static <T> Optional<T> first(List<T> values) {
         return values.isEmpty() ? Optional.empty() : Optional.of(values.get(0));
     }
 
-    private static final RowMapper<ClueView> CLUE_ROW = (rs, row) -> new ClueView(
-            rs.getLong("id"), ClueType.valueOf(rs.getString("clue_type")),
-            rs.getString("mark_intent") == null ? null : MarkIntent.valueOf(rs.getString("mark_intent")),
-            rs.getString("relation_detail") == null ? null : RelationDetail.valueOf(rs.getString("relation_detail")),
-            rs.getString("desired_help"), rs.getString("article_id"), rs.getString("article_title"),
-            rs.getString("source_name"), rs.getString("excerpt"), rs.getString("question_type"), rs.getString("question_text"),
-            nullableLong(rs, "body_record_id"), instant(rs.getTimestamp("occurred_at")), ClueStatus.valueOf(rs.getString("status")),
-            instant(rs.getTimestamp("created_at")));
+    // ---------- row mappers ----------
 
-    private static final RowMapper<TaskRow> TASK_ROW = (rs, row) -> new TaskRow(rs.getLong("id"),
-            DigestTaskStatus.valueOf(rs.getString("status")), GeneratorType.valueOf(rs.getString("generator_type")),
-            rs.getInt("attempt_count"), rs.getString("failure_code"), nullableLong(rs, "digest_id"),
-            instant(rs.getTimestamp("created_at")), instant(rs.getTimestamp("finished_at")));
-
-    private static final RowMapper<DigestRow> DIGEST_ROW = (rs, row) -> new DigestRow(rs.getLong("id"), rs.getLong("digest_task_id"),
-            DigestStatus.valueOf(rs.getString("status")), rs.getString("title"), rs.getString("common_point"),
-            rs.getString("possible_link"), rs.getString("uncertainty"), rs.getString("suggested_action"),
-            GeneratorType.valueOf(rs.getString("generator_type")), rs.getString("generator_version"), rs.getInt("version"),
-            instant(rs.getTimestamp("created_at")), instant(rs.getTimestamp("decided_at")));
-
-    private static final RowMapper<TopicRow> TOPIC_ROW = (rs, row) -> new TopicRow(rs.getLong("id"), rs.getLong("source_digest_id"),
-            rs.getString("title"), rs.getString("summary"), rs.getString("uncertainty"),
-            CognitionMaturity.valueOf(rs.getString("maturity")), TopicProgress.valueOf(rs.getString("progress")),
-            RiskStatus.valueOf(rs.getString("risk_status")), rs.getInt("current_version"),
+    private static final RowMapper<ClueRow> CLUE_ROW = (rs, row) -> new ClueRow(
+            rs.getLong("id"), ClueType.valueOf(rs.getString("type")), ClueIntent.valueOf(rs.getString("intent")),
+            rs.getString("relation_type") == null ? null : RelationType.valueOf(rs.getString("relation_type")),
+            HelpRequestType.valueOf(rs.getString("help_request_type")),
+            rs.getString("article_id"), rs.getString("article_title"), nullableInt(rs, "article_type"),
+            rs.getString("selected_text"),
+            rs.getString("question_type") == null ? null : QuestionType.valueOf(rs.getString("question_type")),
+            rs.getString("question_text"), instant(rs.getTimestamp("occurred_at")),
+            CycleRelation.valueOf(rs.getString("cycle_relation")), nullableInt(rs, "severity"),
+            nullableBoolean(rs, "resolved"), ClueSource.valueOf(rs.getString("source")),
+            ClueStatus.valueOf(rs.getString("status")),
+            rs.getString("suggested_topic_id"), rs.getString("suggested_topic_title"), rs.getString("original_label"),
             instant(rs.getTimestamp("created_at")), instant(rs.getTimestamp("updated_at")));
 
-    private static final RowMapper<ActionView> ACTION_ROW = (rs, row) -> new ActionView(rs.getLong("id"), rs.getLong("topic_id"),
-            rs.getString("title"), rs.getString("instruction"), ActionStatus.valueOf(rs.getString("status")),
-            instant(rs.getTimestamp("due_at")), instant(rs.getTimestamp("completed_at")));
+    private static final RowMapper<DigestRow> DIGEST_ROW = (rs, row) -> new DigestRow(
+            rs.getLong("id"), rs.getString("title"), DigestStatus.valueOf(rs.getString("status")),
+            rs.getString("common_point"), rs.getString("possible_relation"), rs.getString("uncertainty"),
+            rs.getString("suggested_action"), rs.getString("generator_version"),
+            instant(rs.getTimestamp("generated_at")), rs.getString("failure_code"),
+            instant(rs.getTimestamp("expires_at")), rs.getInt("version"), instant(rs.getTimestamp("created_at")));
 
-    private static final RowMapper<FeedbackView> FEEDBACK_ROW = (rs, row) -> new FeedbackView(rs.getLong("id"), rs.getLong("action_id"),
-            rs.getLong("topic_id"), FeedbackAccuracy.valueOf(rs.getString("accuracy")), rs.getBoolean("completed"),
-            instant(rs.getTimestamp("created_at")));
+    private static final RowMapper<TaskRow> TASK_ROW = (rs, row) -> new TaskRow(
+            rs.getLong("id"), nullableLong(rs, "digest_id"), DigestTaskStatus.valueOf(rs.getString("status")),
+            TriggerType.valueOf(rs.getString("trigger_type")), rs.getString("generator_version"),
+            rs.getInt("retry_count"), rs.getString("failure_code"), instant(rs.getTimestamp("created_at")));
 
-    public record TaskRow(long id, DigestTaskStatus status, GeneratorType generatorType, int attemptCount,
-                          String failureCode, Long digestId, Instant createdAt, Instant finishedAt) {
+    private static final RowMapper<TopicRow> TOPIC_ROW = (rs, row) -> new TopicRow(
+            rs.getLong("id"), rs.getLong("source_digest_id"), rs.getString("title"), rs.getString("domain"),
+            Maturity.valueOf(rs.getString("maturity")), UserProgress.valueOf(rs.getString("user_progress")),
+            RiskStatus.valueOf(rs.getString("risk_status")), rs.getString("stage_understanding"),
+            rs.getString("known_facts"), rs.getString("open_questions"),
+            rs.getInt("evidence_count"), rs.getInt("article_clue_count"), rs.getInt("body_record_count"),
+            rs.getInt("cycle_count"), nullableLong(rs, "next_action_id"),
+            instant(rs.getTimestamp("last_updated_at")), rs.getInt("version"), instant(rs.getTimestamp("created_at")));
+
+    private static final RowMapper<ActionRow> ACTION_ROW = (rs, row) -> new ActionRow(
+            rs.getLong("id"), rs.getLong("topic_id"), rs.getString("title"), rs.getString("description"),
+            ActionType.valueOf(rs.getString("action_type")), ActionStatus.valueOf(rs.getString("status")),
+            instant(rs.getTimestamp("due_at")), rs.getString("feedback_options"), instant(rs.getTimestamp("created_at")));
+
+    private static final RowMapper<FeedbackRow> FEEDBACK_ROW = (rs, row) -> new FeedbackRow(
+            rs.getLong("id"), rs.getLong("action_id"), rs.getLong("topic_id"),
+            ActionFeedbackResult.valueOf(rs.getString("result")), rs.getString("note"),
+            instant(rs.getTimestamp("occurred_at")), instant(rs.getTimestamp("created_at")),
+            nullableLong(rs, "evidence_id"));
+
+    private static final RowMapper<EvidenceRow> EVIDENCE_ROW = (rs, row) -> new EvidenceRow(
+            rs.getLong("id"), EvidenceSourceType.valueOf(rs.getString("source_type")), rs.getString("source_id"),
+            FactLevel.valueOf(rs.getString("fact_level")), rs.getString("summary"),
+            instant(rs.getTimestamp("occurred_at")), instant(rs.getTimestamp("linked_at")),
+            rs.getBoolean("active"),
+            rs.getString("clue_article_id"), rs.getString("clue_article_title"), nullableInt(rs, "clue_article_type"),
+            rs.getString("feedback_result") == null ? null : ActionFeedbackResult.valueOf(rs.getString("feedback_result")));
+
+    // ---------- row records (internal numeric ids) ----------
+
+    public record ClueRow(long id, ClueType type, ClueIntent intent, RelationType relationType,
+                          HelpRequestType helpRequestType, String articleId, String articleTitle, Integer articleType,
+                          String selectedText, QuestionType questionType, String questionText, Instant occurredAt,
+                          CycleRelation cycleRelation, Integer severity, Boolean resolved, ClueSource source,
+                          ClueStatus status, String suggestedTopicId, String suggestedTopicTitle, String originalLabel,
+                          Instant createdAt, Instant updatedAt) {
     }
 
-    public record DigestRow(long id, long taskId, DigestStatus status, String title, String commonPoint,
-                            String possibleLink, String uncertainty, String suggestedAction, GeneratorType generatorType,
-                            String generatorVersion, int version, Instant createdAt, Instant decidedAt) {
+    public record DigestRow(long id, String title, DigestStatus status, String commonPoint, String possibleRelation,
+                            String uncertainty, String suggestedAction, String generatorVersion, Instant generatedAt,
+                            String failureCode, Instant expiresAt, int version, Instant createdAt) {
     }
 
-    public record TopicRow(long id, long sourceDigestId, String title, String summary, String uncertainty,
-                           CognitionMaturity maturity, TopicProgress progress, RiskStatus riskStatus, int currentVersion,
-                           Instant createdAt, Instant updatedAt) {
+    public record TaskRow(long id, Long digestId, DigestTaskStatus status, TriggerType triggerType,
+                          String generatorVersion, int retryCount, String failureCode, Instant createdAt) {
     }
 
-    public record IdempotencyRow(String requestHash, String resourceType, Long resourceId) {
+    public record TopicRow(long id, long sourceDigestId, String title, String domain, Maturity maturity,
+                           UserProgress userProgress, RiskStatus riskStatus, String stageUnderstanding,
+                           String knownFactsJson, String openQuestionsJson, int evidenceCount, int articleClueCount,
+                           int bodyRecordCount, int cycleCount, Long nextActionId, Instant lastUpdatedAt,
+                           int version, Instant createdAt) {
+    }
+
+    public record ActionRow(long id, long topicId, String title, String description, ActionType actionType,
+                            ActionStatus status, Instant dueAt, String feedbackOptionsJson, Instant createdAt) {
+    }
+
+    public record FeedbackRow(long id, long actionId, long topicId, ActionFeedbackResult result, String note,
+                              Instant occurredAt, Instant createdAt, Long evidenceId) {
+    }
+
+    public record EvidenceRow(long id, EvidenceSourceType sourceType, String sourceId, FactLevel factLevel,
+                              String summary, Instant occurredAt, Instant linkedAt, boolean active,
+                              String articleId, String articleTitle, Integer articleType,
+                              ActionFeedbackResult feedbackResult) {
+    }
+
+    public record DecisionLogRow(long digestId, DigestDecision decision, Instant createdAt) {
     }
 }

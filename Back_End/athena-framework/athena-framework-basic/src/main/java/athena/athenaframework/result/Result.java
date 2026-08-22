@@ -42,6 +42,11 @@ public class Result<T> {
         return new Result<>(500, message, null, null);
     }
 
+    // 失败，带语义状态码和结构化错误数据（如 data.errorCode）
+    public static <T> Result<T> fail(Integer code, String message, T data) {
+        return new Result<>(code, message, data, null);
+    }
+
     /**
      * 获取
      * @return code

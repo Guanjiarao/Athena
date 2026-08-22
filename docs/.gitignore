@@ -1,0 +1,28 @@
+# 大文件
+*.zip
+*.rar
+*.7z
+*.apk
+*.exe
+*.msi
+*.jar
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.mp4
+*.pdf
+*.docx
+*.pptx
+*.xlsx
+
+# 缓存 / 构建
+**/.gradle/
+**/build/
+**/dist/
+**/node_modules/
+**/.idea/
+**/.gradle-home/
+**/.gradle-user-home/
+**/.gradle-user/

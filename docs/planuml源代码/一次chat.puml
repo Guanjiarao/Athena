@@ -1,0 +1,127 @@
+@startuml RAG_Chat_Full_Flow
+skinparam backgroundColor #FAFAFA
+skinparam monochrome false
+skinparam shadowing false
+skinparam defaultFontName Microsoft YaHei
+skinparam defaultFontSize 12
+skinparam titleFontSize 16
+skinparam titleFontColor #2C3E50
+skinparam noteBackgroundColor #EAF2FB
+skinparam noteBorderColor #7CB9E8
+skinparam arrowColor #7F8C8D
+skinparam arrowThickness 1.2
+skinparam participant {
+  BackgroundColor #4A90D9
+  FontColor white
+  BorderColor #357ABD
+  Padding 8
+}
+skinparam actor {
+  BackgroundColor #4A90D9
+  FontColor white
+  BorderColor #357ABD
+}
+skinparam group {
+  BackgroundColor #EBF5FB
+  BorderColor #5DADE2
+  HeaderBackgroundColor #5DADE2
+  HeaderFontColor white
+}
+skinparam activity {
+  BackgroundColor #F8F9FA
+  BorderColor #BDC3C7
+  DiamondBackgroundColor #FEF9E7
+  DiamondBorderColor #F39C12
+}
+title 一次 AI 科普请求完整调用链路
+actor "用户/前端" as client #4A90D9
+participant "RAGChat\nController" as controller
+participant "RAGChat\nServiceImpl" as service
+participant "ChatQueue\nLimiter" as limiter
+participant "StreamChat\nPipeline" as pipeline
+== 1. HTTP 入口 & 会话初始化 ==
+client -> controller : GET /rag/v3/chat\n(question, conversationId?, deepThinking?)
+activate controller
+controller -> controller : 创建 SseEmitter
+controller -> service : streamChat(question, conversationId,\ndeepThinking, emitter)
+activate service
+controller --> client : 返回 SseEmitter\n(text/event-stream)
+deactivate controller
+service -> service : 生成/复用 conversationId\n生成 taskId\n创建 StreamCallback
+== 2. 队列限流 & Trace 包装 ==
+service -> limiter : enqueue()
+activate limiter
+limiter -> limiter : 队列限流控制
+group StreamChatTraceRunner 包裹 Trace
+  limiter -> limiter : @RagTraceNode\n发送 meta SSE 事件\n{conversationId, taskId}
+end
+limiter -> pipeline : execute(ctx)
+activate pipeline
+deactivate limiter
+== 3. Pipeline 前置阶段 ==
+group Pipeline 阶段
+  pipeline -> pipeline : **① loadMemory**\nConversationMemoryService.loadAndAppend\n加载历史 + 追加当前 user 消息
+  pipeline -> pipeline : **② rewriteQuery**\nMultiQuestionRewriteService.rewriteWithSplit\n术语归一化 -> LLM改写 -> 多问句拆分
+  pipeline -> pipeline : **③ resolveIntents**\nIntentResolver.resolve\n每个子问题并行分类意图\n过滤低分, 上限 MAX_INTENT_COUNT
+end
+== 4. 短路判断 ==
+pipeline -> pipeline : handleGuidance?
+alt 意图不清 / 问题过宽
+  pipeline -> pipeline : onContent(引导语) + onComplete
+  note right of pipeline : **短路返回**\n不进入检索, 不调用 LLM
+  pipeline --> client : SSE finish/done
+else 所有子问题均为 SYSTEM 意图
+  pipeline -> pipeline : handleSystemOnly() = true
+  note right of pipeline : **闲聊/自我介绍**\n使用 answer-chat-system.st
+  group streamSystemResponse
+    pipeline -> pipeline : 构建 system prompt + history\n设置 temperature=0.7, thinking=false
+    pipeline -> pipeline : LLMService.streamChat(req, callback)
+  end
+  pipeline -> pipeline : SSE message/finish/done
+else 正常知识问答路径 (继续往下)
+  note right of pipeline : **进入知识检索**
+end
+== 5. 知识检索 ==
+group Pipeline 阶段 - 知识检索
+  pipeline -> pipeline : **④ retrieve**\nRetrievalEngine.retrieve\n每个子问题并行构建上下文
+  group MultiChannelRetrievalEngine
+    pipeline -> pipeline : buildSearchContext\n按意图筛选通道, 优先级排序
+    pipeline -> pipeline : executeSearchChannels\n多通道并行检索(向量/全文/MCP)
+    pipeline -> pipeline : executePostProcessors\n去重 + Rerank 后置处理链
+  end
+end
+pipeline -> pipeline : handleEmptyRetrieval?
+alt 全部 chunk 得分 < 0.3
+  pipeline -> pipeline : onContent("未检索到相关文档内容")\nonComplete
+  note right of pipeline : **短路返回**\n不调用 LLM
+  pipeline --> client : SSE finish/done
+else 检索结果非空 (继续)
+  note right of pipeline : **进入 Prompt 组装**
+end
+== 6. Prompt 组装 & LLM 调用 ==
+group Pipeline 阶段 - RAG 生成
+  pipeline -> pipeline : **⑤ streamRagResponse**\n合并所有子问题意图 IntentGroup\nretrievedChunks 注入 callback
+  group RAGPromptService.buildStructuredMessages
+    pipeline -> pipeline : 选择 system prompt 模板\nKB_ONLY / MCP_ONLY / MIXED
+    pipeline -> pipeline : 拼接 conversation history
+    pipeline -> pipeline : 构建 evidence body\n(kb-evidence + mcp-evidence)\n拼接 user question
+  end
+  pipeline -> pipeline : LLMService.streamChat\n(deepThinking 控制 temperature/topP)
+end
+== 7. SSE 输出 & 完成 ==
+pipeline -> pipeline : **⑥ StreamChatEventHandler**
+group onContent / onThinking
+  pipeline -> client : SSE message (type=response)\n分片推送
+  pipeline -> client : SSE message (type=think)\n分片推送
+end
+group onComplete
+  pipeline -> pipeline : 1. assistant 消息持久化\n   到 ConversationMemory
+  pipeline -> pipeline : 2. 解析会话标题
+  pipeline -> pipeline : 3. buildNoteReferences\n   score>=0.5, 同noteId保留高分
+  pipeline -> client : SSE finish\n{messageId, title, noteReferences}
+  pipeline -> client : SSE done [DONE]
+  pipeline -> pipeline : 4. 注销任务 + complete emitter
+end
+deactivate pipeline
+deactivate service
+@enduml

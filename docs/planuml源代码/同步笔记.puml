@@ -1,0 +1,88 @@
+@startuml Note_Review_To_RAG_Simple
+skinparam backgroundColor #FAFAFA
+skinparam monochrome false
+skinparam shadowing false
+skinparam defaultFontName Microsoft YaHei
+skinparam defaultFontSize 12
+skinparam titleFontSize 16
+skinparam titleFontColor #2C3E50
+skinparam noteBackgroundColor #EAF2FB
+skinparam noteBorderColor #7CB9E8
+skinparam arrowColor #7F8C8D
+skinparam arrowThickness 1.2
+
+skinparam participant {
+  BackgroundColor #4A90D9
+  FontColor white
+  BorderColor #357ABD
+  Padding 8
+}
+
+skinparam actor {
+  BackgroundColor #4A90D9
+  FontColor white
+  BorderColor #357ABD
+}
+
+title 管理员审核通过笔记 → 上传 RAG 流程（简化版）
+
+actor "管理员" as admin
+participant "Athena\n(ground)" as athena
+participant "线程池\n(异步)" as executor
+participant "athena-rag" as rag
+participant "向量库" as vector
+
+== 1. 管理员审核通过 ==
+
+admin -> athena : 审核通过操作
+activate athena
+athena -> athena : 更新笔记状态为"审核通过"
+note right of athena : status = APPROVED
+
+== 2. 事务提交后异步上传 ==
+
+athena -> athena : 事务提交成功后\n提交异步上传任务到线程池
+athena -> executor : 提交上传任务
+activate executor
+
+== 3. 上传笔记到 RAG ==
+
+executor -> rag : 上传笔记 HTML 内容\n(POST /knowledge-base/{kbId}/docs/upload)
+activate rag
+rag -> rag : 创建文档记录\n保存原始文件
+note right of rag : KnowledgeDocument\nstatus=PENDING
+
+== 4. 触发分块 ==
+
+rag --> executor : 返回 docId
+deactivate rag
+executor -> rag : 调用 startChunk 接口\n(POST /knowledge-base/docs/{docId}/chunk)
+activate rag
+rag -> rag : 更新状态为 RUNNING\n发送 MQ 分块消息
+
+== 5. MQ 异步分块 ==
+
+rag -> rag : MQ Consumer 消费消息\n执行 Ingestion Pipeline
+note right of rag : Parser → Chunker →\nEmbedding → Indexer
+
+== 6. 写入存储 ==
+
+rag -> rag : 写入 chunk 表\n(delete old + insert new)
+rag -> vector : 写入向量
+activate vector
+vector --> rag : 写入完成
+deactivate vector
+
+rag -> rag : 更新 document.status = SUCCESS\n设置 chunkCount
+
+== 7. 完成 ==
+
+rag --> executor : 分块完成
+deactivate rag
+executor --> athena : 上传任务完成
+deactivate executor
+athena --> admin : 笔记已可检索
+
+note over athena, vector : 此后该笔记可被 RAG 检索使用
+
+@enduml

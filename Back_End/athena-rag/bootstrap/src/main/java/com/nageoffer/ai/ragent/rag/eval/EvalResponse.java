@@ -30,6 +30,11 @@ public class EvalResponse {
     private List<String> retrievedContexts;
 
     /**
+     * chunk 维度的文档 ID 列表（与 retrievedContexts 顺序对应，保留 null，不去重）
+     */
+    private List<String> retrievedContextDocIds;
+
+    /**
      * MCP 工具调用结果（无 MCP 分支时为空字符串）
      */
     private String mcpContext;
