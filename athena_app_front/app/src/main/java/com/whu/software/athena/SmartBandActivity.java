@@ -35,7 +35,20 @@ public class SmartBandActivity extends AppCompatActivity {
         findViewById(R.id.btn_back).setOnClickListener(v -> finish());
         bindViews();
         bindFallbackData();
+        if (!isHeytapAvailable()) {
+            Toast.makeText(this, "当前设备未安装 OPPO 健康服务，设备数据功能暂不可用", Toast.LENGTH_LONG).show();
+            return;
+        }
         checkPermissionsThenAuth();
+    }
+
+    private boolean isHeytapAvailable() {
+        try {
+            Class.forName("com.heytap.databaseengine.HeytapHealthApi");
+            return true;
+        } catch (Throwable ignored) {
+            return false;
+        }
     }
 
     private void bindViews() {

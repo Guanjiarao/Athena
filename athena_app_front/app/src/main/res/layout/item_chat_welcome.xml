@@ -31,7 +31,7 @@
                 android:layout_gravity="center"
                 android:contentDescription="avatar"
                 android:scaleType="centerCrop"
-                android:src="@drawable/tree" />
+                android:src="@drawable/ic_ai" />
 
         </FrameLayout>
 

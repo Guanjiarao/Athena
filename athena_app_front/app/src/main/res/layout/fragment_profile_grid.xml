@@ -2,13 +2,13 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white">
+    android:background="@color/athena_page_bg">
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_profile_grid"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/white"
+        android:background="@color/athena_page_bg"
         android:clipToPadding="false"
         android:nestedScrollingEnabled="false"
         android:overScrollMode="never"
@@ -23,7 +23,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:text="暂无内容"
-        android:textColor="#BBBBBB"
+        android:textColor="@color/athena_text_secondary"
         android:textSize="14sp"
         android:visibility="gone" />
 

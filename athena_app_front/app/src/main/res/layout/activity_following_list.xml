@@ -2,13 +2,13 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="@color/athena_page_bg"
     android:orientation="vertical">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="56dp"
-        android:background="@color/white"
+        android:background="@drawable/bg_athena_toolbar"
         android:elevation="2dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
@@ -32,7 +32,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="我的关注"
-            android:textColor="#333333"
+            android:textColor="@color/athena_text_primary"
             android:textSize="17sp"
             android:textStyle="bold" />
 
@@ -45,7 +45,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#EEEEEE" />
+        android:background="@color/athena_stroke" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_following"

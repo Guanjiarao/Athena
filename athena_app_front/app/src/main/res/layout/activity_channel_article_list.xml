@@ -2,13 +2,13 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FAF8F7"
+    android:background="@color/athena_page_bg"
     android:orientation="vertical">
 
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="56dp"
-        android:background="#FFFFFF">
+        android:background="@drawable/bg_athena_toolbar">
 
         <ImageView
             android:id="@+id/btn_back"
@@ -26,7 +26,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:textColor="#111111"
+            android:textColor="@color/athena_text_primary"
             android:textSize="18sp"
             android:textStyle="bold" />
     </RelativeLayout>
@@ -34,13 +34,13 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#F0F0F0" />
+        android:background="@color/athena_stroke" />
 
     <HorizontalScrollView
         android:id="@+id/hsv_filter_chips"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#FFFFFF"
+        android:background="@color/athena_page_bg"
         android:clipToPadding="false"
         android:overScrollMode="never"
         android:paddingStart="12dp"

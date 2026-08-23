@@ -2,14 +2,14 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF"
+    android:background="@color/athena_page_bg"
     android:orientation="vertical">
 
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:layout_marginTop="8dp"
-        android:background="#FFFFFF">
+        android:background="@drawable/bg_athena_toolbar">
 
         <ImageView
             android:id="@+id/btn_back"
@@ -30,7 +30,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="文章详情"
-            android:textColor="#111111"
+            android:textColor="@color/athena_text_primary"
             android:textSize="18sp"
             android:textStyle="bold" />
     </RelativeLayout>
@@ -38,7 +38,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#F0F0F0" />
+        android:background="@color/athena_stroke" />
 
     <ScrollView
         android:layout_width="match_parent"
@@ -59,11 +59,11 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_margin="16dp"
-                android:background="#E9F0EA"
+                android:background="@drawable/bg_athena_sage_card"
                 android:lineSpacingExtra="4dp"
                 android:padding="16dp"
                 android:text="来源：Athena 健康内容库\n审核状态：健康内容编辑审核\n最近更新：2026 年 8 月\n适用人群：希望了解基础身体知识的成年人\n内容边界：科普信息不能替代诊断；持续或加重的不适请寻求专业帮助。\n\n为什么推荐给我：基于你主动选择的关注方向，不依据浏览、点赞或收藏推断身体状态。"
-                android:textColor="#385148"
+                android:textColor="@color/athena_text_sage"
                 android:textSize="13sp" />
 
             <WebView
@@ -77,7 +77,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#FAFAF7"
+        android:background="@color/athena_surface_sand"
         android:orientation="vertical"
         android:padding="10dp">
 
@@ -86,7 +86,7 @@
             android:layout_height="wrap_content"
             android:gravity="center"
             android:text="长按选中一段文字，再快速标记"
-            android:textColor="#6B706E"
+            android:textColor="@color/athena_text_secondary"
             android:textSize="12sp" />
 
         <LinearLayout

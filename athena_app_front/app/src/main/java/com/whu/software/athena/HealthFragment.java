@@ -168,16 +168,20 @@ public class HealthFragment extends Fragment {
         repository.getHome(new CognitionRepository.Callback<Home>() {
             @Override public void onSuccess(Home value) {
                 if (!isAdded()) return;
-                home = value;
-                headline.setText(value.headline);
-                summary.setText(value.summary);
-                digestCount.setText(value.pendingDigestCount > 0
-                        ? value.pendingDigestCount + " 份整理草稿等待确认"
+                home = value == null ? new Home() : value;
+                headline.setText(safe(home.headline, stateHeadline(home.summaryState)));
+                summary.setText(home.latestInsight == null
+                        ? stateSummary(home.summaryState)
+                        : safe(home.latestInsight.title, "最新理解") + "\n" + safe(home.latestInsight.body, stateSummary(home.summaryState))
+                        + (home.latestInsight.uncertainty == null ? "" : "\n仍不确定：" + home.latestInsight.uncertainty));
+                digestCount.setText(home.pendingDigestCount > 0
+                        ? home.pendingDigestCount + " 份整理草稿等待确认"
                         : "没有待确认的整理草稿");
-                topicCard.setVisibility(value.primaryTopic == null ? View.GONE : View.VISIBLE);
-                if (value.primaryTopic != null) topicTitle.setText(value.primaryTopic.title + "\n" + value.primaryTopic.summary);
-                actionCard.setVisibility(value.nextAction == null ? View.GONE : View.VISIBLE);
-                if (value.nextAction != null) actionText.setText(value.nextAction.title + "\n" + value.nextAction.instruction);
+                topicCard.setVisibility(home.activeTopic == null ? View.GONE : View.VISIBLE);
+                if (home.activeTopic != null) topicTitle.setText(safe(home.activeTopic.title, "认知主题")
+                        + "\n证据 " + home.activeTopic.evidenceCount + " 条 · " + maturity(home.activeTopic.maturity));
+                actionCard.setVisibility(home.nextAction == null ? View.GONE : View.VISIBLE);
+                if (home.nextAction != null) actionText.setText(safe(home.nextAction.title, "下一步行动") + "\n" + safe(home.nextAction.description, ""));
             }
             @Override public void onError(String message) {
                 if (isAdded()) Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
@@ -186,15 +190,47 @@ public class HealthFragment extends Fragment {
     }
 
     private void openTopic() {
-        if (home == null || home.primaryTopic == null) return;
+        if (home == null || home.activeTopic == null) return;
         startActivity(new Intent(requireContext(), CognitionTopicActivity.class)
-                .putExtra(CognitionTopicActivity.EXTRA_TOPIC_ID, home.primaryTopic.topicId));
+                .putExtra(CognitionTopicActivity.EXTRA_TOPIC_ID, home.activeTopic.id));
     }
 
     private void openAction() {
         Action action = home == null ? null : home.nextAction;
         if (action == null) return;
         startActivity(new Intent(requireContext(), CognitionFeedbackActivity.class)
-                .putExtra(CognitionFeedbackActivity.EXTRA_ACTION_ID, action.actionId));
+                .putExtra(CognitionFeedbackActivity.EXTRA_ACTION_ID, action.id)
+                .putExtra(CognitionFeedbackActivity.EXTRA_TOPIC_ID, action.topicId));
     }
+
+    private String stateHeadline(com.whu.software.athena.cognition.CognitionModels.HomeSummaryState state) {
+        if (state == null || state == com.whu.software.athena.cognition.CognitionModels.HomeSummaryState.EMPTY) return "从一条身体线索开始";
+        switch (state) {
+            case BUILDING_BASELINE: return "正在积累你的身体线索";
+            case DIGEST_PROCESSING: return "Athena 正在整理线索";
+            case DIGEST_READY: return "有一份整理草稿等待确认";
+            case OBSERVING: return "继续观察身体变化";
+            case ACTION_COMPLETED: return "行动反馈已经记录";
+            case DIGEST_KEPT_AS_KNOWLEDGE: return "内容已保存为知识";
+            case DIGEST_REJECTED: return "已按你的选择保留原始线索";
+            case DIGEST_FAILED: return "这次整理没有完成";
+            default: return "今天的身体";
+        }
+    }
+
+    private String stateSummary(com.whu.software.athena.cognition.CognitionModels.HomeSummaryState state) {
+        if (state == null || state == com.whu.software.athena.cognition.CognitionModels.HomeSummaryState.EMPTY) return "还没有认知数据。你可以从文章标记或身体记录开始。";
+        if (state == com.whu.software.athena.cognition.CognitionModels.HomeSummaryState.DIGEST_READY) return "查看证据和不确定性，再决定是否形成认知主题。";
+        if (state == com.whu.software.athena.cognition.CognitionModels.HomeSummaryState.DIGEST_FAILED) return "原始线索仍然保留，可以稍后重新整理。";
+        return "这里展示的是你主动保存和确认的信息，不是医学诊断。";
+    }
+
+    private String maturity(com.whu.software.athena.cognition.CognitionModels.Maturity value) {
+        if (value == com.whu.software.athena.cognition.CognitionModels.Maturity.RELATIVELY_STABLE) return "相对稳定";
+        if (value == com.whu.software.athena.cognition.CognitionModels.Maturity.REPEATED_PATTERN) return "多次出现";
+        if (value == com.whu.software.athena.cognition.CognitionModels.Maturity.EARLY_LINK) return "可能存在联系";
+        return "理解仍在形成中";
+    }
+
+    private String safe(String value, String fallback) { return value == null || value.trim().isEmpty() ? fallback : value; }
 }

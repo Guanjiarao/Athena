@@ -82,10 +82,10 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:textColor="#E91E63"
+                    android:textColor="@color/athena_sage_strong"
                     android:textSize="10sp"
                     android:textStyle="bold"
-                    android:background="#22E91E63"
+                    android:background="@color/athena_surface_sage"
                     android:paddingHorizontal="6dp"
                     android:paddingVertical="2dp" />
 

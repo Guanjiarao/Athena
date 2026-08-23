@@ -37,4 +37,13 @@
     <string name="privacy_federated_log_5">序列化匿名特征 · 通过 Serverless 节点路由…</string>
     <string name="privacy_federated_log_6">正在呼叫千问医疗大模型进行联合推理…</string>
 
+    <string name="menu_sister">Athena 助手</string>
+    <string name="menu_pro">专业模式</string>
+    <string name="menu_triage">智能分诊</string>
+    <string name="menu_privacy">隐私分析</string>
+    <string name="monitor_title">健康监测</string>
+    <string name="monitor_capture">开始记录</string>
+    <string name="nav_header_title">Athena</string>
+    <string name="nav_header_subtitle">你的身体认知助手</string>
+
 </resources>

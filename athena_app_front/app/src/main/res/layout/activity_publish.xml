@@ -3,14 +3,14 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#FFFFFF">
+    android:background="@color/athena_page_bg">
 
     <!-- 顶部导航栏 -->
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:layout_marginTop="20dp"
-        android:background="#FFFFFF"
+        android:background="@drawable/bg_athena_toolbar"
         android:elevation="2dp">
 
         <!-- 返回按钮 -->
@@ -41,14 +41,14 @@
                 android:text="发布图文"
                 android:textSize="16sp"
                 android:textStyle="bold"
-                android:textColor="#E5375A"
+                android:textColor="@color/athena_sage_strong"
                 android:paddingHorizontal="12dp"
                 android:paddingVertical="4dp" />
 
             <View
                 android:layout_width="1dp"
                 android:layout_height="16dp"
-                android:background="#DDDDDD"
+                android:background="@color/athena_stroke"
                 android:layout_marginHorizontal="2dp" />
 
             <TextView
@@ -58,7 +58,7 @@
                 android:text="发布视频"
                 android:textSize="16sp"
                 android:textStyle="normal"
-                android:textColor="#999999"
+                android:textColor="@color/athena_text_secondary"
                 android:paddingHorizontal="12dp"
                 android:paddingVertical="4dp" />
 
@@ -73,7 +73,7 @@
             android:layout_centerVertical="true"
             android:layout_marginEnd="16dp"
             android:text="发布"
-            android:textColor="#FF6B6B"
+            android:textColor="@color/athena_sage_strong"
             android:textSize="16sp"
             android:textStyle="bold"
             android:padding="8dp"
@@ -85,7 +85,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#EEEEEE" />
+        android:background="@color/athena_stroke" />
 
     <!-- 内容区域 -->
     <ScrollView
@@ -107,7 +107,7 @@
                 android:layout_height="wrap_content"
                 android:hint="请输入标题（必填）"
                 android:textColorHint="#999999"
-                android:textColor="#333333"
+                android:textColor="@color/athena_text_primary"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:background="@null"
@@ -122,7 +122,7 @@
                 android:layout_height="1dp"
                 android:layout_marginTop="8dp"
                 android:layout_marginBottom="16dp"
-                android:background="#EEEEEE" />
+                android:background="@color/athena_stroke" />
 
             <!-- 正文输入框 -->
             <EditText
@@ -131,7 +131,7 @@
                 android:layout_height="200dp"
                 android:hint="分享你的想法..."
                 android:textColorHint="#999999"
-                android:textColor="#333333"
+                android:textColor="@color/athena_text_primary"
                 android:textSize="16sp"
                 android:background="@null"
                 android:gravity="top|start"
@@ -158,7 +158,7 @@
                     android:text="#"
                     android:textSize="16sp"
                     android:textStyle="bold"
-                    android:textColor="#999999"
+                    android:textColor="@color/athena_text_secondary"
                     android:paddingEnd="6dp" />
 
                 <EditText
@@ -168,7 +168,7 @@
                     android:layout_weight="1"
                     android:hint="添加话题/Tag（选填）"
                     android:textColorHint="#BBBBBB"
-                    android:textColor="#333333"
+                    android:textColor="@color/athena_text_primary"
                     android:textSize="14sp"
                     android:background="@null"
                     android:maxLines="1"
@@ -182,7 +182,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:layout_marginBottom="16dp"
-                android:background="#EEEEEE" />
+                android:background="@color/athena_stroke" />
 
             <!-- 图片选择区域标题 -->
             <TextView
@@ -190,7 +190,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
                 android:text="添加图片（最多9张）"
-                android:textColor="#666666"
+                android:textColor="@color/athena_text_secondary"
                 android:textSize="14sp" />
 
             <!-- 图片网格容器 -->

@@ -11,6 +11,7 @@
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="28dp" android:text="偏好与数据" android:textColor="#202725" android:textSize="18sp" android:textStyle="bold"/>
         <Button android:id="@+id/btn_reminders" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="12dp" android:text="提醒偏好" android:textAllCaps="false"/>
         <Button android:id="@+id/btn_privacy" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="8dp" android:text="我的数据与隐私" android:textAllCaps="false"/>
+        <Button android:id="@+id/btn_cognition_mode" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="8dp" android:text="切换认知数据源" android:textAllCaps="false"/>
         <TextView android:id="@+id/btn_reset_demo" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="8dp" android:gravity="center" android:text="重置演示数据" android:textColor="#786F66"/>
     </LinearLayout></ScrollView>
 </LinearLayout>

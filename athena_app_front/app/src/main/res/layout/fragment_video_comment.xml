@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@color/white">
+    android:background="@drawable/bg_athena_bottom_sheet">
 
     <!-- 顶部标题栏 -->
     <LinearLayout
@@ -12,7 +12,7 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingHorizontal="16dp"
-        android:background="@color/white">
+        android:background="@android:color/transparent">
 
         <TextView
             android:id="@+id/tv_title"
@@ -53,8 +53,8 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingHorizontal="16dp"
-        android:background="@color/white"
-        android:elevation="8dp">
+        android:background="@color/athena_surface"
+        android:elevation="0dp">
 
         <EditText
             android:id="@+id/et_comment_input"

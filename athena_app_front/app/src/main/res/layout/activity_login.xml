@@ -4,7 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="@color/athena_page_bg"
     android:fillViewport="true">
 
     <LinearLayout
@@ -22,7 +22,8 @@
             android:layout_height="wrap_content"
             android:text="Athena"
             android:textSize="42sp"
-            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium"
+            android:textStyle="normal"
             android:textColor="@color/auth_primary"
             android:letterSpacing="0.05"
             android:layout_marginBottom="8dp" />
