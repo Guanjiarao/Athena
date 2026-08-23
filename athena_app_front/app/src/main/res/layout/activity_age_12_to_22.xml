@@ -4,15 +4,15 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#F5F5F5">
+    android:background="@color/athena_page_bg">
 
     <!-- 顶部：带返回箭头的标题栏 -->
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:layout_marginTop="8dp"
-        android:background="#FFFFFF"
-        android:elevation="2dp">
+        android:background="@drawable/bg_athena_toolbar"
+        android:elevation="0dp">
 
         <ImageView
             android:id="@+id/btn_back"
@@ -33,13 +33,13 @@
             android:text="12~22岁"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:textColor="#333333" />
+            android:textColor="@color/athena_text_primary" />
     </RelativeLayout>
 
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#F0F0F0" />
+        android:background="@color/athena_stroke" />
 
     <!-- 主体：ScrollView 嵌套纵向 LinearLayout -->
     <ScrollView
@@ -59,9 +59,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp"
-                app:cardBackgroundColor="#FFFFFF">
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="@color/athena_surface_sage">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -92,7 +92,7 @@
                             android:text="科学生理期"
                             android:textSize="16sp"
                             android:textStyle="bold"
-                            android:textColor="#000000" />
+                            android:textColor="@color/athena_text_primary" />
 
                         <TextView
                             android:id="@+id/tv_module_1_desc"
@@ -101,7 +101,7 @@
                             android:layout_marginTop="6dp"
                             android:text="科学认识月经，学会日常记录与自我护理。"
                             android:textSize="13sp"
-                            android:textColor="#888888"
+                            android:textColor="@color/athena_text_secondary"
                             android:maxLines="3"
                             android:ellipsize="end" />
                     </LinearLayout>
@@ -114,9 +114,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp"
-                app:cardBackgroundColor="#FFFFFF">
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="@color/athena_surface_sand">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -147,7 +147,7 @@
                             android:text="认识两性"
                             android:textSize="16sp"
                             android:textStyle="bold"
-                            android:textColor="#000000" />
+                            android:textColor="@color/athena_text_primary" />
 
                         <TextView
                             android:id="@+id/tv_module_2_desc"
@@ -156,7 +156,7 @@
                             android:layout_marginTop="6dp"
                             android:text="建立健康的性别观念，学会保护自我。"
                             android:textSize="13sp"
-                            android:textColor="#888888"
+                            android:textColor="@color/athena_text_secondary"
                             android:maxLines="3"
                             android:ellipsize="end" />
                     </LinearLayout>

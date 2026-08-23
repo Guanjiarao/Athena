@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="@color/athena_page_bg"
     android:fitsSystemWindows="true">
 
     <!-- 顶部返回按钮 -->
@@ -204,14 +204,14 @@
                 <View
                     android:layout_width="3dp"
                     android:layout_height="16dp"
-                    android:background="@color/athena_pink"
+                    android:background="@color/athena_sage_strong"
                     android:layout_marginEnd="8dp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="评论"
-                    android:textColor="#333333"
+                    android:textColor="@color/athena_text_primary"
                     android:textSize="15sp"
                     android:textStyle="bold" />
 
@@ -241,7 +241,7 @@
         android:layout_height="72dp"
         android:layout_gravity="bottom"
         android:orientation="horizontal"
-        android:background="@color/white"
+        android:background="@color/athena_surface"
         android:elevation="8dp"
         android:paddingHorizontal="12dp"
         android:paddingVertical="8dp"

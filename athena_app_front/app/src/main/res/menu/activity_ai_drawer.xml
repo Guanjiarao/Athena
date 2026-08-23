@@ -6,19 +6,19 @@
     <group android:checkableBehavior="single">
         <item
             android:id="@+id/nav_sister"
-            android:icon="@drawable/tree"
+            android:icon="@drawable/ic_ai"
             android:title="@string/menu_sister" />
         <item
             android:id="@+id/nav_pro"
-            android:icon="@drawable/profession"
+            android:icon="@drawable/ic_knowledge"
             android:title="@string/menu_pro" />
         <item
             android:id="@+id/nav_triage"
-            android:icon="@drawable/medical_assistant"
+            android:icon="@drawable/ic_record"
             android:title="@string/menu_triage" />
         <item
             android:id="@+id/nav_privacy"
-            android:icon="@drawable/privacy"
+            android:icon="@drawable/ic_privacy_shield_outline"
             android:title="@string/menu_privacy" />
     </group>
 </menu>

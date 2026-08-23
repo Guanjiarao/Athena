@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Athena" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowBackground">@color/athena_page_bg</item>
+        <item name="android:windowSplashScreenBackground">@color/athena_page_bg</item>
+        <item name="android:windowSplashScreenAnimationDuration">0</item>
+        <item name="colorPrimary">@color/athena_sage_strong</item>
+        <item name="colorPrimaryVariant">@color/athena_text_sage</item>
+        <item name="colorOnPrimary">@color/athena_text_primary</item>
+        <item name="colorAccent">@color/athena_text_secondary</item>
+        <item name="android:colorAccent">@color/athena_text_secondary</item>
+        <item name="colorSecondary">@color/gray</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="android:statusBarColor">@color/athena_page_bg</item>
+        <item name="android:navigationBarColor">@color/athena_surface</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>

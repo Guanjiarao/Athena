@@ -4,14 +4,14 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#FAFAFA">
+    android:background="@color/athena_page_bg">
 
     <!-- 顶部：简单标题栏 -->
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:layout_marginTop="8dp"
-        android:background="#FFFFFF"
+        android:background="@drawable/bg_athena_toolbar"
         android:elevation="2dp">
 
         <ImageView
@@ -33,14 +33,14 @@
             android:text="55岁以上"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:textColor="#333333" />
+            android:textColor="@color/athena_text_primary" />
     </RelativeLayout>
 
     <!-- 顶部分割线 -->
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#F0F0F0" />
+        android:background="@color/athena_stroke" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_categories"

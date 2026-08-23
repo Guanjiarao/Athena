@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -19,6 +20,8 @@ public class MyCognitionActivity extends AppCompatActivity {
     private CognitionRepository repository;
     private TextView summary;
     private LinearLayout topicList;
+    private TextView resetDemo;
+    private Button modeButton;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -31,7 +34,11 @@ public class MyCognitionActivity extends AppCompatActivity {
         findViewById(R.id.btn_my_drafts).setOnClickListener(v -> openDraft());
         findViewById(R.id.btn_reminders).setOnClickListener(v -> startActivity(new Intent(this, ReminderPreferencesActivity.class)));
         findViewById(R.id.btn_privacy).setOnClickListener(v -> startActivity(new Intent(this, DataPrivacyActivity.class)));
-        findViewById(R.id.btn_reset_demo).setOnClickListener(v -> confirmReset());
+        resetDemo = findViewById(R.id.btn_reset_demo);
+        modeButton = findViewById(R.id.btn_cognition_mode);
+        resetDemo.setOnClickListener(v -> confirmReset());
+        modeButton.setOnClickListener(v -> confirmModeChange());
+        updateModeControls();
     }
 
     @Override protected void onResume() { super.onResume(); refresh(); }
@@ -44,8 +51,8 @@ public class MyCognitionActivity extends AppCompatActivity {
             }
             @Override public void onError(String message) { summary.setText(message); }
         });
-        repository.listTopics(new CognitionRepository.Callback<List<Topic>>() {
-            @Override public void onSuccess(List<Topic> topics) { renderTopics(topics); }
+        repository.listTopics(1, 20, new CognitionRepository.Callback<Page<Topic>>() {
+            @Override public void onSuccess(Page<Topic> topics) { renderTopics(topics.data); }
             @Override public void onError(String message) { Toast.makeText(MyCognitionActivity.this, message, Toast.LENGTH_SHORT).show(); }
         });
     }
@@ -59,24 +66,25 @@ public class MyCognitionActivity extends AppCompatActivity {
             return;
         }
         for (Topic topic : topics) {
-            TextView card = text(topic.title + "\n" + topic.summary + "\n查看依据、不确定性、行动与历史版本 →", 15);
+            TextView card = text(topic.title + "\n" + safe(topic.stageUnderstanding)
+                    + "\n证据 " + topic.evidenceCount + " 条 · 查看完整详情 →", 15);
             card.setBackgroundColor(Color.WHITE);
             card.setPadding(dp(16), dp(16), dp(16), dp(16));
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
             params.bottomMargin = dp(10);
             card.setLayoutParams(params);
             card.setOnClickListener(v -> startActivity(new Intent(this, CognitionTopicActivity.class)
-                    .putExtra(CognitionTopicActivity.EXTRA_TOPIC_ID, topic.topicId)));
+                    .putExtra(CognitionTopicActivity.EXTRA_TOPIC_ID, topic.id)));
             topicList.addView(card);
         }
     }
 
     private void openDraft() {
-        repository.listPendingDigests(new CognitionRepository.Callback<List<Digest>>() {
-            @Override public void onSuccess(List<Digest> drafts) {
-                if (drafts.isEmpty()) startActivity(new Intent(MyCognitionActivity.this, BodyCluesActivity.class));
+        repository.listReadyDigests(1, 20, new CognitionRepository.Callback<Page<Digest>>() {
+            @Override public void onSuccess(Page<Digest> drafts) {
+                if (drafts.data.isEmpty()) startActivity(new Intent(MyCognitionActivity.this, BodyCluesActivity.class));
                 else startActivity(new Intent(MyCognitionActivity.this, CognitionDigestActivity.class)
-                        .putExtra(CognitionDigestActivity.EXTRA_DIGEST_ID, drafts.get(0).digestId));
+                        .putExtra(CognitionDigestActivity.EXTRA_DIGEST_ID, drafts.data.get(0).id));
             }
             @Override public void onError(String message) { Toast.makeText(MyCognitionActivity.this, message, Toast.LENGTH_SHORT).show(); }
         });
@@ -88,6 +96,31 @@ public class MyCognitionActivity extends AppCompatActivity {
                 .setPositiveButton("重置", (d, w) -> { CognitionRepositoryProvider.resetDemo(this); repository = CognitionRepositoryProvider.get(this); refresh(); })
                 .setNegativeButton("取消", null).show();
     }
+
+    private void confirmModeChange() {
+        boolean currentlyHttp = CognitionRepositoryProvider.isHttp(this);
+        new AlertDialog.Builder(this)
+                .setTitle(currentlyHttp ? "进入离线演示？" : "连接真实账号数据？")
+                .setMessage(currentlyHttp
+                        ? "演示模式使用本机预置数据，不会写入你的账号。之后可以随时切回真实数据。"
+                        : "将恢复使用登录账号的服务器数据；演示数据会保留在本机。")
+                .setPositiveButton("切换", (dialog, which) -> {
+                    if (currentlyHttp) CognitionRepositoryProvider.resetDemo(this);
+                    else CognitionRepositoryProvider.useHttp(this, true);
+                    repository = CognitionRepositoryProvider.get(this);
+                    updateModeControls();
+                    refresh();
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void updateModeControls() {
+        boolean http = CognitionRepositoryProvider.isHttp(this);
+        modeButton.setText(http ? "当前：真实账号数据 · 切换到演示" : "当前：离线演示 · 切换到真实数据");
+        resetDemo.setVisibility(http ? View.GONE : View.VISIBLE);
+    }
     private TextView text(String value, int size) { TextView v = new TextView(this); v.setText(value); v.setTextSize(size); v.setTextColor(Color.rgb(45, 53, 50)); v.setLineSpacing(0, 1.15f); return v; }
+    private String safe(String value) { return value == null || value.isEmpty() ? "理解仍在形成中" : value; }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
 }

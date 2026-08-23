@@ -5,6 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/athena_page_bg"
     tools:context=".MainActivity">
    
 
@@ -21,11 +22,11 @@
         android:id="@+id/nav_view"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:minHeight="52dp"
-        android:background="@color/white"
-        app:backgroundTint="@color/white"
-        android:paddingTop="0dp"
-        android:paddingBottom="6dp"
+        android:minHeight="64dp"
+        android:background="@drawable/bg_athena_bottom_nav"
+        app:backgroundTint="@null"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
         app:menu="@menu/bottom_nav_menu"
 
         app:itemIconTint="@null"
@@ -33,7 +34,7 @@
         app:itemRippleColor="@android:color/transparent"
         app:itemHorizontalTranslationEnabled="false"
         app:itemPaddingTop="0dp"
-        app:itemPaddingBottom="16dp"
+        app:itemPaddingBottom="8dp"
         app:labelVisibilityMode="labeled"
 
         app:itemIconSize="0dp"

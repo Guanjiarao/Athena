@@ -4,7 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F6F9"
+    android:background="@color/athena_page_bg"
     android:fillViewport="true">
 
     <LinearLayout
@@ -18,8 +18,8 @@
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:background="@color/white"
-            android:elevation="2dp">
+            android:background="@drawable/bg_athena_toolbar"
+            android:elevation="0dp">
 
             <!-- 返回按钮 -->
             <ImageButton
@@ -43,7 +43,7 @@
                 android:text="设备与健康数"
                 android:textSize="17sp"
                 android:textStyle="bold"
-                android:textColor="#1A1A2E" />
+                android:textColor="@color/athena_text_primary" />
 
             <!-- 右侧连接状�?-->
             <LinearLayout
@@ -82,7 +82,7 @@
             android:layout_marginBottom="10dp"
             android:text="核心运动数据"
             android:textSize="13sp"
-            android:textColor="#9AA0B2"
+            android:textColor="@color/athena_text_secondary"
             android:letterSpacing="0.05" />
 
         <LinearLayout
@@ -97,9 +97,9 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginEnd="6dp"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="2dp"
-                app:cardBackgroundColor="@color/white">
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="@color/athena_surface_sage">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -112,7 +112,7 @@
                         android:layout_height="wrap_content"
                         android:text="步数"
                         android:textSize="12sp"
-                        android:textColor="#9AA0B2" />
+                        android:textColor="@color/athena_text_secondary" />
 
                     <TextView
                         android:id="@+id/tv_steps"
@@ -122,7 +122,7 @@
                         android:text="8,432"
                         android:textSize="32sp"
                         android:textStyle="bold"
-                        android:textColor="#1A1A2E" />
+                        android:textColor="@color/athena_text_primary" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -140,8 +140,8 @@
                         android:layout_marginTop="10dp"
                         android:max="10000"
                         android:progress="8432"
-                        android:progressTint="#6C63FF"
-                        android:progressBackgroundTint="#EBEBF0" />
+                        android:progressTint="@color/athena_sage_strong"
+                        android:progressBackgroundTint="@color/athena_stroke" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -161,9 +161,9 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginStart="6dp"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="2dp"
-                app:cardBackgroundColor="@color/white">
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="@color/athena_surface_sand">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -176,7 +176,7 @@
                         android:layout_height="wrap_content"
                         android:text="消耗"
                         android:textSize="12sp"
-                        android:textColor="#9AA0B2" />
+                        android:textColor="@color/athena_text_secondary" />
 
                     <TextView
                         android:id="@+id/tv_calories"
@@ -186,7 +186,7 @@
                         android:text="342"
                         android:textSize="32sp"
                         android:textStyle="bold"
-                        android:textColor="#1A1A2E" />
+                        android:textColor="@color/athena_text_primary" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -204,8 +204,8 @@
                         android:layout_marginTop="10dp"
                         android:max="500"
                         android:progress="342"
-                        android:progressTint="#FF6B6B"
-                        android:progressBackgroundTint="#EBEBF0" />
+                        android:progressTint="@color/health_period_strong"
+                        android:progressBackgroundTint="@color/athena_stroke" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -232,7 +232,7 @@
             android:layout_marginBottom="10dp"
             android:text="体征监测"
             android:textSize="13sp"
-            android:textColor="#9AA0B2"
+            android:textColor="@color/athena_text_secondary"
             android:letterSpacing="0.05" />
 
         <LinearLayout
@@ -254,9 +254,9 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginEnd="6dp"
-                    app:cardCornerRadius="8dp"
-                    app:cardElevation="2dp"
-                    app:cardBackgroundColor="@color/white">
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="0dp"
+                    app:cardBackgroundColor="@color/athena_surface">
 
                     <FrameLayout
                         android:layout_width="match_parent"
@@ -273,7 +273,7 @@
                                 android:layout_height="wrap_content"
                                 android:text="心率"
                                 android:textSize="12sp"
-                                android:textColor="#9AA0B2" />
+                                android:textColor="@color/athena_text_secondary" />
 
                             <LinearLayout
                                 android:layout_width="wrap_content"
@@ -289,7 +289,7 @@
                                     android:text="76"
                                     android:textSize="28sp"
                                     android:textStyle="bold"
-                                    android:textColor="#1A1A2E" />
+                                    android:textColor="@color/athena_text_primary" />
 
                                 <TextView
                                     android:layout_width="wrap_content"
@@ -334,9 +334,9 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginStart="6dp"
-                    app:cardCornerRadius="8dp"
-                    app:cardElevation="2dp"
-                    app:cardBackgroundColor="@color/white">
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="0dp"
+                    app:cardBackgroundColor="@color/athena_surface">
 
                     <FrameLayout
                         android:layout_width="match_parent"
@@ -353,7 +353,7 @@
                                 android:layout_height="wrap_content"
                                 android:text="睡眠"
                                 android:textSize="12sp"
-                                android:textColor="#9AA0B2" />
+                                android:textColor="@color/athena_text_secondary" />
 
                             <LinearLayout
                                 android:layout_width="wrap_content"
@@ -369,7 +369,7 @@
                                     android:text="7h 23m"
                                     android:textSize="22sp"
                                     android:textStyle="bold"
-                                    android:textColor="#1A1A2E" />
+                                    android:textColor="@color/athena_text_primary" />
 
                             </LinearLayout>
 

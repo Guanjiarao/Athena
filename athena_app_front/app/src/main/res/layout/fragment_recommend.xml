@@ -5,7 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/gray_light"
+    android:background="@color/athena_page_bg"
     android:fillViewport="true">
 
     <LinearLayout
@@ -17,8 +17,8 @@
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="180dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginHorizontal="16dp">
+            android:layout_marginTop="8dp"
+            android:layout_marginHorizontal="20dp">
 
             <androidx.viewpager2.widget.ViewPager2
                 android:id="@+id/knowledge_banner"
@@ -69,11 +69,11 @@
             android:id="@+id/knowledge_status_card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="12dp"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginTop="16dp"
             android:visibility="gone"
-            app:cardBackgroundColor="@color/knowledge_status_card_bg"
-            app:cardCornerRadius="12dp"
+            app:cardBackgroundColor="@color/athena_surface_sage"
+            app:cardCornerRadius="16dp"
             app:cardElevation="0dp">
 
             <LinearLayout
@@ -96,7 +96,7 @@
                         android:layout_height="wrap_content"
                         android:text="Hi~ (用户名)"
                         android:textSize="14sp"
-                        android:textColor="@color/text_primary"
+                        android:textColor="@color/athena_text_primary"
                         android:textStyle="bold" />
 
                     <TextView
@@ -106,7 +106,7 @@
                         android:layout_marginTop="4dp"
                         android:text="目前是经期模式，今天是生理期第3天"
                         android:textSize="12sp"
-                        android:textColor="@color/text_secondary" />
+                        android:textColor="@color/athena_text_secondary" />
 
                 </LinearLayout>
 
@@ -120,8 +120,8 @@
                     android:textColor="@color/white"
                     android:paddingStart="12dp"
                     android:paddingEnd="12dp"
-                    app:backgroundTint="@color/cinnamon_pink"
-                    app:cornerRadius="8dp" />
+                    app:backgroundTint="@color/athena_sage_strong"
+                    app:cornerRadius="14dp" />
 
             </LinearLayout>
 
@@ -133,7 +133,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:paddingHorizontal="12dp"
+            android:paddingHorizontal="16dp"
             android:paddingBottom="8dp"
             android:nestedScrollingEnabled="false"
             android:clipToPadding="false" />

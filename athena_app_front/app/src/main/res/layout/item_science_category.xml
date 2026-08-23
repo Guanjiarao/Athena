@@ -12,11 +12,11 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="16dp"
+    android:layout_marginBottom="12dp"
     app:cardCornerRadius="16dp"
-    app:cardElevation="3dp"
-    app:cardUseCompatPadding="true"
-    app:cardBackgroundColor="@color/white">
+    app:cardElevation="0dp"
+    app:cardUseCompatPadding="false"
+    app:cardBackgroundColor="@color/athena_surface_sand">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -49,8 +49,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textSize="17sp"
-                android:textStyle="bold"
-                android:textColor="#1A1A1A"
+                android:fontFamily="sans-serif-medium"
+                android:textColor="@color/athena_text_primary"
                 android:maxLines="1"
                 android:ellipsize="end" />
 
@@ -60,7 +60,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:textSize="12sp"
-                android:textColor="#888888"
+                android:textColor="@color/athena_text_secondary"
                 android:maxLines="2"
                 android:ellipsize="end"
                 android:lineSpacingExtra="2dp" />

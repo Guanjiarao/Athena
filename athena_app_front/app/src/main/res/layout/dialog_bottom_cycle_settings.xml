@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@color/white">
+    android:background="@drawable/bg_athena_bottom_sheet">
 
     <!-- 顶部导航栏 -->
     <RelativeLayout
@@ -20,7 +20,7 @@
             android:gravity="center_vertical"
             android:text="取消"
             android:textSize="14sp"
-            android:textColor="#999999"
+            android:textColor="@color/athena_text_secondary"
             android:paddingEnd="12dp"
             android:clickable="true"
             android:focusable="true"
@@ -34,7 +34,7 @@
             android:text="设置生理期规律"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:textColor="#222222" />
+            android:textColor="@color/athena_text_primary" />
 
         <TextView
             android:id="@+id/btn_save"
@@ -44,7 +44,7 @@
             android:gravity="center_vertical"
             android:text="保存"
             android:textSize="14sp"
-            android:textColor="@color/athena_pink"
+            android:textColor="@color/athena_sage_strong"
             android:textStyle="bold"
             android:paddingStart="12dp"
             android:clickable="true"
@@ -57,7 +57,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="0.5dp"
-        android:background="#E8E8E8" />
+        android:background="@color/athena_stroke" />
 
     <!-- 内容区 -->
     <LinearLayout

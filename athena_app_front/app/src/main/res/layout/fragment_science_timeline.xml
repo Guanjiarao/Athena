@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#FAFAFA">
+    android:background="@color/athena_page_bg">
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_science_timeline"
@@ -12,8 +12,8 @@
         android:clipToPadding="false"
         android:paddingTop="12dp"
         android:paddingBottom="12dp"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
         android:overScrollMode="never" />
 
     <androidx.recyclerview.widget.RecyclerView
@@ -24,8 +24,8 @@
         android:clipToPadding="false"
         android:paddingTop="12dp"
         android:paddingBottom="24dp"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
         android:overScrollMode="never" />
 
 </LinearLayout>

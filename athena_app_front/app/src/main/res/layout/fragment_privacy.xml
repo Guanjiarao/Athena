@@ -97,7 +97,7 @@
                     android:stateListAnimator="@null"
                     android:text="本地 AI 一键安全脱敏 (离线模型)"
                     android:textAllCaps="false"
-                    android:textColor="#E5375A"
+                    android:textColor="@color/athena_sage_strong"
                     android:textSize="14sp"
                     android:textStyle="bold"
                     android:enabled="false"
