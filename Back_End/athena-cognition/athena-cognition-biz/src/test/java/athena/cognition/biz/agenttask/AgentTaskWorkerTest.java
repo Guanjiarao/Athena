@@ -28,6 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 
 import java.time.Instant;
 import java.util.List;
@@ -169,6 +170,46 @@ class AgentTaskWorkerTest {
         verify(agentRepository).markTaskFinished(TASK_ID, "DEAD", null,
                 AgentErrorCode.MODEL_TIMEOUT.name(), true);
         verify(resultStore, never()).saveProposalOutcome(any(), any(), any(), any());
+    }
+
+    // ---------- node-level run records: observation.steps are split into cognition_agent_node_run ----------
+
+    @Test
+    void observationStepsAreRecordedAsNodeRuns() throws Exception {
+        IntentClassificationResponse intent = intent(
+                IntentClassificationStatus.SUCCEEDED, ClueIntent.QUESTION, NextRoute.QUESTION_INBOX);
+        intent.observation = new ObjectMapper().readTree("""
+                {"nodeVersion":"intent-classification-v1","steps":[
+                  {"stepId":"MODEL_CALL","inputSummary":"分类输入","outputSummary":"QUESTION"},
+                  {"stepId":"POLICY","inputSummary":"分类输出","outputSummary":"PASS"}]}
+                """);
+        when(agentClient.classifyIntent(any())).thenReturn(intent);
+
+        worker.executeGraphTask(TASK_ID, clueContext());
+
+        verify(agentRepository).insertNodeRun(any(), eq("MODEL_CALL"), eq("intent-classification-v1"), any());
+        verify(agentRepository).insertNodeRun(any(), eq("POLICY"), eq("intent-classification-v1"), any());
+    }
+
+    @Test
+    void duplicateStepIdKeepsFirstNodeRunRowAndContinues() throws Exception {
+        IntentClassificationResponse intent = intent(
+                IntentClassificationStatus.SUCCEEDED, ClueIntent.QUESTION, NextRoute.QUESTION_INBOX);
+        intent.observation = new ObjectMapper().readTree("""
+                {"steps":[
+                  {"stepId":"MODEL_CALL","inputSummary":"第一次","outputSummary":"QUESTION"},
+                  {"stepId":"MODEL_CALL","inputSummary":"重试循环第二次","outputSummary":"QUESTION"}]}
+                """);
+        when(agentClient.classifyIntent(any())).thenReturn(intent);
+        // (run_id, node_id) 唯一约束：第二次插入撞唯一键，冲突跳过、保留首条
+        doNothing().doThrow(new DuplicateKeyException("uk_cognition_agent_node_run"))
+                .when(agentRepository).insertNodeRun(any(), eq("MODEL_CALL"), any(), any());
+
+        worker.executeGraphTask(TASK_ID, clueContext());
+
+        verify(agentRepository, times(2)).insertNodeRun(any(), eq("MODEL_CALL"), isNull(), any());
+        // 冲突不影响主流程：任务照常终态
+        verify(agentRepository).markTaskFinished(TASK_ID, "SUCCEEDED", null, null, null);
     }
 
     // ---------- fixtures ----------

@@ -38,7 +38,7 @@ public class CognitionAgentJdbcRepository {
      * (InnoDB duplicate-key errors do not abort the surrounding transaction.)
      */
     public AgentTaskRow findOrCreateTask(long userId, String workflowVersion, String idempotencyKey,
-                                         String taskId, String triggerType, int maxRetry) {
+                                         String taskId, String triggerType, int maxRetry, String payloadJson) {
         Optional<AgentTaskRow> existing = findTask(userId, workflowVersion, idempotencyKey);
         if (existing.isPresent()) {
             return existing.get();
@@ -46,9 +46,9 @@ public class CognitionAgentJdbcRepository {
         try {
             jdbc.update("""
                     INSERT INTO cognition_agent_task
-                    (task_id,user_id,workflow_version,idempotency_key,trigger_type,status,max_retry)
-                    VALUES (?,?,?,?,?,'PENDING',?)
-                    """, taskId, userId, workflowVersion, idempotencyKey, triggerType, maxRetry);
+                    (task_id,user_id,workflow_version,idempotency_key,trigger_type,status,max_retry,payload_json)
+                    VALUES (?,?,?,?,?,'PENDING',?,?)
+                    """, taskId, userId, workflowVersion, idempotencyKey, triggerType, maxRetry, payloadJson);
         } catch (DuplicateKeyException duplicate) {
             // lost the race against a concurrent insert with the same idempotency key; fall through to re-read
         }
@@ -110,6 +110,43 @@ public class CognitionAgentJdbcRepository {
                 WHERE status='PENDING' OR (status='FAILED' AND error_retryable=1 AND retry_count<max_retry)
                 ORDER BY id LIMIT ?
                 """, TASK_ROW, limit);
+    }
+
+    /** Execution context snapshot stored at creation; read by the MQ consumer / recovery sweeper. */
+    public Optional<String> findTaskPayload(String taskId) {
+        return jdbc.queryForList("SELECT payload_json FROM cognition_agent_task WHERE task_id=?",
+                        String.class, taskId)
+                .stream().filter(java.util.Objects::nonNull).findFirst();
+    }
+
+    /** Per-user rate limiting: tasks created since the given instant (DB count, no Redis). */
+    public long countRecentTasksByUser(long userId, Instant since) {
+        Long count = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM cognition_agent_task WHERE user_id=? AND created_at>=?
+                """, Long.class, userId, Timestamp.from(since));
+        return count == null ? 0 : count;
+    }
+
+    /**
+     * Crash recovery: tasks still PENDING with no run long after creation — their
+     * MQ message was lost (or the service died between commit and send); the
+     * sweeper redelivers them.
+     */
+    public List<AgentTaskRow> listPendingRedispatchTasks(Instant createdBefore, int limit) {
+        return jdbc.query("""
+                SELECT * FROM cognition_agent_task
+                WHERE status='PENDING' AND last_run_id IS NULL AND created_at<?
+                ORDER BY id LIMIT ?
+                """, TASK_ROW, Timestamp.from(createdBefore), limit);
+    }
+
+    /** Crash recovery: tasks stuck RUNNING past the worker timeout (worker died or hung). */
+    public List<AgentTaskRow> listStuckRunningTasks(Instant updatedBefore, int limit) {
+        return jdbc.query("""
+                SELECT * FROM cognition_agent_task
+                WHERE status='RUNNING' AND updated_at<?
+                ORDER BY id LIMIT ?
+                """, TASK_ROW, Timestamp.from(updatedBefore), limit);
     }
 
     // ---------- proposal ----------
@@ -250,6 +287,15 @@ public class CognitionAgentJdbcRepository {
     public List<AgentRunRow> listRunsByTask(String taskId) {
         return jdbc.query("SELECT * FROM cognition_agent_run WHERE task_id=? ORDER BY id",
                 RUN_ROW, taskId);
+    }
+
+    /** Alerting: run-count per final_status since the given instant (grouped, small result). */
+    public List<StatusCount> countRunStatusSince(Instant since) {
+        return jdbc.query("""
+                SELECT final_status, COUNT(*) AS cnt FROM cognition_agent_run
+                WHERE created_at>=? GROUP BY final_status
+                """, (rs, row) -> new StatusCount(rs.getString("final_status"), rs.getLong("cnt")),
+                Timestamp.from(since));
     }
 
     // ---------- agent node run ----------
@@ -402,6 +448,10 @@ public class CognitionAgentJdbcRepository {
     public record OutboxEventRow(long id, String eventId, long userId, String eventType,
                                  String payloadJson, String status, int retryCount,
                                  Instant createdAt, Instant sentAt) {
+    }
+
+    /** GROUP BY final_status result for run-window statistics. */
+    public record StatusCount(String status, long count) {
     }
 
     /** Write model for insertProposal; JSON fields are pre-serialized strings. */

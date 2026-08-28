@@ -38,6 +38,7 @@ import athena.cognition.biz.service.CognitionGraphService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
@@ -484,6 +485,38 @@ public class AgentTaskWorker {
         }
         agentRepository.insertRun(runId, task.taskId(), task.workflowVersion(), finalStatus, errorCode,
                 Math.max(0, System.currentTimeMillis() - startedAt), modelProvider, modelName, observationJson);
+        if (observation != null) {
+            recordNodeRuns(runId, observation);
+        }
+    }
+
+    /**
+     * Node-level run records: each WorkflowNodeStep of the observation's steps
+     * array becomes one cognition_agent_node_run row (node_id=stepId,
+     * node_version from the observation top level, observation_json=the step).
+     *
+     * <p>(run_id, node_id) is unique but the same stepId may appear twice in
+     * one run (retry loops) — on conflict we KEEP THE FIRST row and skip the
+     * duplicates: the first record already localizes the node's behaviour, and
+     * skipping never breaks the main flow.
+     */
+    private void recordNodeRuns(String runId, JsonNode observation) {
+        JsonNode steps = observation.get("steps");
+        if (steps == null || !steps.isArray()) {
+            return;
+        }
+        String nodeVersion = textOrNull(observation.get("nodeVersion"));
+        for (JsonNode step : steps) {
+            String stepId = textOrNull(step.get("stepId"));
+            if (stepId == null || stepId.isBlank()) {
+                continue;
+            }
+            try {
+                agentRepository.insertNodeRun(runId, stepId, nodeVersion, writeJson(step));
+            } catch (DuplicateKeyException duplicate) {
+                log.debug("node run {} already recorded for run {}, keeping the first row", stepId, runId);
+            }
+        }
     }
 
     private List<String> evidenceIdsOf(List<CanonicalEvidence> existingEvidence) {

@@ -18,6 +18,9 @@ public class CognitionException extends RuntimeException {
     public static final String GENERATION_FAILED = "COGNITION_GENERATION_FAILED";
     public static final String PROPOSAL_NOT_READY = "COGNITION_PROPOSAL_NOT_READY";
     public static final String AGENT_TASK_FAILED = "COGNITION_AGENT_TASK_FAILED";
+    public static final String RATE_LIMITED = "COGNITION_RATE_LIMITED";
+    /** Task-level error code (not an exception): worker hung or died, sweeper timed the task out. */
+    public static final String WORKER_TIMEOUT = "WORKER_TIMEOUT";
 
     private final String errorCode;
     private final int semanticCode;
@@ -75,6 +78,10 @@ public class CognitionException extends RuntimeException {
 
     public static CognitionException agentTaskFailed(String taskId) {
         return new CognitionException(AGENT_TASK_FAILED, 500, "图谱更新任务执行失败，可以稍后重试", taskId, null);
+    }
+
+    public static CognitionException rateLimited() {
+        return new CognitionException(RATE_LIMITED, 409, "操作过于频繁，请稍后再试", null, null);
     }
 
     public String errorCode() {

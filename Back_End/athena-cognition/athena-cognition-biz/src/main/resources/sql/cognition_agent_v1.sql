@@ -160,6 +160,7 @@ CREATE TABLE IF NOT EXISTS `cognition_agent_task` (
     `proposal_id` VARCHAR(64) NULL COMMENT '产出的提案 ID，未产出为 NULL',
     `error_code` VARCHAR(64) NULL COMMENT '最近失败的错误码',
     `error_retryable` TINYINT(1) NULL COMMENT '最近失败是否可重试',
+    `payload_json` JSON NULL COMMENT '任务执行上下文快照（MQ 消费者/崩溃恢复清扫器据此重建执行上下文）',
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     PRIMARY KEY (`id`),

@@ -1,5 +1,7 @@
 package athena.cognition.biz.agenttask;
 
+import athena.cognition.biz.agenttask.mq.AgentTaskProducer;
+import athena.cognition.biz.domain.CognitionException;
 import athena.cognition.biz.domain.CognitionGraphModels.AgentTaskView;
 import athena.cognition.biz.domain.CognitionGraphModels.GraphActionFeedbackRequest;
 import athena.cognition.biz.domain.CognitionModels.ActionFeedbackResult;
@@ -9,6 +11,7 @@ import athena.cognition.biz.repository.CognitionGraphJdbcRepository.GraphNodeRow
 import athena.cognition.biz.repository.CognitionJdbcRepository;
 import athena.cognition.biz.rpc.agent.dto.GraphContract;
 import athena.cognition.biz.service.CognitionGraphService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,16 +20,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.Optional;
-import java.util.concurrent.Executor;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
  * Handoff section 13.8: repeated feedback submissions of the same action
  * produce exactly one logical task (the idempotency unique key is
- * feedback:{actionId}:action-feedback-workflow-v1).
+ * feedback:{actionId}:action-feedback-workflow-v1). Submission is MQ-driven:
+ * only the first creation dispatches a message.
  */
 @ExtendWith(MockitoExtension.class)
 class AgentTaskServiceTest {
@@ -42,19 +46,18 @@ class AgentTaskServiceTest {
     @Mock
     private CognitionGraphService graphService;
     @Mock
-    private AgentTaskWorker worker;
+    private AgentTaskProducer producer;
 
-    /** Direct executor so the submitted runnable runs inline against the worker mock. */
-    private final Executor directExecutor = Runnable::run;
     private AgentTaskService service;
 
     @BeforeEach
     void setUp() {
-        service = new AgentTaskService(agentRepository, clueRepository, graphService, worker, directExecutor);
+        service = new AgentTaskService(agentRepository, clueRepository, graphService, producer,
+                new ObjectMapper().findAndRegisterModules());
     }
 
     @Test
-    void repeatedFeedbackOfSameActionYieldsOneTaskAndOneExecution() {
+    void repeatedFeedbackOfSameActionYieldsOneTaskAndOneDispatch() {
         GraphNodeRow actionNode = new GraphNodeRow(1, "graph_1", ACTION_ID, "ACTION", "ACTIVE", "topic_1",
                 "记录一次相关身体变化", null, null, null, "RECORD_BODY", "PENDING", null, null, 1,
                 Instant.now(), Instant.now());
@@ -66,7 +69,7 @@ class AgentTaskServiceTest {
         when(agentRepository.findTask(USER_ID, GraphContract.FEEDBACK_WORKFLOW_VERSION, IDEMPOTENCY_KEY))
                 .thenReturn(Optional.empty(), Optional.of(processed));
         when(agentRepository.findOrCreateTask(eq(USER_ID), eq(GraphContract.FEEDBACK_WORKFLOW_VERSION),
-                eq(IDEMPOTENCY_KEY), any(), eq("ACTION_FEEDBACK"), eq(AgentTaskService.DEFAULT_MAX_RETRY)))
+                eq(IDEMPOTENCY_KEY), any(), eq("ACTION_FEEDBACK"), eq(AgentTaskService.DEFAULT_MAX_RETRY), any()))
                 .thenReturn(created);
         GraphActionFeedbackRequest request = new GraphActionFeedbackRequest(
                 ActionFeedbackResult.OCCURRED, "真的出现了", null);
@@ -75,9 +78,50 @@ class AgentTaskServiceTest {
         AgentTaskView second = service.createFeedbackTask(USER_ID, ACTION_ID, request);
 
         assertThat(second.taskId()).isEqualTo(first.taskId());
-        // the second submission returned the existing task and never re-executed
-        verify(worker, times(1)).executeFeedbackTask(eq(first.taskId()), any());
-        verify(agentRepository, times(1)).findOrCreateTask(anyLong(), any(), any(), any(), any(), anyInt());
+        // the second submission returned the existing task and never re-dispatched
+        verify(producer, times(1)).send(first.taskId(), "ACTION_FEEDBACK");
+        verify(agentRepository, times(1)).findOrCreateTask(anyLong(), any(), any(), any(), any(), anyInt(), any());
+    }
+
+    // ---------- per-user rate limiting: at most 5 task creations per minute ----------
+
+    @Test
+    void rateLimitExceededRejectsTaskCreation() {
+        when(agentRepository.countRecentTasksByUser(eq(USER_ID), any()))
+                .thenReturn((long) AgentTaskService.MAX_TASKS_PER_USER_PER_MINUTE);
+        GraphActionFeedbackRequest request = new GraphActionFeedbackRequest(
+                ActionFeedbackResult.OCCURRED, "真的出现了", null);
+
+        assertThatThrownBy(() -> service.createFeedbackTask(USER_ID, ACTION_ID, request))
+                .isInstanceOf(CognitionException.class)
+                .hasMessage("操作过于频繁，请稍后再试")
+                .extracting(ex -> ((CognitionException) ex).errorCode())
+                .isEqualTo(CognitionException.RATE_LIMITED);
+        assertThatThrownBy(() -> service.createClueTaskRecord(USER_ID, "clue_101"))
+                .isInstanceOf(CognitionException.class)
+                .extracting(ex -> ((CognitionException) ex).errorCode())
+                .isEqualTo(CognitionException.RATE_LIMITED);
+        verify(agentRepository, never()).findOrCreateTask(anyLong(), any(), any(), any(), any(), anyInt(), any());
+        verify(producer, never()).send(any(), any());
+    }
+
+    @Test
+    void rateLimitNotExceededAllowsTaskCreation() {
+        when(agentRepository.countRecentTasksByUser(eq(USER_ID), any()))
+                .thenReturn((long) AgentTaskService.MAX_TASKS_PER_USER_PER_MINUTE - 1);
+        AgentTaskRow created = new AgentTaskRow(2, "task_user_request_1", USER_ID, GraphContract.WORKFLOW_VERSION,
+                "user-request:uuid:cognition-graph-workflow-v1", "USER_REQUEST", "PENDING", 0, 3, null, null,
+                null, null, Instant.now(), Instant.now());
+        when(agentRepository.findOrCreateTask(eq(USER_ID), eq(GraphContract.WORKFLOW_VERSION),
+                any(), any(), eq("USER_REQUEST"), eq(AgentTaskService.DEFAULT_MAX_RETRY), any()))
+                .thenReturn(created);
+
+        AgentTaskView view = service.createUserRequestTask(USER_ID,
+                new athena.cognition.biz.domain.CognitionGraphModels.GraphUpdateTaskCreateRequest(
+                        null, null, null, null));
+
+        assertThat(view.taskId()).isEqualTo(created.taskId());
+        verify(producer).send(created.taskId(), "USER_REQUEST");
     }
 
     private AgentTaskRow task(String status) {
