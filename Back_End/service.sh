@@ -150,6 +150,19 @@ start_one() {
 
     local log_file="$LOG_DIR/${service_name}.log"
 
+    # 按服务加载 <短名>.env（如 cognition-agent.env 存放 ATHENA_MODEL_* 模型凭证）。
+    # 短名 = jar 名去掉 athena- 前缀和版本号：athena-cognition-agent-0.0.1-SNAPSHOT -> cognition-agent
+    local short_name env_file
+    short_name="$(echo "$service_name" | sed -E 's/^athena-//; s/-[0-9]+\.[0-9]+.*$//')"
+    env_file="$DIR/${short_name}.env"
+    if [[ -f "$env_file" ]]; then
+        echo -e "${BLUE}  env: ${short_name}.env${NC}"
+        set -a
+        # shellcheck disable=SC1090
+        source "$env_file"
+        set +a
+    fi
+
     echo -e "${BLUE}[启动] $service_name${NC}"
     echo -e "${BLUE}  profile: $SPRING_PROFILE${NC}"
     echo -e "${BLUE}  opts: $JAVA_OPTS${NC}"
