@@ -79,9 +79,18 @@ public class MockModelGateway implements ModelGateway {
 
     private JsonNode readContext(String userPrompt) {
         try {
-            int marker = userPrompt.lastIndexOf('\n');
-            String json = marker >= 0 ? userPrompt.substring(marker + 1) : userPrompt;
-            return mapper.readTree(json);
+            // The context JSON is a single serialized line inside the prompt; prompts may
+            // append instruction text after it (e.g. the evidence whitelist checklist), so
+            // scan from the end for the first line that starts with '{' instead of blindly
+            // taking the last line.
+            String[] lines = userPrompt.split("\n");
+            for (int i = lines.length - 1; i >= 0; i--) {
+                String line = lines[i].trim();
+                if (line.startsWith("{")) {
+                    return mapper.readTree(line);
+                }
+            }
+            return mapper.readTree(userPrompt);
         } catch (Exception exception) {
             return mapper.createObjectNode();
         }

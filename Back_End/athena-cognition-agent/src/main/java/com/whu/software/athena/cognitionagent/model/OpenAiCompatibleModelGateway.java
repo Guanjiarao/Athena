@@ -64,6 +64,12 @@ public class OpenAiCompatibleModelGateway implements ModelGateway {
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 boolean retryable = response.statusCode() == 408
                         || response.statusCode() == 429 || response.statusCode() >= 500;
+                // integration debugging: log the provider's error body (truncated) so the
+                // exact rejection reason is diagnosable from service logs
+                String responseBody = response.body() == null ? "" : response.body();
+                org.slf4j.LoggerFactory.getLogger(OpenAiCompatibleModelGateway.class)
+                        .warn("model provider returned HTTP {}: {}", response.statusCode(),
+                                responseBody.length() > 300 ? responseBody.substring(0, 300) : responseBody);
                 throw new IntentModelProviderException(AgentErrorCode.MODEL_UNAVAILABLE,
                         "model provider returned HTTP " + response.statusCode(), retryable);
             }
