@@ -1,5 +1,6 @@
 package athena.cognition.biz.service;
 
+import athena.cognition.biz.agenttask.AgentTaskService;
 import athena.cognition.biz.bodyrecord.BodyRecordEvidenceProvider;
 import athena.cognition.biz.bodyrecord.BodyRecordEvidenceProvider.ConfirmedBodyRecord;
 import athena.cognition.biz.domain.CognitionException;
@@ -39,13 +40,15 @@ class CognitionServiceTest {
     private DigestGenerator generator;
     @Mock
     private BodyRecordEvidenceProvider bodyRecordEvidenceProvider;
+    @Mock
+    private AgentTaskService agentTaskService;
 
     private CognitionService service;
 
     @BeforeEach
     void setUp() {
         service = new CognitionService(repository, generator, bodyRecordEvidenceProvider,
-                new ObjectMapper().findAndRegisterModules());
+                new ObjectMapper().findAndRegisterModules(), agentTaskService);
         // default: every referenced daily_record is alive; liveness tests override this
         lenient().when(bodyRecordEvidenceProvider.filterExistingRecordIds(anyLong(), anyCollection()))
                 .thenAnswer(invocation -> new HashSet<>(invocation.getArgument(1)));
@@ -488,7 +491,7 @@ class CognitionServiceTest {
             when(repository.hasOpenDigestForClues(USER_ID, List.of(1L))).thenReturn(false);
             when(repository.insertTask(USER_ID, TriggerType.USER_REQUEST, "fixed-v1")).thenReturn(100L);
             when(repository.insertDigest(eq(USER_ID), any(), eq("fixed-v1"))).thenReturn(200L);
-            when(repository.insertEvidence(eq(USER_ID), eq(EvidenceSourceType.CLUE), eq("clue_1"),
+            when(repository.findOrCreateEvidence(eq(USER_ID), eq(EvidenceSourceType.CLUE), eq("clue_1"),
                     eq(FactLevel.SELF_REPORTED), any(), any())).thenReturn(300L);
             when(generator.generate(any(), any())).thenReturn(
                     new DigestGenerator.GeneratedDigest("经前情绪变化", "共同点", "可能联系", "仍不确定",
@@ -627,7 +630,7 @@ class CognitionServiceTest {
             ClueCreateView result = service.createClue(USER_ID, request);
 
             assertThat(result.digestTask().triggered()).isTrue();
-            verify(repository).insertEvidence(eq(USER_ID), eq(EvidenceSourceType.BODY_RECORD), eq("2001"),
+            verify(repository).findOrCreateEvidence(eq(USER_ID), eq(EvidenceSourceType.BODY_RECORD), eq("2001"),
                     eq(FactLevel.SELF_REPORTED), any(), any());
         }
 

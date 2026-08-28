@@ -17,3 +17,15 @@ mybatis-plus:
 logging:
   level:
     athena.cognition: info
+
+# Feign timeouts. The athena-cognition-agent workflows are synchronous and
+# long-running (multi-node LLM pipeline), so the read timeout is generous
+# while the connect timeout stays short to fail fast on discovery/network
+# issues. Retryable read timeouts surface as CognitionAgentException with
+# retryable=true (see rpc/agent/CognitionAgentClient).
+feign:
+  client:
+    config:
+      athena-cognition-agent:
+        connectTimeout: 5000
+        readTimeout: 60000

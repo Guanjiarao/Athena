@@ -1,8 +1,10 @@
 package athena.cognition.biz.service;
 
+import athena.cognition.biz.agenttask.AgentTaskService;
 import athena.cognition.biz.bodyrecord.BodyRecordEvidenceProvider;
 import athena.cognition.biz.bodyrecord.BodyRecordEvidenceProvider.ConfirmedBodyRecord;
 import athena.cognition.biz.domain.CognitionException;
+import athena.cognition.biz.domain.CognitionGraphModels.AgentTaskView;
 import athena.cognition.biz.domain.CognitionIds;
 import athena.cognition.biz.domain.CognitionModels.*;
 import athena.cognition.biz.domain.CognitionStateMachine;
@@ -19,8 +21,11 @@ import athena.cognition.biz.repository.CognitionJdbcRepository.TaskRow;
 import athena.cognition.biz.repository.CognitionJdbcRepository.TopicRow;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.time.YearMonth;
@@ -35,6 +40,7 @@ import java.util.Set;
  * Contract business logic: three marker save rules (section 6), state flows
  * (section 7) and the HTTP-facing aggregates (section 8).
  */
+@Slf4j
 @Service
 public class CognitionService {
 
@@ -49,13 +55,16 @@ public class CognitionService {
     private final DigestGenerator generator;
     private final BodyRecordEvidenceProvider bodyRecordEvidenceProvider;
     private final ObjectMapper objectMapper;
+    private final AgentTaskService agentTaskService;
 
     public CognitionService(CognitionJdbcRepository repository, DigestGenerator generator,
-                            BodyRecordEvidenceProvider bodyRecordEvidenceProvider, ObjectMapper objectMapper) {
+                            BodyRecordEvidenceProvider bodyRecordEvidenceProvider, ObjectMapper objectMapper,
+                            AgentTaskService agentTaskService) {
         this.repository = repository;
         this.generator = generator;
         this.bodyRecordEvidenceProvider = bodyRecordEvidenceProvider;
         this.objectMapper = objectMapper;
+        this.agentTaskService = agentTaskService;
     }
 
     public record PagedResult<T>(List<T> items, long total) {
@@ -88,7 +97,55 @@ public class CognitionService {
 
         long id = repository.insertClue(userId, request, intent, status, helpRequestType, cycleRelation);
         ClueRow saved = repository.findClue(userId, id).orElseThrow(CognitionException::notFound);
+        maybeSubmitAgentTask(userId, saved);
         return new ClueCreateView(toClueView(saved), maybeAutoTrigger(userId, saved));
+    }
+
+    /**
+     * Graph pipeline wiring (cognition-agent-backend-handoff-v1.md): a saved
+     * RELATED clue additionally spawns one Agent task
+     * (clue:{clueId}:cognition-graph-workflow-v1, idempotent via the unique
+     * constraint). Submitted after commit so the worker never reads an
+     * uncommitted clue row; failures here never fail the clue creation itself.
+     */
+    private void maybeSubmitAgentTask(long userId, ClueRow saved) {
+        if (saved.intent() != ClueIntent.RELATED || saved.status() != ClueStatus.PENDING) {
+            return;
+        }
+        String clueExternalId = CognitionIds.of(CognitionIds.CLUE, saved.id());
+        // handoff section 11: persist the task row inside the clue transaction;
+        // only the async submission runs after commit. (Inserting in afterCommit
+        // reused the just-committed, still-bound connection, so the worker thread
+        // could not see the row and died on its initial task lookup.)
+        AgentTaskView task;
+        try {
+            task = agentTaskService.createClueTaskRecord(userId, clueExternalId);
+        } catch (RuntimeException ex) {
+            log.error("failed to create agent task for clue {}", clueExternalId, ex);
+            return;
+        }
+        if (task == null) {
+            // unit tests inject an unstubbed mock; nothing to submit
+            return;
+        }
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    submitAgentTaskQuietly(task.taskId(), clueExternalId);
+                }
+            });
+        } else {
+            submitAgentTaskQuietly(task.taskId(), clueExternalId);
+        }
+    }
+
+    private void submitAgentTaskQuietly(String taskId, String clueExternalId) {
+        try {
+            agentTaskService.submitClueTask(taskId, clueExternalId);
+        } catch (RuntimeException ex) {
+            log.error("failed to submit agent task {} for clue {}", taskId, clueExternalId, ex);
+        }
     }
 
     /**
@@ -243,8 +300,9 @@ public class CognitionService {
 
         List<Long> evidenceIds = createClueEvidence(userId, clues);
         for (ConfirmedBodyRecord record : bodyRecords) {
-            // Section 4.8: evidence references the real daily_record id, no clue copy
-            long evidenceId = repository.insertEvidence(userId, EvidenceSourceType.BODY_RECORD,
+            // Section 4.8: evidence references the real daily_record id, no clue copy;
+            // find-or-create: the same body record may already have evidence from an earlier digest
+            long evidenceId = repository.findOrCreateEvidence(userId, EvidenceSourceType.BODY_RECORD,
                     record.dailyRecordId(), FactLevel.SELF_REPORTED, record.summary(), record.occurredAt());
             evidenceIds.add(evidenceId);
         }
@@ -308,7 +366,7 @@ public class CognitionService {
                     ? FactLevel.SELF_REPORTED : FactLevel.OBSERVED;
             String summary = clue.selectedText();
             if (summary != null && summary.length() > 1000) summary = summary.substring(0, 1000);
-            long evidenceId = repository.insertEvidence(userId, EvidenceSourceType.CLUE,
+            long evidenceId = repository.findOrCreateEvidence(userId, EvidenceSourceType.CLUE,
                     CognitionIds.of(CognitionIds.CLUE, clue.id()), factLevel, summary, clue.occurredAt());
             evidenceIds.add(evidenceId);
         }

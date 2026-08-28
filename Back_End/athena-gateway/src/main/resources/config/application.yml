@@ -30,6 +30,13 @@ spring:
           uri: lb://athena-cognition
           predicates:
             - Path=/athena/cognition/**
+        - id: cognition-agent
+          uri: lb://athena-cognition-agent
+          predicates:
+            - Path=/internal/v1/cognition/**
+          filters:
+            # 认知 Agent 内部接口：过 Sa-Token 登录鉴权，剥离客户端伪造的 userId 头
+            - RemoveRequestHeader=userId
         - id: rag-athena-ask
           uri: http://localhost:9090
           predicates:

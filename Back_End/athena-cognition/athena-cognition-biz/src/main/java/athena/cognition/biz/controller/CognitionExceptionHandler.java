@@ -17,7 +17,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  * the outer Result.code and the stable errorCode to data.errorCode.
  */
 @Slf4j
-@RestControllerAdvice(assignableTypes = CognitionController.class)
+@RestControllerAdvice(assignableTypes = {CognitionController.class, CognitionGraphController.class})
 public class CognitionExceptionHandler {
 
     @ExceptionHandler(CognitionException.class)

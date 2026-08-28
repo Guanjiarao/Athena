@@ -16,6 +16,8 @@ public class CognitionException extends RuntimeException {
     public static final String NO_VALID_EVIDENCE = "COGNITION_NO_VALID_EVIDENCE";
     public static final String TASK_RUNNING = "COGNITION_TASK_RUNNING";
     public static final String GENERATION_FAILED = "COGNITION_GENERATION_FAILED";
+    public static final String PROPOSAL_NOT_READY = "COGNITION_PROPOSAL_NOT_READY";
+    public static final String AGENT_TASK_FAILED = "COGNITION_AGENT_TASK_FAILED";
 
     private final String errorCode;
     private final int semanticCode;
@@ -65,6 +67,14 @@ public class CognitionException extends RuntimeException {
 
     public static CognitionException generationFailed(String objectId) {
         return new CognitionException(GENERATION_FAILED, 500, "整理暂时失败，可以稍后重试", objectId, null);
+    }
+
+    public static CognitionException proposalNotReady(String proposalId, String currentStatus) {
+        return new CognitionException(PROPOSAL_NOT_READY, 409, "提案当前状态不能确认", proposalId, currentStatus);
+    }
+
+    public static CognitionException agentTaskFailed(String taskId) {
+        return new CognitionException(AGENT_TASK_FAILED, 500, "图谱更新任务执行失败，可以稍后重试", taskId, null);
     }
 
     public String errorCode() {

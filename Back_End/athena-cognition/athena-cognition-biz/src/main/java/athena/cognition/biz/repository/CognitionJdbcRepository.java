@@ -2,6 +2,7 @@ package athena.cognition.biz.repository;
 
 import athena.cognition.biz.domain.CognitionIds;
 import athena.cognition.biz.domain.CognitionModels.*;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -305,6 +306,31 @@ public class CognitionJdbcRepository {
                 occurredAt == null ? null : Timestamp.from(occurredAt), Timestamp.from(Instant.now()));
     }
 
+    /**
+     * Idempotent evidence creation keyed by uk(user_id, source_type, source_id):
+     * the same source can only have one evidence row, so re-organizing
+     * overlapping clue/body-record groups must reuse the existing row instead of
+     * inserting a duplicate (which the unique index now rejects).
+     */
+    public long findOrCreateEvidence(long userId, EvidenceSourceType sourceType, String sourceId,
+                                     FactLevel factLevel, String summary, Instant occurredAt) {
+        Optional<Long> existing = findEvidenceId(userId, sourceType, sourceId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        try {
+            return insertEvidence(userId, sourceType, sourceId, factLevel, summary, occurredAt);
+        } catch (DuplicateKeyException duplicate) {
+            // lost the race against a concurrent insert with the same source key; re-read the winner
+            return findEvidenceId(userId, sourceType, sourceId).orElseThrow(() -> duplicate);
+        }
+    }
+
+    private Optional<Long> findEvidenceId(long userId, EvidenceSourceType sourceType, String sourceId) {
+        return jdbc.query("SELECT id FROM cognition_evidence WHERE user_id=? AND source_type=? AND source_id=?",
+                (rs, rowNum) -> rs.getLong(1), userId, sourceType.name(), sourceId).stream().findFirst();
+    }
+
     public void linkDigestEvidence(long userId, long digestId, List<Long> evidenceIds) {
         jdbc.batchUpdate("INSERT INTO cognition_digest_evidence (user_id,digest_id,evidence_id) VALUES (?,?,?)",
                 evidenceIds, evidenceIds.size(), (ps, evidenceId) -> {
@@ -351,6 +377,15 @@ public class CognitionJdbcRepository {
                 JOIN cognition_topic_evidence te ON te.evidence_id=e.id
                 WHERE te.user_id=? AND te.topic_id=? AND e.deleted=0 AND e.active=1 ORDER BY e.id
                 """, EVIDENCE_ROW, userId, topicId);
+    }
+
+    /**
+     * All active evidence of a user, for the graph pipeline's existingEvidence
+     * (CanonicalEvidence) assembly — Agent node 2 deduplicates against it.
+     */
+    public List<EvidenceRow> listActiveEvidence(long userId) {
+        return jdbc.query(EVIDENCE_SELECT + "WHERE e.user_id=? AND e.deleted=0 AND e.active=1 ORDER BY e.id",
+                EVIDENCE_ROW, userId);
     }
 
     // ---------- digest task ----------
