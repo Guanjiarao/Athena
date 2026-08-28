@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/graph-target-resolution-v1/request.schema.json",
+  "title": "Graph target resolution request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "nodeVersion", "runId", "idempotencyKey",
+    "triggerType", "contextSnapshotId", "graph", "evidence",
+    "userSelectedTopicId", "suggestedTopicTitle"],
+  "properties": {
+    "contractVersion": {"const": "cognition-agent-v1"},
+    "nodeVersion": {"const": "graph-target-resolution-v1"},
+    "runId": {"type": "string"},
+    "idempotencyKey": {"type": "string"},
+    "triggerType": {"type": "string"},
+    "contextSnapshotId": {"type": "string"},
+    "graph": {"type": "object"},
+    "evidence": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+    "userSelectedTopicId": {"type": ["string", "null"]},
+    "suggestedTopicTitle": {"type": ["string", "null"], "maxLength": 80}
+  }
+}

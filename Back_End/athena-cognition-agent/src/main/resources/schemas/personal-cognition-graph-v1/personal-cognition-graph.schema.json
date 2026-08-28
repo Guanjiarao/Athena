@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/personal-cognition-graph-v1/personal-cognition-graph.schema.json",
+  "title": "Personal cognition graph",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["graphSchemaVersion", "graphId", "graphVersion", "nodes", "edges", "updatedAt"],
+  "properties": {
+    "graphSchemaVersion": {"const": "personal-cognition-graph-v1"},
+    "graphId": {"type": "string", "minLength": 1},
+    "graphVersion": {"type": "integer", "minimum": 0},
+    "nodes": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/node"}
+    },
+    "edges": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/edge"}
+    },
+    "updatedAt": {"type": ["string", "null"]}
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "status", "topicId", "title", "content", "domain",
+        "evidenceIds", "actionType", "actionStatus", "dueAt", "feedbackOptions",
+        "createdAt", "updatedAt", "version"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "type": {
+          "type": "string",
+          "enum": ["TOPIC", "SOURCE_EVIDENCE", "SELF_REPORTED_FACT",
+            "PATTERN_HYPOTHESIS", "OPEN_QUESTION", "ACTION"]
+        },
+        "status": {"type": "string", "enum": ["ACTIVE", "SUPERSEDED", "ARCHIVED"]},
+        "topicId": {"type": ["string", "null"]},
+        "title": {"type": ["string", "null"], "maxLength": 120},
+        "content": {"type": ["string", "null"], "maxLength": 2000},
+        "domain": {"type": ["string", "null"], "maxLength": 80},
+        "evidenceIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "actionType": {
+          "type": ["string", "null"],
+          "enum": ["RECORD_BODY", "RECORD_MOOD", "RECORD_SLEEP", "READ_CONTENT",
+            "ANSWER_QUESTION", "CONFIRM_STATUS", null]
+        },
+        "actionStatus": {
+          "type": ["string", "null"],
+          "enum": ["PENDING", "COMPLETED", "SKIPPED", "EXPIRED", null]
+        },
+        "dueAt": {"type": ["string", "null"]},
+        "feedbackOptions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["OCCURRED", "NOT_OCCURRED", "UNCERTAIN", "SKIPPED"]
+          }
+        },
+        "createdAt": {"type": ["string", "null"]},
+        "updatedAt": {"type": ["string", "null"]},
+        "version": {"type": "integer", "minimum": 1}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"const": "TOPIC"}}},
+          "then": {
+            "properties": {
+              "topicId": {"type": "null"},
+              "title": {"type": "string", "minLength": 1, "maxLength": 120}
+            }
+          },
+          "else": {"properties": {"topicId": {"type": "string", "minLength": 1}}}
+        },
+        {
+          "if": {"properties": {"type": {"const": "ACTION"}}},
+          "then": {
+            "properties": {
+              "actionType": {"type": "string", "enum": ["RECORD_BODY", "RECORD_MOOD",
+                "RECORD_SLEEP", "READ_CONTENT", "ANSWER_QUESTION", "CONFIRM_STATUS"]},
+              "actionStatus": {"type": "string", "enum": ["PENDING", "COMPLETED",
+                "SKIPPED", "EXPIRED"]},
+              "title": {"type": "string", "minLength": 1},
+              "content": {"type": "string", "minLength": 1},
+              "feedbackOptions": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "uniqueItems": true,
+                "items": {"enum": ["OCCURRED", "NOT_OCCURRED", "UNCERTAIN", "SKIPPED"]}
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "actionType": {"type": "null"},
+              "actionStatus": {"type": "null"},
+              "dueAt": {"type": "null"},
+              "feedbackOptions": {"maxItems": 0}
+            }
+          }
+        }
+      ]
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "fromNodeId", "toNodeId", "evidenceIds",
+        "active", "createdAt", "updatedAt", "version"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "type": {
+          "type": "string",
+          "enum": ["ABOUT", "GROUNDS", "SUPPORTS", "CHALLENGES", "NEXT_STEP_FOR", "FEEDBACK_FOR"]
+        },
+        "fromNodeId": {"type": "string", "minLength": 1},
+        "toNodeId": {"type": "string", "minLength": 1},
+        "evidenceIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "active": {"type": "boolean"},
+        "createdAt": {"type": ["string", "null"]},
+        "updatedAt": {"type": ["string", "null"]},
+        "version": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/graph-target-resolution-v1/graph-target-model-context.schema.json",
+  "title": "Graph target model-visible context",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["suggestedTopicTitle", "evidence", "candidateTopics"],
+  "properties": {
+    "suggestedTopicTitle": {"type": ["string", "null"]},
+    "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
+    "candidateTopics": {"type": "array", "items": {"$ref": "#/$defs/topic"}}
+  },
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidenceId", "sourceType", "factLevel", "summary"],
+      "properties": {
+        "evidenceId": {"type": "string"},
+        "sourceType": {"type": "string", "enum": ["ARTICLE_HIGHLIGHT", "BODY_RECORD", "ACTION_FEEDBACK"]},
+        "factLevel": {"type": "string", "enum": ["DECLARED_RELEVANCE", "SELF_REPORTED", "OBSERVED", "QUESTION", "PROCESS_EVENT"]},
+        "summary": {"type": "string", "maxLength": 500}
+      }
+    },
+    "topic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["topicId", "title", "domain", "stageSummary"],
+      "properties": {
+        "topicId": {"type": "string"},
+        "title": {"type": ["string", "null"]},
+        "domain": {"type": ["string", "null"]},
+        "stageSummary": {"type": ["string", "null"], "maxLength": 300}
+      }
+    }
+  }
+}

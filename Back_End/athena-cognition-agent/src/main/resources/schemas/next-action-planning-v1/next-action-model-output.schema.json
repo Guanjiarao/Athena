@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/next-action-planning-v1/model-output.schema.json",
+  "title": "Next action model output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["actionType", "title", "description", "evidenceIds", "rationale"],
+  "properties": {
+    "actionType": {"type": "string", "enum": ["RECORD_BODY", "RECORD_MOOD",
+      "RECORD_SLEEP", "ANSWER_QUESTION", "CONFIRM_STATUS"]},
+    "title": {"type": "string", "minLength": 1, "maxLength": 80},
+    "description": {"type": "string", "minLength": 1, "maxLength": 500},
+    "evidenceIds": {"type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}},
+    "rationale": {"type": "string", "minLength": 1, "maxLength": 500}
+  }
+}

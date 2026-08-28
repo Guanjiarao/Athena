@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/cognition-graph-workflow-v1/request.schema.json",
+  "title": "Cognition graph workflow request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "workflowVersion", "runId", "idempotencyKey",
+    "triggerType", "contextSnapshotId", "graph", "candidates", "existingEvidence",
+    "userSelectedTopicId", "suggestedTopicTitle", "requestedAt"],
+  "properties": {
+    "contractVersion": {"const": "cognition-agent-v1"},
+    "workflowVersion": {"const": "cognition-graph-workflow-v1"},
+    "runId": {"type": "string", "minLength": 1},
+    "idempotencyKey": {"type": "string", "minLength": 1},
+    "triggerType": {"type": "string", "enum": ["CLUE_CREATED", "USER_REQUEST", "RETRY"]},
+    "contextSnapshotId": {"type": "string", "minLength": 1},
+    "graph": {"type": "object"},
+    "candidates": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+    "existingEvidence": {"type": "array", "items": {"type": "object"}},
+    "userSelectedTopicId": {"type": ["string", "null"]},
+    "suggestedTopicTitle": {"type": ["string", "null"]},
+    "requestedAt": {"type": ["string", "null"]}
+  }
+}

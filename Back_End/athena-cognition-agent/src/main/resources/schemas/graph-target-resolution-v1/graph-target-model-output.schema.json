@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/graph-target-resolution-v1/graph-target-model-output.schema.json",
+  "title": "Graph target model output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["route", "matchedTopicId", "suggestedTopicTitle", "rationale"],
+  "properties": {
+    "route": {
+      "type": "string",
+      "enum": ["UPDATE_EXISTING", "CREATE_BRANCH", "NEEDS_CONFIRMATION"]
+    },
+    "matchedTopicId": {"type": ["string", "null"]},
+    "suggestedTopicTitle": {"type": ["string", "null"], "maxLength": 80},
+    "rationale": {"type": "string", "minLength": 1, "maxLength": 500}
+  }
+}

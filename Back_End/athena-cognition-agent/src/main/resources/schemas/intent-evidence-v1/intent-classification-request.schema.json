@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/cognition-agent/intent-evidence-v1/intent-classification-request.schema.json",
+  "title": "Intent classification request",
+  "description": "Input contract for INTENT_AND_EVIDENCE_CLASSIFICATION version intent-evidence-v1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "nodeVersion",
+    "runId",
+    "idempotencyKey",
+    "triggerType",
+    "contextSnapshotId",
+    "clue"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "cognition-agent-v1"
+    },
+    "nodeVersion": {
+      "const": "intent-evidence-v1"
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "triggerType": {
+      "type": "string",
+      "enum": ["CLUE_CREATED", "RETRY"]
+    },
+    "contextSnapshotId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "clue": {
+      "$ref": "#/$defs/clue"
+    }
+  },
+  "$defs": {
+    "clue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "intent",
+        "helpRequestType",
+        "articleId",
+        "articleTitle",
+        "selectedText",
+        "cycleRelation",
+        "source",
+        "status",
+        "originalLabel",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "const": "ARTICLE_HIGHLIGHT"
+        },
+        "intent": {
+          "type": "string",
+          "enum": ["RELATED", "QUESTION", "KNOWLEDGE_ONLY"]
+        },
+        "relationType": {
+          "type": ["string", "null"],
+          "enum": ["CURRENT", "PAST", "OBSERVE", "KNOWLEDGE_ONLY", null]
+        },
+        "helpRequestType": {
+          "type": "string",
+          "enum": ["OBSERVE", "KNOWLEDGE", "ATTENTION", "SAVE_ONLY"]
+        },
+        "articleId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "articleTitle": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "articleType": {
+          "type": ["integer", "null"]
+        },
+        "selectedText": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 3000
+        },
+        "questionType": {
+          "type": ["string", "null"],
+          "enum": ["IS_COMMON", "POSSIBLE_CAUSES", "SELF_CARE", "PROFESSIONAL_HELP", "CUSTOM", null]
+        },
+        "questionText": {
+          "type": ["string", "null"],
+          "maxLength": 2000
+        },
+        "occurredAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "cycleRelation": {
+          "type": "string",
+          "enum": ["BEFORE_PERIOD", "DURING_PERIOD", "AFTER_PERIOD", "NO_RELATION", "UNKNOWN"]
+        },
+        "severity": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "maximum": 10
+        },
+        "resolved": {
+          "type": ["boolean", "null"]
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": ["PENDING", "PROCESSING", "ORGANIZED", "DISMISSED"]
+        },
+        "suggestedTopicId": {
+          "type": ["string", "null"]
+        },
+        "suggestedTopicTitle": {
+          "type": ["string", "null"],
+          "maxLength": 200
+        },
+        "originalLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "intent": {"const": "RELATED"}
+            },
+            "required": ["intent"]
+          },
+          "then": {
+            "required": ["relationType"],
+            "properties": {
+              "relationType": {
+                "enum": ["CURRENT", "PAST", "OBSERVE"]
+              },
+              "questionType": {"type": "null"},
+              "questionText": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "intent": {"const": "QUESTION"}
+            },
+            "required": ["intent"]
+          },
+          "then": {
+            "required": ["questionType", "questionText"],
+            "properties": {
+              "relationType": {"type": "null"},
+              "questionType": {
+                "enum": ["IS_COMMON", "POSSIBLE_CAUSES", "SELF_CARE", "PROFESSIONAL_HELP", "CUSTOM"]
+              },
+              "questionText": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "intent": {"const": "KNOWLEDGE_ONLY"}
+            },
+            "required": ["intent"]
+          },
+          "then": {
+            "required": ["relationType"],
+            "properties": {
+              "relationType": {"const": "KNOWLEDGE_ONLY"},
+              "helpRequestType": {"const": "SAVE_ONLY"},
+              "questionType": {"type": "null"},
+              "questionText": {"type": "null"}
+            }
+          }
+        }
+      ]
+    }
+  }
+}

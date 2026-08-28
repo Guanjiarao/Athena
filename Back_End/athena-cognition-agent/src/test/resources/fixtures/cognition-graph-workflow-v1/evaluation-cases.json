@@ -1,0 +1,60 @@
+[
+  {
+    "caseId": "GRAPH_001",
+    "scenario": "EMPTY_GRAPH",
+    "description": "empty graph creates the first branch semantic draft",
+    "expectedStatus": "PROPOSAL_READY",
+    "expectedRoute": "CREATE_BRANCH"
+  },
+  {
+    "caseId": "GRAPH_002",
+    "scenario": "EXISTING_BRANCH",
+    "description": "exact title updates an existing branch",
+    "expectedStatus": "PROPOSAL_READY",
+    "expectedRoute": "UPDATE_EXISTING"
+  },
+  {
+    "caseId": "GRAPH_003",
+    "scenario": "DUPLICATE_EVIDENCE",
+    "description": "same source submitted twice is idempotent",
+    "expectedStatus": "NO_CHANGE"
+  },
+  {
+    "caseId": "GRAPH_004",
+    "scenario": "USER_TARGET",
+    "description": "user selected target overrides title suggestion",
+    "expectedDecisionSource": "USER_DECLARED"
+  },
+  {
+    "caseId": "GRAPH_005",
+    "scenario": "AMBIGUOUS_TARGET",
+    "description": "ambiguous target requires human confirmation",
+    "expectedStatus": "NEEDS_CONFIRMATION"
+  },
+  {
+    "caseId": "GRAPH_006",
+    "scenario": "CONTEXT_ISOLATION",
+    "description": "other topic branches never enter semantic model context",
+    "expectedLeakedNodeCount": 0
+  },
+  {
+    "caseId": "GRAPH_007",
+    "scenario": "FACT_POLICY_BLOCK",
+    "description": "article relevance cannot become a confirmed body fact",
+    "expectedPolicyResult": "BLOCK"
+  },
+  {
+    "caseId": "GRAPH_008",
+    "scenario": "SOURCE_CONFLICT",
+    "description": "reusing one source id with changed content is an idempotency conflict",
+    "expectedStatus": "REJECTED",
+    "expectedErrorCode": "IDEMPOTENCY_CONFLICT"
+  },
+  {
+    "caseId": "GRAPH_009",
+    "scenario": "REPEATED_BODY_OBSERVATION",
+    "description": "same body observation text at different times remains two events",
+    "expectedStatus": "PROPOSAL_READY",
+    "expectedAcceptedCount": 2
+  }
+]

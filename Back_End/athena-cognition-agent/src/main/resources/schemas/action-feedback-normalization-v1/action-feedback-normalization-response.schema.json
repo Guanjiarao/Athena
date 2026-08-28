@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/action-feedback-normalization-v1/response.schema.json",
+  "title": "Action feedback normalization response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "nodeVersion", "nodeId", "runId", "status",
+    "normalizedFeedback", "schemaResult", "policyResult", "observation", "error"],
+  "properties": {
+    "contractVersion": {"const": "cognition-agent-v1"},
+    "nodeVersion": {"const": "action-feedback-normalization-v1"},
+    "nodeId": {"const": "ACTION_FEEDBACK_NORMALIZATION"},
+    "runId": {"type": ["string", "null"]},
+    "status": {"type": "string", "enum": ["READY", "NO_CHANGE", "BLOCKED", "REJECTED", "FAILED"]},
+    "normalizedFeedback": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/normalizedFeedback"}
+      ]
+    },
+    "schemaResult": {"type": "string", "enum": ["PASS", "FAIL", "NOT_RUN"]},
+    "policyResult": {"type": ["string", "null"], "enum": ["PASS", "BLOCK", null]},
+    "observation": {"type": ["object", "null"]},
+    "error": {"type": ["object", "null"]}
+  },
+  "$defs": {
+    "normalizedFeedback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["feedbackId", "actionId", "topicId", "result",
+        "resultingActionStatus", "baseGraphVersion", "evidence"],
+      "properties": {
+        "feedbackId": {"type": "string", "minLength": 1},
+        "actionId": {"type": "string", "minLength": 1},
+        "topicId": {"type": "string", "minLength": 1},
+        "result": {"type": "string", "enum": ["OCCURRED", "NOT_OCCURRED", "UNCERTAIN", "SKIPPED"]},
+        "resultingActionStatus": {"type": "string", "enum": ["COMPLETED", "SKIPPED"]},
+        "baseGraphVersion": {"type": "integer", "minimum": 0},
+        "evidence": {"$ref": "#/$defs/actionFeedbackEvidence"}
+      }
+    },
+    "actionFeedbackEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidenceId", "sourceType", "sourceId", "factLevel", "summary",
+        "contentFingerprint", "occurredAt", "relatedActionId", "feedbackResult"],
+      "properties": {
+        "evidenceId": {"type": "string", "minLength": 1},
+        "sourceType": {"const": "ACTION_FEEDBACK"},
+        "sourceId": {"type": "string", "minLength": 1},
+        "factLevel": {"type": "string", "enum": ["QUESTION", "OBSERVED", "PROCESS_EVENT"]},
+        "summary": {"type": "string", "minLength": 1},
+        "contentFingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "occurredAt": {"type": "string", "format": "date-time"},
+        "cycleRelation": {"type": "null"},
+        "severity": {"type": "null"},
+        "resolved": {"type": "null"},
+        "relatedActionId": {"type": "string", "minLength": 1},
+        "feedbackResult": {"type": "string", "enum": ["OCCURRED", "NOT_OCCURRED", "UNCERTAIN", "SKIPPED"]}
+      }
+    }
+  }
+}

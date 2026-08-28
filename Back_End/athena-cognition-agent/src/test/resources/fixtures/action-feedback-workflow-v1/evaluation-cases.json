@@ -1,0 +1,65 @@
+[
+  {
+    "caseId": "FEEDBACK_001",
+    "scenario": "NORMAL",
+    "result": "OCCURRED",
+    "description": "occurred feedback becomes observed meaning and completes the action",
+    "expectedStatus": "PROPOSAL_READY",
+    "expectedActionStatus": "COMPLETED",
+    "expectedSemanticType": "SELF_REPORTED_FACT"
+  },
+  {
+    "caseId": "FEEDBACK_002",
+    "scenario": "NORMAL",
+    "result": "NOT_OCCURRED",
+    "description": "not occurred remains an explicit observation and completes the action",
+    "expectedStatus": "PROPOSAL_READY",
+    "expectedActionStatus": "COMPLETED",
+    "expectedSemanticType": "SELF_REPORTED_FACT"
+  },
+  {
+    "caseId": "FEEDBACK_003",
+    "scenario": "NORMAL",
+    "result": "UNCERTAIN",
+    "description": "uncertain feedback becomes an open question rather than a body fact",
+    "expectedStatus": "PROPOSAL_READY",
+    "expectedActionStatus": "COMPLETED",
+    "expectedSemanticType": "OPEN_QUESTION"
+  },
+  {
+    "caseId": "FEEDBACK_004",
+    "scenario": "NORMAL",
+    "result": "SKIPPED",
+    "description": "skipped feedback closes the action without semantic invention",
+    "expectedStatus": "PROPOSAL_READY",
+    "expectedActionStatus": "SKIPPED"
+  },
+  {
+    "caseId": "FEEDBACK_005",
+    "scenario": "DUPLICATE",
+    "result": "OCCURRED",
+    "description": "same feedback id and content is idempotent",
+    "expectedStatus": "NO_CHANGE"
+  },
+  {
+    "caseId": "FEEDBACK_006",
+    "scenario": "ACTION_COMPLETED",
+    "result": "OCCURRED",
+    "description": "completed action cannot receive another feedback event",
+    "expectedStatus": "BLOCKED"
+  },
+  {
+    "caseId": "FEEDBACK_007",
+    "scenario": "ACTION_UNKNOWN",
+    "result": "NOT_OCCURRED",
+    "description": "unknown action id is rejected by policy",
+    "expectedStatus": "BLOCKED"
+  },
+  {
+    "caseId": "FEEDBACK_008",
+    "scenario": "CONFLICTING_DUPLICATE",
+    "result": "UNCERTAIN",
+    "description": "same feedback id cannot be reused with a different result",
+    "expectedStatus": "BLOCKED"
+  }
+]

@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: athena-cognition-agent
+
+athena:
+  model:
+    # Keep mock as the safe default. Set ATHENA_MODEL_PROVIDER=openai-compatible for local model testing.
+    provider: ${ATHENA_MODEL_PROVIDER:mock}
+    api-key: ${ATHENA_MODEL_API_KEY:}
+    base-url: ${ATHENA_MODEL_BASE_URL:}
+    model-name: ${ATHENA_MODEL_NAME:}
+    endpoint-path: ${ATHENA_MODEL_ENDPOINT_PATH:/v1/chat/completions}
+    timeout-ms: ${ATHENA_MODEL_TIMEOUT_MS:15000}
+    json-mode: ${ATHENA_MODEL_JSON_MODE:true}
+    input-cost-per-million-tokens: ${ATHENA_MODEL_INPUT_COST_PER_MILLION:}
+    output-cost-per-million-tokens: ${ATHENA_MODEL_OUTPUT_COST_PER_MILLION:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

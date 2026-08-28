@@ -1,0 +1,35 @@
+# 测试环境离线配置：禁止连接真实 Nacos，保证单测可离线运行。
+# 注意：test classpath 的 application.yml 会整体遮蔽 main 的 application.yml，
+# 因此这里必须完整复制 main 配置（actuator 暴露、athena.model 等），只追加 cloud 禁用项。
+spring:
+  application:
+    name: athena-cognition-agent
+  cloud:
+    discovery:
+      enabled: false
+    nacos:
+      discovery:
+        enabled: false
+        register-enabled: false
+      config:
+        enabled: false
+        import-check:
+          enabled: false
+
+athena:
+  model:
+    provider: ${ATHENA_MODEL_PROVIDER:mock}
+    api-key: ${ATHENA_MODEL_API_KEY:}
+    base-url: ${ATHENA_MODEL_BASE_URL:}
+    model-name: ${ATHENA_MODEL_NAME:}
+    endpoint-path: ${ATHENA_MODEL_ENDPOINT_PATH:/v1/chat/completions}
+    timeout-ms: ${ATHENA_MODEL_TIMEOUT_MS:15000}
+    json-mode: ${ATHENA_MODEL_JSON_MODE:true}
+    input-cost-per-million-tokens: ${ATHENA_MODEL_INPUT_COST_PER_MILLION:}
+    output-cost-per-million-tokens: ${ATHENA_MODEL_OUTPUT_COST_PER_MILLION:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/graph-update-scope-v1/request.schema.json",
+  "title": "Graph update scope request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "nodeVersion", "runId", "idempotencyKey",
+    "triggerType", "contextSnapshotId", "graph", "evidence", "targetRoute",
+    "targetTopicId", "proposedTopicTitle"],
+  "properties": {
+    "contractVersion": {"const": "cognition-agent-v1"},
+    "nodeVersion": {"const": "graph-update-scope-v1"},
+    "runId": {"type": "string"},
+    "idempotencyKey": {"type": "string"},
+    "triggerType": {"type": "string"},
+    "contextSnapshotId": {"type": "string"},
+    "graph": {"type": "object"},
+    "evidence": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+    "targetRoute": {"type": "string", "enum": ["UPDATE_EXISTING", "CREATE_BRANCH", "NO_CHANGE", "NEEDS_CONFIRMATION"]},
+    "targetTopicId": {"type": ["string", "null"]},
+    "proposedTopicTitle": {"type": ["string", "null"]}
+  }
+}

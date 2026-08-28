@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/graph-target-resolution-v1/response.schema.json",
+  "title": "Graph target resolution response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "nodeVersion", "nodeId", "runId", "status",
+    "route", "targetTopicId", "suggestedTopicTitle", "matchStrength",
+    "decisionSource", "rationale", "schemaResult", "policyResult", "observation", "error"],
+  "properties": {
+    "contractVersion": {"const": "cognition-agent-v1"},
+    "nodeVersion": {"const": "graph-target-resolution-v1"},
+    "nodeId": {"const": "GRAPH_TARGET_RESOLUTION"},
+    "runId": {"type": ["string", "null"]},
+    "status": {"type": "string", "enum": ["SUCCEEDED", "NO_CHANGE", "NEEDS_CONFIRMATION", "REJECTED", "FAILED"]},
+    "route": {"type": ["string", "null"], "enum": ["UPDATE_EXISTING", "CREATE_BRANCH", "NO_CHANGE", "NEEDS_CONFIRMATION", null]},
+    "targetTopicId": {"type": ["string", "null"]},
+    "suggestedTopicTitle": {"type": ["string", "null"]},
+    "matchStrength": {"type": ["string", "null"], "enum": ["EXACT", "POSSIBLE", "NONE", null]},
+    "decisionSource": {"type": ["string", "null"], "enum": ["USER_DECLARED", "RULE", "MODEL_ASSISTED", null]},
+    "rationale": {"type": ["string", "null"]},
+    "schemaResult": {"type": "string", "enum": ["PASS", "FAIL", "NOT_RUN"]},
+    "policyResult": {"type": ["string", "null"], "enum": ["PASS", "BLOCK", null]},
+    "observation": {"type": ["object", "null"]},
+    "error": {"type": ["object", "null"]}
+  }
+}

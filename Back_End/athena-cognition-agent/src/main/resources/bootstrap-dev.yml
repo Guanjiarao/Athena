@@ -1,0 +1,11 @@
+spring:
+  cloud:
+    nacos:
+      config:
+        server-addr: 121.41.200.73:8848
+        namespace: 71e163a1-9eae-4a2f-9c57-491089e5cc5d
+        file-extension: yaml
+        # 注意：不引入 shared-configs 的 database.yaml——本服务无数据源，引入会因缺依赖启动失败
+      discovery:
+        server-addr: 121.41.200.73:8848
+        namespace: 71e163a1-9eae-4a2f-9c57-491089e5cc5d

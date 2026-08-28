@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/action-feedback-normalization-v1/request.schema.json",
+  "title": "Action feedback normalization request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "nodeVersion", "runId", "idempotencyKey",
+    "triggerType", "contextSnapshotId", "graph", "existingEvidence", "feedback"],
+  "properties": {
+    "contractVersion": {"const": "cognition-agent-v1"},
+    "nodeVersion": {"const": "action-feedback-normalization-v1"},
+    "runId": {"type": "string", "minLength": 1},
+    "idempotencyKey": {"type": "string", "minLength": 1},
+    "triggerType": {"const": "ACTION_FEEDBACK"},
+    "contextSnapshotId": {"type": "string", "minLength": 1},
+    "graph": {"type": "object"},
+    "existingEvidence": {"type": "array", "items": {"type": "object"}},
+    "feedback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["feedbackId", "actionId", "result", "note", "occurredAt"],
+      "properties": {
+        "feedbackId": {"type": "string", "minLength": 1, "maxLength": 128},
+        "actionId": {"type": "string", "minLength": 1, "maxLength": 128},
+        "result": {"type": "string", "enum": ["OCCURRED", "NOT_OCCURRED", "UNCERTAIN", "SKIPPED"]},
+        "note": {"type": ["string", "null"], "maxLength": 500},
+        "occurredAt": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}

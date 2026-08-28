@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/next-action-planning-v1/request.schema.json",
+  "title": "Next action planning request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "nodeVersion", "runId", "idempotencyKey",
+    "triggerType", "contextSnapshotId", "graph", "evidence", "scope", "semanticDraft"],
+  "properties": {
+    "contractVersion": {"const": "cognition-agent-v1"},
+    "nodeVersion": {"const": "next-action-planning-v1"},
+    "runId": {"type": "string", "minLength": 1},
+    "idempotencyKey": {"type": "string", "minLength": 1},
+    "triggerType": {"type": "string"},
+    "contextSnapshotId": {"type": "string", "minLength": 1},
+    "graph": {"type": "object"},
+    "evidence": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+    "scope": {"type": "object"},
+    "semanticDraft": {"type": "object"}
+  }
+}

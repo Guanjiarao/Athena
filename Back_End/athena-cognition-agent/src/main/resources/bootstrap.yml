@@ -1,0 +1,8 @@
+server:
+  # 原默认 8080 改为 8021，避开本机常见端口占用（其他服务/网关常用 8080）
+  port: 8021
+spring:
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  application:
+    name: athena-cognition-agent

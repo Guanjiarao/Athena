@@ -1,0 +1,113 @@
+[
+  {
+    "name": "related-current-match",
+    "userIntent": "RELATED",
+    "relationType": "CURRENT",
+    "helpRequestType": "OBSERVE",
+    "modelIntent": "RELATED",
+    "rationale": "The user explicitly marks the text as personally relevant.",
+    "expectedFinalIntent": "RELATED",
+    "expectedConflict": false,
+    "expectedSchemaResult": "PASS",
+    "expectedModelStatus": "SUCCEEDED"
+  },
+  {
+    "name": "question-match",
+    "userIntent": "QUESTION",
+    "helpRequestType": "KNOWLEDGE",
+    "questionType": "IS_COMMON",
+    "questionText": "Is this common?",
+    "modelIntent": "QUESTION",
+    "rationale": "The user explicitly asks to understand the marked content.",
+    "expectedFinalIntent": "QUESTION",
+    "expectedConflict": false,
+    "expectedSchemaResult": "PASS",
+    "expectedModelStatus": "SUCCEEDED"
+  },
+  {
+    "name": "knowledge-match",
+    "userIntent": "KNOWLEDGE_ONLY",
+    "relationType": "KNOWLEDGE_ONLY",
+    "helpRequestType": "SAVE_ONLY",
+    "modelIntent": "KNOWLEDGE_ONLY",
+    "rationale": "The user explicitly saves the excerpt as knowledge.",
+    "expectedFinalIntent": "KNOWLEDGE_ONLY",
+    "expectedConflict": false,
+    "expectedSchemaResult": "PASS",
+    "expectedModelStatus": "SUCCEEDED"
+  },
+  {
+    "name": "related-versus-question-conflict",
+    "userIntent": "RELATED",
+    "relationType": "OBSERVE",
+    "helpRequestType": "OBSERVE",
+    "modelIntent": "QUESTION",
+    "rationale": "The wording resembles an information request.",
+    "expectedFinalIntent": "RELATED",
+    "expectedConflict": true,
+    "expectedSchemaResult": "PASS",
+    "expectedModelStatus": "SUCCEEDED"
+  },
+  {
+    "name": "question-versus-related-conflict",
+    "userIntent": "QUESTION",
+    "helpRequestType": "KNOWLEDGE",
+    "questionType": "POSSIBLE_CAUSES",
+    "questionText": "What may explain this?",
+    "modelIntent": "RELATED",
+    "rationale": "The wording appears personally relevant.",
+    "expectedFinalIntent": "QUESTION",
+    "expectedConflict": true,
+    "expectedSchemaResult": "PASS",
+    "expectedModelStatus": "SUCCEEDED"
+  },
+  {
+    "name": "knowledge-versus-question-conflict",
+    "userIntent": "KNOWLEDGE_ONLY",
+    "relationType": "KNOWLEDGE_ONLY",
+    "helpRequestType": "SAVE_ONLY",
+    "modelIntent": "QUESTION",
+    "rationale": "The excerpt contains question-like language.",
+    "expectedFinalIntent": "KNOWLEDGE_ONLY",
+    "expectedConflict": true,
+    "expectedSchemaResult": "PASS",
+    "expectedModelStatus": "SUCCEEDED"
+  },
+  {
+    "name": "empty-rationale-schema-rejection",
+    "userIntent": "QUESTION",
+    "helpRequestType": "KNOWLEDGE",
+    "questionType": "IS_COMMON",
+    "questionText": "Is this common?",
+    "modelIntent": "QUESTION",
+    "rationale": "",
+    "expectedFinalIntent": "QUESTION",
+    "expectedConflict": false,
+    "expectedSchemaResult": "FAIL",
+    "expectedModelStatus": "REJECTED"
+  },
+  {
+    "name": "diagnostic-rationale-policy-rejection",
+    "userIntent": "RELATED",
+    "relationType": "CURRENT",
+    "helpRequestType": "OBSERVE",
+    "modelIntent": "RELATED",
+    "rationale": "You have a diagnosed disease.",
+    "expectedFinalIntent": "RELATED",
+    "expectedConflict": false,
+    "expectedSchemaResult": "PASS",
+    "expectedModelStatus": "REJECTED"
+  },
+  {
+    "name": "provider-timeout-fallback",
+    "userIntent": "QUESTION",
+    "helpRequestType": "KNOWLEDGE",
+    "questionType": "IS_COMMON",
+    "questionText": "Is this common?",
+    "providerErrorCode": "MODEL_TIMEOUT",
+    "expectedFinalIntent": "QUESTION",
+    "expectedConflict": false,
+    "expectedSchemaResult": "NOT_RUN",
+    "expectedModelStatus": "FAILED"
+  }
+]

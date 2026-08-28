@@ -1,0 +1,13 @@
+# 测试环境 bootstrap：遮蔽 main 的 bootstrap.yml。
+# 不激活 dev/prod profile，避免加载 bootstrap-dev/prod.yml 去连真实 Nacos；
+# 并显式关闭 Nacos 配置导入与注册（bootstrap starter 在 classpath 时无法用属性关闭 bootstrap 上下文本身）。
+spring:
+  application:
+    name: athena-cognition-agent
+  cloud:
+    nacos:
+      config:
+        enabled: false
+      discovery:
+        enabled: false
+        register-enabled: false

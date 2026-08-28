@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/graph-update-scope-v1/graph-update-scope.schema.json",
+  "title": "Graph update scope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["graphId", "baseGraphVersion", "route", "targetTopicId",
+    "proposedTopicTitle", "selectedEvidenceIds", "readableNodeIds",
+    "mutableNodeIds", "immutableNodeIds"],
+  "properties": {
+    "graphId": {"type": "string", "minLength": 1},
+    "baseGraphVersion": {"type": "integer", "minimum": 0},
+    "route": {"type": "string", "enum": ["UPDATE_EXISTING", "CREATE_BRANCH"]},
+    "targetTopicId": {"type": ["string", "null"]},
+    "proposedTopicTitle": {"type": ["string", "null"], "maxLength": 80},
+    "selectedEvidenceIds": {"type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}},
+    "readableNodeIds": {"type": "array", "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}},
+    "mutableNodeIds": {"type": "array", "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}},
+    "immutableNodeIds": {"type": "array", "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}}
+  }
+}

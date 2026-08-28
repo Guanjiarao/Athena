@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/evidence-canonicalization-v1/response.schema.json",
+  "title": "Evidence canonicalization response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "nodeVersion", "nodeId", "runId", "status",
+    "acceptedEvidence", "decisions", "schemaResult", "policyResult", "observation", "error"],
+  "properties": {
+    "contractVersion": {"const": "cognition-agent-v1"},
+    "nodeVersion": {"const": "evidence-canonicalization-v1"},
+    "nodeId": {"const": "EVIDENCE_CANONICALIZATION_AND_DEDUPLICATION"},
+    "runId": {"type": ["string", "null"]},
+    "status": {"type": "string", "enum": ["SUCCEEDED", "NO_CHANGE", "REJECTED", "FAILED"]},
+    "acceptedEvidence": {"type": "array", "items": {"type": "object"}},
+    "decisions": {"type": "array", "items": {"type": "object"}},
+    "schemaResult": {"type": "string", "enum": ["PASS", "FAIL", "NOT_RUN"]},
+    "policyResult": {"type": ["string", "null"], "enum": ["PASS", "BLOCK", null]},
+    "observation": {"type": ["object", "null"]},
+    "error": {"type": ["object", "null"]}
+  }
+}

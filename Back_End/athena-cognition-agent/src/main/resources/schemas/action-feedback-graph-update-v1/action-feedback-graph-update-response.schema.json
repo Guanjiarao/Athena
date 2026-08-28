@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/action-feedback-graph-update-v1/response.schema.json",
+  "title": "Action feedback graph update response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "nodeVersion", "nodeId", "runId", "status",
+    "proposal", "graphPreview", "guardResult", "schemaResult", "policyResult",
+    "observation", "error"],
+  "properties": {
+    "contractVersion": {"const": "cognition-agent-v1"},
+    "nodeVersion": {"const": "action-feedback-graph-update-v1"},
+    "nodeId": {"const": "ACTION_FEEDBACK_GRAPH_UPDATE"},
+    "runId": {"type": ["string", "null"]},
+    "status": {"type": "string", "enum": ["READY_FOR_CONFIRMATION", "NO_CHANGE", "STALE", "BLOCKED", "REJECTED", "FAILED"]},
+    "proposal": {"type": ["object", "null"]},
+    "graphPreview": {"type": ["object", "null"]},
+    "guardResult": {"type": ["object", "null"]},
+    "schemaResult": {"type": "string", "enum": ["PASS", "FAIL", "NOT_RUN"]},
+    "policyResult": {"type": ["string", "null"], "enum": ["PASS", "BLOCK", null]},
+    "observation": {"type": ["object", "null"]},
+    "error": {"type": ["object", "null"]}
+  }
+}

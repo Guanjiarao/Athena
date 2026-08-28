@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/cognition-agent/intent-evidence-v1/intent-model-output.schema.json",
+  "title": "Intent model output",
+  "description": "Raw JSON content that the model is allowed to return before provider metadata is added.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["suggestedIntent", "rationale"],
+  "properties": {
+    "suggestedIntent": {
+      "type": "string",
+      "enum": ["RELATED", "QUESTION", "KNOWLEDGE_ONLY"]
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    }
+  }
+}

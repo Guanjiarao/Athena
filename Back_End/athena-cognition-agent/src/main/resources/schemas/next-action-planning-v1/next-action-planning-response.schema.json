@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/next-action-planning-v1/response.schema.json",
+  "title": "Next action planning response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "nodeVersion", "nodeId", "runId", "status",
+    "plan", "schemaResult", "policyResult", "observation", "error"],
+  "properties": {
+    "contractVersion": {"const": "cognition-agent-v1"},
+    "nodeVersion": {"const": "next-action-planning-v1"},
+    "nodeId": {"const": "NEXT_ACTION_PLANNING"},
+    "runId": {"type": ["string", "null"]},
+    "status": {"type": "string", "enum": ["READY", "BLOCKED", "REJECTED", "FAILED"]},
+    "plan": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["decision", "existingActionNodeId", "actionType", "title",
+        "description", "dueAt", "feedbackOptions", "evidenceIds", "rationale"],
+      "properties": {
+        "decision": {"type": "string", "enum": ["CREATE_NEW", "KEEP_EXISTING"]},
+        "existingActionNodeId": {"type": ["string", "null"]},
+        "actionType": {"type": "string"},
+        "title": {"type": "string"},
+        "description": {"type": "string"},
+        "dueAt": {"type": ["string", "null"]},
+        "feedbackOptions": {"type": "array"},
+        "evidenceIds": {"type": "array"},
+        "rationale": {"type": "string"}
+      }
+    },
+    "schemaResult": {"type": "string", "enum": ["PASS", "FAIL", "NOT_RUN"]},
+    "policyResult": {"type": ["string", "null"], "enum": ["PASS", "BLOCK", null]},
+    "observation": {"type": ["object", "null"]},
+    "error": {"type": ["object", "null"]}
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/graph-update-scope-v1/response.schema.json",
+  "title": "Graph update scope response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "nodeVersion", "nodeId", "runId", "status",
+    "scope", "schemaResult", "policyResult", "observation", "error"],
+  "properties": {
+    "contractVersion": {"const": "cognition-agent-v1"},
+    "nodeVersion": {"const": "graph-update-scope-v1"},
+    "nodeId": {"const": "GRAPH_UPDATE_SCOPE_PLANNING"},
+    "runId": {"type": ["string", "null"]},
+    "status": {"type": "string", "enum": ["READY", "NO_CHANGE", "BLOCKED", "REJECTED", "FAILED"]},
+    "scope": {"type": ["object", "null"]},
+    "schemaResult": {"type": "string", "enum": ["PASS", "FAIL", "NOT_RUN"]},
+    "policyResult": {"type": ["string", "null"], "enum": ["PASS", "BLOCK", null]},
+    "observation": {"type": ["object", "null"]},
+    "error": {"type": ["object", "null"]}
+  }
+}

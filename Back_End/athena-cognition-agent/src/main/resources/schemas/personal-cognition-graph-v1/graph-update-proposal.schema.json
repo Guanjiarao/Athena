@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/personal-cognition-graph-v1/graph-update-proposal.schema.json",
+  "title": "Graph update proposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["proposalSchemaVersion", "proposalId", "graphId", "baseGraphVersion",
+    "status", "route", "targetTopicId", "evidenceIds", "operations", "changeSummary",
+    "requiresUserConfirmation", "workflowVersion", "createdAt"],
+  "properties": {
+    "proposalSchemaVersion": {"const": "graph-update-proposal-v1"},
+    "proposalId": {"type": "string", "minLength": 1},
+    "graphId": {"type": "string", "minLength": 1},
+    "baseGraphVersion": {"type": "integer", "minimum": 0},
+    "status": {
+      "type": "string",
+      "enum": ["DRAFT", "READY_FOR_CONFIRMATION", "ACCEPTED", "KEPT_AS_KNOWLEDGE",
+        "REJECTED", "STALE", "BLOCKED"]
+    },
+    "route": {
+      "type": "string",
+      "enum": ["UPDATE_EXISTING", "CREATE_BRANCH", "NO_CHANGE", "NEEDS_CONFIRMATION"]
+    },
+    "targetTopicId": {"type": ["string", "null"]},
+    "evidenceIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {"$ref": "#/$defs/operation"}
+    },
+    "changeSummary": {"type": ["string", "null"], "maxLength": 1000},
+    "requiresUserConfirmation": {"const": true},
+    "workflowVersion": {"type": "string", "enum": ["cognition-graph-workflow-v1",
+      "action-feedback-workflow-v1"]},
+    "createdAt": {"type": ["string", "null"]}
+  },
+  "$defs": {
+    "operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operationType", "targetId", "node", "edge",
+        "supersededByNodeId", "evidenceIds", "reason"],
+      "properties": {
+        "operationType": {
+          "type": "string",
+          "enum": ["ADD_NODE", "UPDATE_NODE", "ADD_EDGE", "SUPERSEDE_NODE",
+            "DEACTIVATE_EDGE", "NO_OP"]
+        },
+        "targetId": {"type": ["string", "null"]},
+        "node": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "personal-cognition-graph.schema.json#/$defs/node"}
+          ]
+        },
+        "edge": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "personal-cognition-graph.schema.json#/$defs/edge"}
+          ]
+        },
+        "supersededByNodeId": {"type": ["string", "null"]},
+        "evidenceIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "reason": {"type": ["string", "null"], "maxLength": 500}
+      }
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/graph-semantic-update-v1/graph-semantic-model-context.schema.json",
+  "title": "Graph semantic model-visible context",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["route", "targetTopicId", "targetTopicTitle", "existingNodes", "evidences"],
+  "properties": {
+    "route": {"type": "string", "enum": ["UPDATE_EXISTING", "CREATE_BRANCH"]},
+    "targetTopicId": {"type": ["string", "null"]},
+    "targetTopicTitle": {"type": ["string", "null"]},
+    "existingNodes": {"type": "array", "items": {"$ref": "#/$defs/node"}},
+    "evidences": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeId", "nodeType", "title", "content", "evidenceIds", "mutable"],
+      "properties": {
+        "nodeId": {"type": "string"},
+        "nodeType": {
+          "type": "string",
+          "enum": ["TOPIC", "SOURCE_EVIDENCE", "SELF_REPORTED_FACT",
+            "PATTERN_HYPOTHESIS", "OPEN_QUESTION", "ACTION"]
+        },
+        "title": {"type": ["string", "null"], "maxLength": 120},
+        "content": {"type": ["string", "null"], "maxLength": 1000},
+        "evidenceIds": {"type": "array", "items": {"type": "string"}},
+        "mutable": {"type": "boolean"}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidenceId", "sourceType", "factLevel", "summary", "occurredAt",
+        "cycleRelation", "severity", "resolved"],
+      "properties": {
+        "evidenceId": {"type": "string"},
+        "sourceType": {"type": "string", "enum": ["ARTICLE_HIGHLIGHT", "BODY_RECORD", "ACTION_FEEDBACK"]},
+        "factLevel": {"type": "string", "enum": ["DECLARED_RELEVANCE", "SELF_REPORTED", "OBSERVED", "QUESTION", "PROCESS_EVENT"]},
+        "summary": {"type": "string", "maxLength": 800},
+        "occurredAt": {"type": ["string", "null"]},
+        "cycleRelation": {
+          "type": ["string", "null"],
+          "enum": ["BEFORE_PERIOD", "DURING_PERIOD", "AFTER_PERIOD", "NO_RELATION", "UNKNOWN", null]
+        },
+        "severity": {"type": ["integer", "null"], "minimum": 0, "maximum": 10},
+        "resolved": {"type": ["boolean", "null"]}
+      }
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/cognition-agent/intent-evidence-v1/intent-model-context.schema.json",
+  "title": "Intent model context",
+  "description": "The complete and exclusive set of business fields visible to the model.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "explicitIntent",
+    "relationType",
+    "helpRequestType",
+    "articleTitle",
+    "selectedText",
+    "questionType",
+    "questionText",
+    "cycleRelation"
+  ],
+  "properties": {
+    "explicitIntent": {
+      "type": "string",
+      "enum": ["RELATED", "QUESTION", "KNOWLEDGE_ONLY"]
+    },
+    "relationType": {
+      "type": ["string", "null"],
+      "enum": ["CURRENT", "PAST", "OBSERVE", "KNOWLEDGE_ONLY", null]
+    },
+    "helpRequestType": {
+      "type": "string",
+      "enum": ["OBSERVE", "KNOWLEDGE", "ATTENTION", "SAVE_ONLY"]
+    },
+    "articleTitle": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "selectedText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 3000
+    },
+    "questionType": {
+      "type": ["string", "null"],
+      "enum": ["IS_COMMON", "POSSIBLE_CAUSES", "SELF_CARE", "PROFESSIONAL_HELP", "CUSTOM", null]
+    },
+    "questionText": {
+      "type": ["string", "null"],
+      "maxLength": 2000
+    },
+    "cycleRelation": {
+      "type": "string",
+      "enum": ["BEFORE_PERIOD", "DURING_PERIOD", "AFTER_PERIOD", "NO_RELATION", "UNKNOWN"]
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/action-feedback-workflow-v1/response.schema.json",
+  "title": "Action feedback workflow response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "workflowVersion", "runId", "status",
+    "normalizationResult", "graphUpdateResult", "proposal", "graphPreview",
+    "nextNodeId", "error", "observation"],
+  "properties": {
+    "contractVersion": {"const": "cognition-agent-v1"},
+    "workflowVersion": {"const": "action-feedback-workflow-v1"},
+    "runId": {"type": ["string", "null"]},
+    "status": {"type": "string", "enum": ["PROPOSAL_READY", "NO_CHANGE", "STALE", "BLOCKED", "REJECTED", "FAILED"]},
+    "normalizationResult": {"type": ["object", "null"]},
+    "graphUpdateResult": {"type": ["object", "null"]},
+    "proposal": {"type": ["object", "null"]},
+    "graphPreview": {"type": ["object", "null"]},
+    "nextNodeId": {"type": ["string", "null"]},
+    "error": {"type": ["object", "null"]},
+    "observation": {"type": ["object", "null"]}
+  }
+}

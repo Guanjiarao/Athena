@@ -1,0 +1,286 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://athena.whu.software/schemas/cognition-agent/intent-evidence-v1/intent-classification-response.schema.json",
+  "title": "Intent classification response",
+  "description": "Output contract for INTENT_AND_EVIDENCE_CLASSIFICATION version intent-evidence-v1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "nodeVersion",
+    "runId",
+    "clueId",
+    "nodeId",
+    "status",
+    "intent",
+    "evidenceClass",
+    "factEligibility",
+    "decisionSource",
+    "ambiguityCode",
+    "nextRoute",
+    "evidenceIds",
+    "policyResult",
+    "schemaResult",
+    "modelSuggestion",
+    "modelConflict",
+    "observation",
+    "error"
+  ],
+  "properties": {
+    "contractVersion": {
+      "type": ["string", "null"],
+      "enum": ["cognition-agent-v1", null]
+    },
+    "nodeVersion": {
+      "type": ["string", "null"],
+      "enum": ["intent-evidence-v1", null]
+    },
+    "runId": {
+      "type": ["string", "null"]
+    },
+    "clueId": {
+      "type": ["string", "null"]
+    },
+    "nodeId": {
+      "const": "INTENT_AND_EVIDENCE_CLASSIFICATION"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["SUCCEEDED", "NEEDS_CLARIFICATION", "REJECTED", "FAILED"]
+    },
+    "intent": {
+      "type": ["string", "null"],
+      "enum": ["RELATED", "QUESTION", "KNOWLEDGE_ONLY", null]
+    },
+    "evidenceClass": {
+      "type": ["string", "null"],
+      "enum": ["ARTICLE_KNOWLEDGE", "USER_QUESTION", "USER_PERSONAL_CLAIM", "USER_DECLARED_RELEVANCE", "UNKNOWN", null]
+    },
+    "factEligibility": {
+      "type": ["string", "null"],
+      "enum": ["NOT_BODY_FACT", "CANDIDATE_ONLY", null]
+    },
+    "decisionSource": {
+      "type": ["string", "null"],
+      "enum": ["USER_DECLARED", "RULE", "MODEL_ASSISTED", null]
+    },
+    "ambiguityCode": {
+      "type": ["string", "null"],
+      "enum": ["NONE", "MIXED_INTENT", "INSUFFICIENT_TEXT", "CONFLICTING_INPUT", null]
+    },
+    "nextRoute": {
+      "type": ["string", "null"],
+      "enum": ["MATCH_EXISTING_TOPIC_CANDIDATE", "QUESTION_INBOX", "KNOWLEDGE_INBOX", "NEEDS_CLARIFICATION", null]
+    },
+    "evidenceIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "policyResult": {
+      "type": ["string", "null"],
+      "enum": ["PASS", "BLOCK", null]
+    },
+    "schemaResult": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "NOT_RUN"]
+    },
+    "modelSuggestion": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/modelSuggestion"}
+      ]
+    },
+    "modelConflict": {
+      "type": "boolean"
+    },
+    "observation": {
+      "$ref": "#/$defs/observation"
+    },
+    "error": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/agentError"}
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {"const": "SUCCEEDED"}
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "intent": {"enum": ["RELATED", "QUESTION", "KNOWLEDGE_ONLY"]},
+          "evidenceClass": {"enum": ["ARTICLE_KNOWLEDGE", "USER_QUESTION", "USER_PERSONAL_CLAIM", "USER_DECLARED_RELEVANCE"]},
+          "factEligibility": {"enum": ["NOT_BODY_FACT", "CANDIDATE_ONLY"]},
+          "decisionSource": {"enum": ["USER_DECLARED", "RULE", "MODEL_ASSISTED"]},
+          "ambiguityCode": {"enum": ["NONE", "MIXED_INTENT", "INSUFFICIENT_TEXT", "CONFLICTING_INPUT"]},
+          "nextRoute": {"enum": ["MATCH_EXISTING_TOPIC_CANDIDATE", "QUESTION_INBOX", "KNOWLEDGE_INBOX"]},
+          "evidenceIds": {"minItems": 1},
+          "policyResult": {"const": "PASS"},
+          "error": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {"enum": ["REJECTED", "FAILED"]}
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "error": {"$ref": "#/$defs/agentError"}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "modelSuggestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "modelName",
+        "promptVersion",
+        "suggestedIntent",
+        "rationale",
+        "inputTokens",
+        "outputTokens",
+        "totalTokens",
+        "estimatedCost"
+      ],
+      "properties": {
+        "provider": {"type": "string", "minLength": 1},
+        "modelName": {"type": "string", "minLength": 1},
+        "promptVersion": {"const": "intent-evidence-prompt-v1"},
+        "suggestedIntent": {
+          "type": "string",
+          "enum": ["RELATED", "QUESTION", "KNOWLEDGE_ONLY"]
+        },
+        "rationale": {"type": "string", "minLength": 1, "maxLength": 500},
+        "inputTokens": {"type": ["integer", "null"], "minimum": 0},
+        "outputTokens": {"type": ["integer", "null"], "minimum": 0},
+        "totalTokens": {"type": ["integer", "null"], "minimum": 0},
+        "estimatedCost": {"type": ["number", "null"], "minimum": 0}
+      }
+    },
+    "nodeObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeId", "inputSummary", "outputSummary"],
+      "properties": {
+        "nodeId": {"type": "string", "minLength": 1},
+        "inputSummary": {"type": ["string", "null"]},
+        "outputSummary": {"type": ["string", "null"]}
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "triggerType",
+        "userDecision",
+        "workflowVersion",
+        "nodeVersion",
+        "promptVersion",
+        "modelProvider",
+        "modelName",
+        "contextSnapshotId",
+        "nodes",
+        "evidenceIds",
+        "latencyMs",
+        "inputTokens",
+        "outputTokens",
+        "totalTokens",
+        "estimatedCost",
+        "retryCount",
+        "schemaResult",
+        "policyResult",
+        "modelPolicyResult",
+        "modelCallStatus",
+        "modelErrorCode",
+        "modelConflict"
+      ],
+      "properties": {
+        "runId": {"type": ["string", "null"]},
+        "triggerType": {"type": ["string", "null"], "enum": ["CLUE_CREATED", "RETRY", null]},
+        "userDecision": {"type": ["string", "null"], "enum": ["RELATED", "QUESTION", "KNOWLEDGE_ONLY", null]},
+        "workflowVersion": {"const": "cognition-workflow-v1"},
+        "nodeVersion": {"const": "intent-evidence-v1"},
+        "promptVersion": {"const": "intent-evidence-prompt-v1"},
+        "modelProvider": {"type": "string", "minLength": 1},
+        "modelName": {"type": ["string", "null"]},
+        "contextSnapshotId": {"type": ["string", "null"]},
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/nodeObservation"}
+        },
+        "evidenceIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "latencyMs": {"type": "integer", "minimum": 0},
+        "inputTokens": {"type": ["integer", "null"], "minimum": 0},
+        "outputTokens": {"type": ["integer", "null"], "minimum": 0},
+        "totalTokens": {"type": ["integer", "null"], "minimum": 0},
+        "estimatedCost": {"type": ["number", "null"], "minimum": 0},
+        "retryCount": {"type": "integer", "minimum": 0},
+        "schemaResult": {"type": "string", "enum": ["PASS", "FAIL", "NOT_RUN"]},
+        "policyResult": {"type": ["string", "null"], "enum": ["PASS", "BLOCK", null]},
+        "modelPolicyResult": {"type": ["string", "null"], "enum": ["PASS", "BLOCK", null]},
+        "modelCallStatus": {
+          "type": "string",
+          "enum": ["NOT_ATTEMPTED", "SUCCEEDED", "FAILED", "REJECTED"]
+        },
+        "modelErrorCode": {"type": ["string", "null"]},
+        "modelConflict": {"type": "boolean"}
+      }
+    },
+    "agentError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable", "field", "details"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "INVALID_REQUEST",
+            "MISSING_REQUIRED_FIELD",
+            "INVALID_ENUM",
+            "TEXT_TOO_LONG",
+            "UNSUPPORTED_SOURCE_TYPE",
+            "UNSUPPORTED_VERSION",
+            "MODEL_TIMEOUT",
+            "MODEL_UNAVAILABLE",
+            "MODEL_OUTPUT_INVALID",
+            "POLICY_BLOCKED",
+            "INTERNAL_ERROR"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "field": {
+          "type": ["string", "null"]
+        },
+        "details": {}
+      }
+    }
+  }
+}
