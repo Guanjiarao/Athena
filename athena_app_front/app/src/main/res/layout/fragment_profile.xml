@@ -5,13 +5,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white">
+    android:background="@color/athena_page_bg">
 
     <LinearLayout
         android:id="@+id/layout_not_logged_in"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/white"
+        android:background="@color/athena_page_bg"
         android:gravity="center_horizontal"
         android:orientation="vertical"
         android:visibility="gone"
@@ -28,12 +28,12 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="20dp"
             android:fontFamily="sans-serif-medium"
             android:text="Athena"
-            android:textColor="@color/athena_pink"
-            android:textSize="70sp"
-            android:textStyle="bold" />
+            android:textColor="@color/athena_text_primary"
+            android:textSize="44sp"
+            android:textStyle="normal" />
 
         <Space
             android:layout_width="match_parent"
@@ -44,8 +44,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            android:text="Unlock more after login"
-            android:textColor="#333333"
+            android:text="登录后开启完整健康陪伴"
+            android:textColor="@color/athena_text_primary"
             android:textSize="18sp"
             android:textStyle="bold" />
 
@@ -53,8 +53,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="40dp"
-            android:text="Track health and care for yourself"
-            android:textColor="#999999"
+            android:text="记录身体变化，也更懂自己的每一天"
+            android:textColor="@color/athena_text_secondary"
             android:textSize="14sp" />
 
         <com.google.android.material.button.MaterialButton
@@ -62,12 +62,12 @@
             android:layout_width="280dp"
             android:layout_height="52dp"
             android:layout_marginBottom="60dp"
-            android:text="Log in"
+            android:text="登录"
             android:textColor="@color/white"
             android:textSize="16sp"
-            app:backgroundTint="@color/athena_pink"
-            app:cornerRadius="26dp"
-            app:elevation="4dp" />
+            app:backgroundTint="@color/athena_sage_strong"
+            app:cornerRadius="16dp"
+            app:elevation="0dp" />
 
     </LinearLayout>
 
@@ -82,7 +82,7 @@
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/white">
+            android:background="@color/athena_page_bg">
 
             <ImageView
                 android:id="@+id/iv_profile_bg"
@@ -119,7 +119,7 @@
                 android:src="@drawable/ic_settings_gear"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:tint="@android:color/white" />
+                app:tint="@color/athena_text_primary" />
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/iv_avatar"
@@ -134,7 +134,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:shapeAppearanceOverlay="@style/CircleImageStyle"
-                app:strokeColor="@color/white"
+                app:strokeColor="@color/athena_surface"
                 app:strokeWidth="3dp" />
 
             <LinearLayout
@@ -165,17 +165,6 @@
                         android:maxLines="1"
                         tools:text="用户昵称" />
 
-                    <TextView
-                        android:id="@+id/btn_data_asset"
-                        style="@style/ProfileAssetPillText"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
-                        android:background="@drawable/bg_asset_button"
-                        android:paddingHorizontal="14dp"
-                        android:paddingVertical="7dp"
-                        android:text="我的身体认知" />
-
                 </LinearLayout>
 
                 <TextView
@@ -185,6 +174,17 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     tools:text="ID: 13800138000" />
+
+                <TextView
+                    android:id="@+id/btn_data_asset"
+                    style="@style/ProfileAssetPillText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_asset_button"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="7dp"
+                    android:text="我的身体认知" />
 
             </LinearLayout>
 
@@ -305,13 +305,13 @@
                     android:background="@android:color/transparent"
                     android:paddingHorizontal="8dp"
                     app:tabGravity="fill"
-                    app:tabIndicatorColor="@color/athena_pink"
+                    app:tabIndicatorColor="@color/athena_sage_strong"
                     app:tabIndicatorFullWidth="false"
                     app:tabIndicatorHeight="2dp"
                     app:tabMode="fixed"
                     app:tabRippleColor="@android:color/transparent"
                     app:tabSelectedTextAppearance="@style/ProfileTabTextActive"
-                    app:tabSelectedTextColor="@color/text_primary"
+                    app:tabSelectedTextColor="@color/athena_text_primary"
                     app:tabTextAppearance="@style/ProfileTabTextInactive"
                     app:tabTextColor="@color/profile_tab_inactive" />
 

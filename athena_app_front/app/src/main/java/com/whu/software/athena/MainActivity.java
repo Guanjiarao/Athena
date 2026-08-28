@@ -7,7 +7,6 @@ import android.view.View;
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.core.content.ContextCompat;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
@@ -29,7 +28,6 @@ public class MainActivity extends AppCompatActivity {
         navView = findViewById(R.id.nav_view);
 
         navView.setItemIconTintList(null);
-        navView.setBackgroundColor(ContextCompat.getColor(this, R.color.white));
         navView.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
 

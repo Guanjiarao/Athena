@@ -40,6 +40,8 @@ import io.noties.markwon.image.glide.GlideImagesPlugin;
 public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private static final String TAG = "MessageAdapter";
+    public static final String ROLE_WELCOME = "welcome";
+    public static final String ROLE_SYSTEM_NOTICE = "system_notice";
     private static final String CARD_BUTTON_TEXT =
             "\u67e5\u770b\u8be6\u60c5";
 

@@ -2,14 +2,14 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF"
+    android:background="@color/athena_page_bg"
     android:orientation="vertical">
 
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:layout_marginTop="8dp"
-        android:background="#FFFFFF">
+        android:background="@drawable/bg_athena_toolbar">
 
         <ImageView
             android:id="@+id/btn_back"
@@ -28,7 +28,7 @@
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
             android:text="认识两性"
-            android:textColor="#111111"
+            android:textColor="@color/athena_text_primary"
             android:textSize="18sp"
             android:textStyle="bold" />
     </RelativeLayout>
@@ -36,15 +36,15 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#F0F0F0" />
+        android:background="@color/athena_stroke" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_articles"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:paddingHorizontal="12dp"
-        android:paddingTop="10dp"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="14dp"
         android:clipToPadding="false" />
 
 </LinearLayout>

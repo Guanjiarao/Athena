@@ -73,15 +73,12 @@ dependencies {
     implementation("io.noties.markwon:core:4.6.2")
     implementation("io.noties.markwon:image-glide:4.6.2")
 
-    implementation("com.google.mlkit:text-recognition:16.0.0")
-    implementation("com.google.mlkit:text-recognition-chinese:16.0.0")
+    implementation("com.google.mlkit:text-recognition:16.0.1")
+    implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
 
-    implementation("com.github.CarGuo.GSYVideoPlayer:gsyVideoPlayer-java:v8.3.4-release-jitpack")
-    implementation("com.github.CarGuo.GSYVideoPlayer:GSYVideoPlayer-exo2:v8.3.4-release-jitpack")
-    implementation("com.github.CarGuo.GSYVideoPlayer:gsyVideoPlayer-arm64:v8.3.4-release-jitpack")
-    implementation("com.github.CarGuo.GSYVideoPlayer:gsyVideoPlayer-armv7a:v8.3.4-release-jitpack")
-    implementation("com.github.CarGuo.GSYVideoPlayer:gsyVideoPlayer-x86:v8.3.4-release-jitpack")
-    implementation("com.github.CarGuo.GSYVideoPlayer:gsyVideoPlayer-x64:v8.3.4-release-jitpack")
+    // Exo-only GSY setup: avoids legacy IJK binaries that are not 16 KB page aligned.
+    implementation("io.github.carguo:gsyvideoplayer-java:13.2.1")
+    implementation("io.github.carguo:gsyvideoplayer-exo2:13.2.1")
 
 
 

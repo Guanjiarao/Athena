@@ -30,8 +30,26 @@
             android:orientation="vertical" android:padding="16dp" />
     </ScrollView>
 
+    <Button
+        android:id="@+id/btn_load_more_clues"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginHorizontal="16dp"
+        android:text="加载更多"
+        android:textAllCaps="false"
+        android:visibility="gone" />
+
     <TextView android:id="@+id/tv_clue_state" android:layout_width="match_parent" android:layout_height="wrap_content"
         android:gravity="center" android:padding="16dp" android:textColor="#777777" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_retry_digest"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginHorizontal="16dp"
+        android:text="重新整理"
+        android:visibility="gone" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_digest_visible" android:layout_width="match_parent" android:layout_height="52dp"

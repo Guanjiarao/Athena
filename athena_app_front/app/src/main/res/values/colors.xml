@@ -2,20 +2,20 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="pink">#FFC1C1</color>
-    <color name="pink_dark">#FFB3B3</color>
-    <color name="cinnamon_pink">#E8A5A5</color>
-    <color name="light_pink">#F5E6E6</color>
-    <color name="gray_light">#F5F5F5</color>
+    <color name="pink">#E9F0EA</color>
+    <color name="pink_dark">#607D73</color>
+    <color name="cinnamon_pink">#607D73</color>
+    <color name="light_pink">#E9F0EA</color>
+    <color name="gray_light">#FAFAF7</color>
     <color name="gray">#CCCCCC</color>
     <color name="button_gray">#CCCCCC</color>
-    <color name="text_primary">#333333</color>
-    <color name="text_secondary">#666666</color>
-    <color name="square_page_bg">#FFFFFF</color>
-    <color name="square_card_stroke">#F1F1F1</color>
-    <color name="square_meta_text">#7A7A7A</color>
-    <color name="square_header_divider">#F3F3F3</color>
-    <color name="square_image_placeholder">#F6F6F6</color>
+    <color name="text_primary">#1E2825</color>
+    <color name="text_secondary">#6D6D68</color>
+    <color name="square_page_bg">#FAFAF7</color>
+    <color name="square_card_stroke">#E6E5DF</color>
+    <color name="square_meta_text">#6D6D68</color>
+    <color name="square_header_divider">#E6E5DF</color>
+    <color name="square_image_placeholder">#F3EEE5</color>
     <color name="square_image_error">#EEEEEE</color>
     <color name="profile_hero_top">#45424B</color>
     <color name="profile_hero_bottom">#8A755E</color>
@@ -23,7 +23,7 @@
     <color name="profile_hero_scrim_bottom">#22000000</color>
     <color name="profile_text_on_hero">#FFF9F6</color>
     <color name="profile_text_on_hero_secondary">#D9F0EAE4</color>
-    <color name="profile_tab_inactive">#949494</color>
+    <color name="profile_tab_inactive">#8A8D88</color>
     <color name="profile_asset_fill">#26FFFFFF</color>
     <color name="profile_asset_stroke">#40FFFFFF</color>
     <color name="background_user_profile">#FDF7FA</color>
@@ -37,30 +37,30 @@
     <color name="design_default_color_accent">#03DAC6</color>
 
 
-    <color name="pink_200">#F48FB1</color>
-    <color name="pink_500">#E91E63</color>
-    <color name="pink_700">#C2185B</color>
-    <color name="pink_accent">#FF4081</color>
+    <color name="pink_200">#E9F0EA</color>
+    <color name="pink_500">#607D73</color>
+    <color name="pink_700">#476058</color>
+    <color name="pink_accent">#607D73</color>
 
     <color name="teal_200">#FF03DAC5</color>
     <color name="teal_700">#FF018786</color>
 
 
-    <color name="user_bubble">#F8BBD0</color>
-    <color name="bot_bubble">#FCE4EC</color>
+    <color name="user_bubble">#E9F0EA</color>
+    <color name="bot_bubble">#F3EEE5</color>
 
     <!-- Knowledge page colors -->
-    <color name="knowledge_status_card_bg">#FFF0F5</color>
-    <color name="knowledge_banner_placeholder_1">#FFE4E1</color>
-    <color name="knowledge_banner_placeholder_2">#FFB6C1</color>
-    <color name="knowledge_banner_placeholder_3">#FFC0CB</color>
+    <color name="knowledge_status_card_bg">#E9F0EA</color>
+    <color name="knowledge_banner_placeholder_1">#E9F0EA</color>
+    <color name="knowledge_banner_placeholder_2">#F3EEE5</color>
+    <color name="knowledge_banner_placeholder_3">#F5E8EA</color>
 
     <!-- Auth (Login / Register) colors -->
-    <color name="auth_primary">#F06292</color>          <!-- 主色：柔和玫红 -->
-    <color name="auth_primary_pressed">#EC407A</color>  <!-- 按下态加深 -->
-    <color name="auth_primary_light">#FCE4EC</color>    <!-- 输入框获焦背景 -->
-    <color name="auth_hint">#BDBDBD</color>             <!-- 输入框 hint 灰色 -->
-    <color name="auth_divider">#F0F0F0</color>          <!-- 分割线 -->
+    <color name="auth_primary">#607D73</color>
+    <color name="auth_primary_pressed">#476058</color>
+    <color name="auth_primary_light">#E9F0EA</color>
+    <color name="auth_hint">#8A8D88</color>
+    <color name="auth_divider">#E6E5DF</color>
 
     <!-- Athena 主色调 -->
     <color name="athena_pink">#C96F7D</color>
@@ -101,4 +101,18 @@
     <color name="health_add_fill">#FFF5F6</color>
     <color name="health_toggle_no_fill">#F7F1EE</color>
     <color name="health_toggle_no_stroke">#E1D4CA</color>
+
+    <!-- Athena unified wellness design system -->
+    <color name="athena_page_bg">#FAFAF7</color>
+    <color name="athena_surface">#FFFFFF</color>
+    <color name="athena_surface_sage">#E9F0EA</color>
+    <color name="athena_surface_sand">#F3EEE5</color>
+    <color name="athena_surface_rose">#F5E8EA</color>
+    <color name="athena_text_primary">#1E2825</color>
+    <color name="athena_text_secondary">#6D6D68</color>
+    <color name="athena_text_sage">#476058</color>
+    <color name="athena_sage_strong">#607D73</color>
+    <color name="athena_stroke">#E6E5DF</color>
+    <color name="athena_nav_inactive">#8A8D88</color>
+    <color name="athena_scrim">#241E2825</color>
 </resources>

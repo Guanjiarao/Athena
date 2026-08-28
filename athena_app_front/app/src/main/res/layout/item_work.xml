@@ -3,9 +3,10 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="2dp">
+    android:layout_margin="6dp"
+    app:cardCornerRadius="14dp"
+    app:cardElevation="0dp"
+    app:cardBackgroundColor="@color/athena_surface">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -18,7 +19,7 @@
             android:layout_width="match_parent"
             android:layout_height="160dp"
             android:scaleType="centerCrop"
-            android:background="@color/gray_light"
+            android:background="@color/athena_surface_sand"
             android:src="@android:drawable/ic_menu_gallery"
             android:contentDescription="作品缩略图" />
 
@@ -29,7 +30,7 @@
             android:layout_height="wrap_content"
             android:text="作品标题"
             android:textSize="14sp"
-            android:textColor="@color/text_primary"
+            android:textColor="@color/athena_text_primary"
             android:maxLines="2"
             android:ellipsize="end"
             android:padding="12dp" />

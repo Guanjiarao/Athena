@@ -14,11 +14,15 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AlertDialog;
 
-import com.whu.software.athena.cognition.CognitionModels.Clue;
 import com.whu.software.athena.cognition.CognitionModels.ClueCreateRequest;
+import com.whu.software.athena.cognition.CognitionModels.ClueCreateResult;
+import com.whu.software.athena.cognition.CognitionModels.ClueIntent;
+import com.whu.software.athena.cognition.CognitionModels.ClueSource;
 import com.whu.software.athena.cognition.CognitionModels.ClueType;
-import com.whu.software.athena.cognition.CognitionModels.MarkIntent;
-import com.whu.software.athena.cognition.CognitionModels.RelationDetail;
+import com.whu.software.athena.cognition.CognitionModels.CycleRelation;
+import com.whu.software.athena.cognition.CognitionModels.HelpRequestType;
+import com.whu.software.athena.cognition.CognitionModels.QuestionType;
+import com.whu.software.athena.cognition.CognitionModels.RelationType;
 import com.whu.software.athena.cognition.CognitionRepository;
 import com.whu.software.athena.cognition.CognitionRepositoryProvider;
 import com.whu.software.athena.config.ApiConfig;
@@ -48,6 +52,7 @@ public class ArticleDetailActivity extends AppCompatActivity {
     private CognitionRepository cognitionRepository;
     private String currentArticleId = "";
     private String currentArticleTitle = "文章详情";
+    private int currentArticleType = 100;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,6 +90,7 @@ public class ArticleDetailActivity extends AppCompatActivity {
         if (type < 0) {
             type = getIntent().getIntExtra("article_type", 100);
         }
+        currentArticleType = type < 0 ? 100 : type;
         Log.d(TAG, "[ScienceAI] ArticleDetailActivity onCreate"
                 + " resolvedTitle=" + title
                 + " resolvedBlogId=" + blogId
@@ -94,9 +100,9 @@ public class ArticleDetailActivity extends AppCompatActivity {
                 + " hasAuthor=" + !TextUtils.isEmpty(prefetchedAuthorName));
         renderTrustMetadata(prefetchedAuthorName);
         tvTitle.setText(title != null ? title : "文章详情");
-        findViewById(R.id.btn_mark_related).setOnClickListener(v -> captureSelection(MarkIntent.RELATED));
-        findViewById(R.id.btn_mark_question).setOnClickListener(v -> captureSelection(MarkIntent.QUESTION));
-        findViewById(R.id.btn_mark_knowledge).setOnClickListener(v -> captureSelection(MarkIntent.KNOWLEDGE));
+        findViewById(R.id.btn_mark_related).setOnClickListener(v -> captureSelection(ClueIntent.RELATED));
+        findViewById(R.id.btn_mark_question).setOnClickListener(v -> captureSelection(ClueIntent.QUESTION));
+        findViewById(R.id.btn_mark_knowledge).setOnClickListener(v -> captureSelection(ClueIntent.KNOWLEDGE_ONLY));
 
         if (!TextUtils.isEmpty(prefetchedContent)) {
             Log.d(TAG, "[ScienceAI] ArticleDetailActivity render prefetched content"
@@ -243,7 +249,7 @@ public class ArticleDetailActivity extends AppCompatActivity {
                         + "\n\n为什么推荐给我：基于你主动选择的关注方向，不依据浏览、点赞或收藏推断身体状态。");
     }
 
-    private void captureSelection(@NonNull MarkIntent intent) {
+    private void captureSelection(@NonNull ClueIntent intent) {
         webContent.getSettings().setJavaScriptEnabled(true);
         webContent.evaluateJavascript("(function(){return window.getSelection().toString();})()", raw -> {
             webContent.getSettings().setJavaScriptEnabled(false);
@@ -252,16 +258,17 @@ public class ArticleDetailActivity extends AppCompatActivity {
                 Toast.makeText(this, "请先长按选择一段文章文字", Toast.LENGTH_SHORT).show();
                 return;
             }
-            if (intent == MarkIntent.QUESTION) showQuestionTypeDialog(selected);
-            else if (intent == MarkIntent.RELATED) showRelatedDialog(selected);
-            else saveClue(intent, selected, null, RelationDetail.KNOWLEDGE_ONLY, "KNOWLEDGE", null);
+            if (intent == ClueIntent.QUESTION) showQuestionTypeDialog(selected);
+            else if (intent == ClueIntent.RELATED) showRelatedDialog(selected);
+            else saveClue(intent, selected, null, RelationType.KNOWLEDGE_ONLY,
+                    HelpRequestType.SAVE_ONLY, null, "保存知识");
         });
     }
 
     private void showRelatedDialog(String selected) {
         String[] relations = {"我现在有类似情况", "以前出现过", "我不确定，但想观察", "只是觉得值得了解"};
-        RelationDetail[] values = {RelationDetail.CURRENT, RelationDetail.HISTORICAL,
-                RelationDetail.UNCERTAIN_OBSERVE, RelationDetail.KNOWLEDGE_ONLY};
+        RelationType[] values = {RelationType.CURRENT, RelationType.PAST,
+                RelationType.OBSERVE, RelationType.KNOWLEDGE_ONLY};
         new AlertDialog.Builder(this)
                 .setTitle("这段内容和你是什么关系？")
                 .setItems(relations, (dialog, which) -> showDesiredHelpDialog(selected, values[which]))
@@ -269,20 +276,22 @@ public class ArticleDetailActivity extends AppCompatActivity {
                 .show();
     }
 
-    private void showDesiredHelpDialog(String selected, RelationDetail detail) {
+    private void showDesiredHelpDialog(String selected, RelationType detail) {
         String[] labels = {"帮我持续观察", "帮我找可信知识", "帮我了解是否需要留意", "暂时只保存"};
-        String[] values = {"OBSERVE", "TRUSTED_KNOWLEDGE", "WATCH", "SAVE_ONLY"};
+        HelpRequestType[] values = {HelpRequestType.OBSERVE, HelpRequestType.KNOWLEDGE,
+                HelpRequestType.ATTENTION, HelpRequestType.SAVE_ONLY};
         new AlertDialog.Builder(this)
                 .setTitle("你希望 Athena 做什么？")
                 .setItems(labels, (dialog, which) ->
-                        saveClue(MarkIntent.RELATED, selected, null, detail, values[which], null))
+                        saveClue(ClueIntent.RELATED, selected, null, detail, values[which], null, "和我有关"))
                 .setNegativeButton("取消", null)
                 .show();
     }
 
     private void showQuestionTypeDialog(String selected) {
         String[] labels = {"这常见吗", "可能有哪些原因", "我能做什么", "什么时候需要专业帮助", "自定义问题"};
-        String[] values = {"COMMONNESS", "POSSIBLE_CAUSES", "WHAT_CAN_I_DO", "PROFESSIONAL_HELP", "CUSTOM"};
+        QuestionType[] values = {QuestionType.IS_COMMON, QuestionType.POSSIBLE_CAUSES,
+                QuestionType.SELF_CARE, QuestionType.PROFESSIONAL_HELP, QuestionType.CUSTOM};
         new AlertDialog.Builder(this)
                 .setTitle("你最想弄明白什么？")
                 .setItems(labels, (dialog, which) -> showQuestionDialog(selected, values[which], labels[which]))
@@ -290,10 +299,10 @@ public class ArticleDetailActivity extends AppCompatActivity {
                 .show();
     }
 
-    private void showQuestionDialog(String selected, String questionType, String defaultQuestion) {
+    private void showQuestionDialog(String selected, QuestionType questionType, String defaultQuestion) {
         EditText input = new EditText(this);
         input.setHint("你想弄明白什么？");
-        if (!"CUSTOM".equals(questionType)) input.setText(defaultQuestion + "？");
+        if (questionType != QuestionType.CUSTOM) input.setText(defaultQuestion + "？");
         input.setMinLines(2);
         int padding = Math.round(20 * getResources().getDisplayMetrics().density);
         input.setPadding(padding, padding, padding, padding);
@@ -303,34 +312,58 @@ public class ArticleDetailActivity extends AppCompatActivity {
                 .setPositiveButton("保存", (dialog, which) -> {
                     String question = input.getText().toString().trim();
                     if (question.isEmpty()) Toast.makeText(this, "请写下你的问题", Toast.LENGTH_SHORT).show();
-                    else saveClue(MarkIntent.QUESTION, selected, question,
-                            RelationDetail.UNCERTAIN_OBSERVE, "ANSWER_QUESTION", questionType);
+                    else saveClue(ClueIntent.QUESTION, selected, question,
+                            RelationType.OBSERVE, HelpRequestType.KNOWLEDGE, questionType, "我有疑问");
                 })
                 .setNegativeButton("取消", null)
                 .show();
     }
 
-    private void saveClue(MarkIntent intent, String selected, String question,
-                          RelationDetail relationDetail, String desiredHelp, String questionType) {
+    private void saveClue(ClueIntent intent, String selected, String question,
+                          RelationType relationType, HelpRequestType helpRequestType,
+                          QuestionType questionType, String originalLabel) {
         ClueCreateRequest request = new ClueCreateRequest();
-        request.clueType = ClueType.ARTICLE_MARK;
-        request.markIntent = intent;
-        request.relationDetail = relationDetail;
-        request.desiredHelp = desiredHelp;
+        // Contract §6.2: questions created from an article are ARTICLE_HIGHLIGHT + QUESTION.
+        request.type = ClueType.ARTICLE_HIGHLIGHT;
+        request.intent = intent;
+        request.relationType = relationType;
+        request.helpRequestType = helpRequestType;
         request.articleId = currentArticleId;
         request.articleTitle = currentArticleTitle;
-        request.sourceName = "Athena 内容";
-        request.excerpt = selected.length() > 4000 ? selected.substring(0, 4000) : selected;
+        request.articleType = currentArticleType;
+        request.selectedText = selected.length() > 4000 ? selected.substring(0, 4000) : selected;
         request.questionType = questionType;
         request.questionText = question;
         request.occurredAt = Instant.now().toString();
-        cognitionRepository.createClue(request, new CognitionRepository.Callback<Clue>() {
-            @Override public void onSuccess(Clue value) {
-                Toast.makeText(ArticleDetailActivity.this,
-                        intent == MarkIntent.QUESTION ? "疑问已保存" : "已加入我的身体线索", Toast.LENGTH_SHORT).show();
+        request.cycleRelation = CycleRelation.UNKNOWN;
+        request.source = ClueSource.KNOWLEDGE_ARTICLE;
+        request.suggestedTopicTitle = currentArticleTitle;
+        request.originalLabel = originalLabel;
+        cognitionRepository.createClue(request, new CognitionRepository.Callback<ClueCreateResult>() {
+            @Override public void onSuccess(ClueCreateResult value) {
+                String message = value != null && value.digestTask != null && value.digestTask.triggered
+                        ? "已保存，Athena 已开始整理" : intent == ClueIntent.QUESTION ? "疑问已保存" : "已加入我的身体线索";
+                if (value == null || value.clue == null || value.clue.id == null) {
+                    Toast.makeText(ArticleDetailActivity.this, message, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                new AlertDialog.Builder(ArticleDetailActivity.this).setMessage(message)
+                        .setPositiveButton("知道了", null)
+                        .setNegativeButton("撤销", (dialog, which) -> undoClue(value.clue.id)).show();
             }
             @Override public void onError(String message) {
                 Toast.makeText(ArticleDetailActivity.this, message, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void undoClue(String clueId) {
+        cognitionRepository.deleteClue(clueId, new CognitionRepository.Callback<String>() {
+            @Override public void onSuccess(String value) {
+                Toast.makeText(ArticleDetailActivity.this, "已撤销", Toast.LENGTH_SHORT).show();
+            }
+            @Override public void onError(String message) {
+                Toast.makeText(ArticleDetailActivity.this, message, Toast.LENGTH_LONG).show();
             }
         });
     }

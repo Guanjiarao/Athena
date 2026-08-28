@@ -325,9 +325,9 @@ public class KnowledgeFragment extends Fragment {
 
         private int placeholderColor(int seed) {
             int[] colors = {
-                    0xFFE8D5D5, 0xFFD5E8D5, 0xFFD5D5E8,
-                    0xFFE8E8D5, 0xFFE8D5E8, 0xFFD5E8E8,
-                    0xFFFFE4E1, 0xFFFFF0F5
+                    0xFFE9F0EA, 0xFFF3EEE5, 0xFFE6ECE7,
+                    0xFFF0EADF, 0xFFEEF2ED, 0xFFF5E8EA,
+                    0xFFE3EBE5, 0xFFF5F1E9
             };
             return colors[seed % colors.length];
         }

@@ -4,13 +4,13 @@
     android:id="@+id/knowledge_video_card"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="4dp"
+    android:layout_margin="5dp"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
-    app:cardCornerRadius="6dp"
-    app:cardElevation="2dp"
-    app:cardBackgroundColor="@color/white">
+    app:cardCornerRadius="14dp"
+    app:cardElevation="0dp"
+    app:cardBackgroundColor="@color/athena_surface">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -36,7 +36,7 @@
             android:maxLines="2"
             android:ellipsize="end"
             android:textSize="14sp"
-            android:textColor="@color/text_primary"
+            android:textColor="@color/athena_text_primary"
             android:lineSpacingExtra="2dp" />
 
         <!-- 底部信息栏：头像、昵称、点赞 -->
@@ -67,7 +67,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textSize="12sp"
-                android:textColor="@color/text_secondary" />
+                android:textColor="@color/athena_text_secondary" />
 
             <!-- 点赞图标 -->
             <ImageView
@@ -84,7 +84,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:textSize="12sp"
-                android:textColor="@color/text_secondary" />
+                android:textColor="@color/athena_text_secondary" />
 
         </LinearLayout>
 

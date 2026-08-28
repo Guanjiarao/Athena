@@ -2,6 +2,9 @@
     <style name="Base.Theme.Athena" parent="Theme.Material3.DayNight.NoActionBar" />
 
     <style name="Theme.Athena" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowBackground">@color/athena_page_bg</item>
         <item name="colorPrimary">@color/white</item>
         <item name="colorPrimaryVariant">@color/white</item>
         <item name="colorOnPrimary">@color/text_primary</item>
@@ -9,8 +12,8 @@
         <item name="android:colorAccent">@color/text_secondary</item>
         <item name="colorSecondary">@color/gray</item>
         <item name="colorOnSecondary">@color/white</item>
-        <item name="android:statusBarColor">@android:color/white</item>
-        <item name="android:navigationBarColor">@android:color/white</item>
+        <item name="android:statusBarColor">@color/athena_page_bg</item>
+        <item name="android:navigationBarColor">@color/athena_surface</item>
         <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
     </style>

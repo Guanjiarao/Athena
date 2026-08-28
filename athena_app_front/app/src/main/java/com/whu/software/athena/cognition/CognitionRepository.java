@@ -1,29 +1,29 @@
 package com.whu.software.athena.cognition;
 
 import com.whu.software.athena.cognition.CognitionModels.*;
-
 import java.util.List;
 
-/** UI-facing boundary. Implementations own persistence/networking; screens own no business rules. */
+/** UI-facing boundary for the deployed Cognition Contract V1. */
 public interface CognitionRepository {
-
     interface Callback<T> {
         void onSuccess(T value);
         void onError(String safeMessage);
     }
 
-    void createClue(ClueCreateRequest request, Callback<Clue> callback);
-    void listClues(ClueSection section, Callback<List<Clue>> callback);
-    void createDigestTask(List<Long> clueIds, Callback<DigestTask> callback);
-    void retryDigestTask(long taskId, Callback<DigestTask> callback);
-    void getDigest(long digestId, Callback<Digest> callback);
-    void listPendingDigests(Callback<List<Digest>> callback);
-    void decideDigest(long digestId, DigestDecision decision, String reasonCode,
+    void createClue(ClueCreateRequest request, Callback<ClueCreateResult> callback);
+    void deleteClue(String clueId, Callback<String> callback);
+    void getInbox(Callback<Inbox> callback);
+    void listClues(ClueListView view, int page, int pageSize, Callback<Page<Clue>> callback);
+    void createDigestTask(List<String> clueIds, Callback<DigestTask> callback);
+    void getDigestTask(String taskId, Callback<DigestTask> callback);
+    void retryDigestTask(String taskId, Callback<DigestTask> callback);
+    void getDigest(String digestId, Callback<Digest> callback);
+    void listReadyDigests(int page, int pageSize, Callback<Page<Digest>> callback);
+    void decideDigest(String digestId, DigestDecision decision, String reason, int clientVersion,
                       Callback<DigestDecisionResult> callback);
-    void listTopics(Callback<List<Topic>> callback);
-    void getTopic(long topicId, Callback<Topic> callback);
-    void updateTopicProgress(long topicId, TopicProgress progress, Callback<Topic> callback);
-    void submitFeedback(long actionId, FeedbackAccuracy accuracy, boolean completed, String note,
-                        Callback<Feedback> callback);
+    void listTopics(int page, int pageSize, Callback<Page<Topic>> callback);
+    void getTopic(String topicId, Callback<TopicDetail> callback);
+    void submitFeedback(String actionId, String topicId, ActionFeedbackResult result,
+                        String note, String occurredAt, Callback<FeedbackResult> callback);
     void getHome(Callback<Home> callback);
 }

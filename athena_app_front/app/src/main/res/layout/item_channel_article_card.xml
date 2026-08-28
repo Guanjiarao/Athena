@@ -7,8 +7,8 @@
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
-    app:cardBackgroundColor="#FFFFFF"
-    app:cardCornerRadius="8dp"
+    app:cardBackgroundColor="@color/athena_surface"
+    app:cardCornerRadius="16dp"
     app:cardElevation="0dp">
 
     <LinearLayout
@@ -41,7 +41,7 @@
                 android:ellipsize="end"
                 android:lineSpacingExtra="1dp"
                 android:maxLines="2"
-                android:textColor="#1F2427"
+                android:textColor="@color/athena_text_primary"
                 android:textSize="15sp"
                 android:textStyle="bold" />
 
@@ -60,7 +60,7 @@
                     android:paddingTop="3dp"
                     android:paddingEnd="7dp"
                     android:paddingBottom="3dp"
-                    android:textColor="#6C625E"
+                    android:textColor="@color/athena_text_secondary"
                     android:textSize="10sp" />
 
                 <TextView
@@ -73,7 +73,7 @@
                     android:paddingTop="3dp"
                     android:paddingEnd="7dp"
                     android:paddingBottom="3dp"
-                    android:textColor="#6C625E"
+                    android:textColor="@color/athena_text_secondary"
                     android:textSize="10sp" />
             </LinearLayout>
 
@@ -82,7 +82,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="7dp"
-                android:textColor="#2F6257"
+                android:textColor="@color/athena_text_sage"
                 android:textSize="11sp" />
         </LinearLayout>
     </LinearLayout>

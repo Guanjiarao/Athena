@@ -2,15 +2,15 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF"
+    android:background="@color/athena_page_bg"
     android:orientation="vertical">
 
     <!-- 顶部导航栏 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="56dp"
-        android:background="#FFFFFF"
-        android:elevation="4dp"
+        android:background="@drawable/bg_athena_toolbar"
+        android:elevation="0dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingStart="8dp"
@@ -23,7 +23,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="返回"
             android:src="@drawable/ic_arrow_back"
-            android:tint="#1A1A1A" />
+            android:tint="@color/athena_text_primary" />
 
         <TextView
             android:id="@+id/tvDetailTitle"
@@ -35,7 +35,7 @@
             android:maxLines="1"
             android:paddingEnd="40dp"
             android:text="专属方案定制中..."
-            android:textColor="#1A1A1A"
+            android:textColor="@color/athena_text_primary"
             android:textSize="17sp"
             android:textStyle="bold" />
 
@@ -45,7 +45,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#F0F0F0" />
+        android:background="@color/athena_stroke" />
 
     <!-- Loading 状态 -->
     <ProgressBar
@@ -55,7 +55,7 @@
         android:layout_height="48dp"
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="80dp"
-        android:indeterminateTint="#FF7A9A"
+        android:indeterminateTint="@color/athena_sage_strong"
         android:visibility="visible" />
 
     <!-- 详情内容区域 -->

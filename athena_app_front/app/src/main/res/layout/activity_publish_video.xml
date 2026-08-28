@@ -4,14 +4,14 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#FFFFFF">
+    android:background="@color/athena_page_bg">
 
     <!-- ① 顶部导航栏 -->
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:layout_marginTop="20dp"
-        android:background="#FFFFFF"
+        android:background="@drawable/bg_athena_toolbar"
         android:elevation="2dp">
 
         <!-- 关闭按钮 (×) -->
@@ -42,14 +42,14 @@
                 android:text="发布图文"
                 android:textSize="16sp"
                 android:textStyle="normal"
-                android:textColor="#999999"
+                android:textColor="@color/athena_text_secondary"
                 android:paddingHorizontal="12dp"
                 android:paddingVertical="4dp" />
 
             <View
                 android:layout_width="1dp"
                 android:layout_height="16dp"
-                android:background="#DDDDDD"
+                android:background="@color/athena_stroke"
                 android:layout_marginHorizontal="2dp" />
 
             <TextView
@@ -59,7 +59,7 @@
                 android:text="发布视频"
                 android:textSize="16sp"
                 android:textStyle="bold"
-                android:textColor="#E5375A"
+                android:textColor="@color/athena_sage_strong"
                 android:paddingHorizontal="12dp"
                 android:paddingVertical="4dp" />
 
@@ -74,7 +74,7 @@
             android:layout_centerVertical="true"
             android:layout_marginEnd="16dp"
             android:text="发布"
-            android:textColor="#E5375A"
+            android:textColor="@color/athena_sage_strong"
             android:textSize="16sp"
             android:textStyle="bold"
             android:padding="8dp"
@@ -86,7 +86,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#EEEEEE" />
+        android:background="@color/athena_stroke" />
 
     <!-- 可滚动内容区 -->
     <ScrollView
@@ -112,9 +112,9 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground"
-                app:cardCornerRadius="12dp"
+                app:cardCornerRadius="16dp"
                 app:cardElevation="0dp"
-                app:cardBackgroundColor="#F5F5F5">
+                app:cardBackgroundColor="@color/athena_surface_sand">
 
                 <!-- 默认占位：+ 图标 + 文字 -->
                 <LinearLayout
@@ -190,7 +190,7 @@
                     android:layout_height="wrap_content"
                     android:hint="填写标题会有更多赞哦~"
                     android:textColorHint="#CCCCCC"
-                    android:textColor="#1A1A1A"
+                    android:textColor="@color/athena_text_primary"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:background="@null"
@@ -203,7 +203,7 @@
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="0.5dp"
-                    android:background="#EEEEEE"
+                    android:background="@color/athena_stroke"
                     android:layout_marginBottom="8dp" />
 
                 <!-- 正文输入框 -->
@@ -214,7 +214,7 @@
                     android:minHeight="100dp"
                     android:hint="添加描述，跟姐妹们分享你的日常..."
                     android:textColorHint="#CCCCCC"
-                    android:textColor="#333333"
+                    android:textColor="@color/athena_text_primary"
                     android:textSize="15sp"
                     android:background="@null"
                     android:gravity="top|start"
@@ -232,7 +232,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="0.5dp"
                 android:layout_marginTop="8dp"
-                android:background="#EEEEEE" />
+                android:background="@color/athena_stroke" />
 
             <!-- 话题行 -->
             <LinearLayout
@@ -253,7 +253,7 @@
                     android:text="#"
                     android:textSize="17sp"
                     android:textStyle="bold"
-                    android:textColor="#E5375A"
+                    android:textColor="@color/athena_sage_strong"
                     android:paddingEnd="8dp" />
 
                 <!-- 话题输入 / 提示文字 -->
@@ -264,7 +264,7 @@
                     android:layout_weight="1"
                     android:hint="添加话题（选填）"
                     android:textColorHint="#BBBBBB"
-                    android:textColor="#333333"
+                    android:textColor="@color/athena_text_primary"
                     android:textSize="14sp"
                     android:background="@null"
                     android:maxLines="1"
@@ -286,7 +286,7 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="0.5dp"
-                android:background="#EEEEEE" />
+                android:background="@color/athena_stroke" />
 
         </LinearLayout>
 
