@@ -128,7 +128,7 @@ public class ProfileFragment extends Fragment {
         itemProfilePrivacy = view.findViewById(R.id.item_profile_privacy);
         itemProfileAbout = view.findViewById(R.id.item_profile_about);
         btnProfileLogout = view.findViewById(R.id.btn_profile_logout);
-        profileChipPreferences = view.findViewById(R.id.profile_chip_preferences);
+        profileChipPreferences = null;
     }
 
     private void setupTabAndPager() {
@@ -162,7 +162,9 @@ public class ProfileFragment extends Fragment {
         itemProfilePrivacy.setOnClickListener(v -> startActivity(new Intent(requireActivity(), DataPrivacyActivity.class)));
         itemProfileAbout.setOnClickListener(v -> Toast.makeText(requireContext(), "关于我们（开发中）", Toast.LENGTH_SHORT).show());
         btnProfileLogout.setOnClickListener(v -> confirmLogout());
-        profileChipPreferences.setOnCheckedStateChangeListener((group, checkedIds) -> savePreferenceChips());
+        if (profileChipPreferences != null) {
+            profileChipPreferences.setOnCheckedStateChangeListener((group, checkedIds) -> savePreferenceChips());
+        }
 
         if (btnDataAsset != null) {
             btnDataAsset.setOnClickListener(v ->
@@ -171,6 +173,7 @@ public class ProfileFragment extends Fragment {
     }
 
     private void savePreferenceChips() {
+        if (profileChipPreferences == null) return;
         StringBuilder value = new StringBuilder();
         for (int id : profileChipPreferences.getCheckedChipIds()) {
             Chip chip = profileChipPreferences.findViewById(id);
@@ -184,6 +187,7 @@ public class ProfileFragment extends Fragment {
     }
 
     private void restorePreferenceChips() {
+        if (profileChipPreferences == null) return;
         String saved = requireContext().getSharedPreferences("athena_prefs", android.content.Context.MODE_PRIVATE)
                 .getString("user_preferences", "");
         if (saved == null || saved.isEmpty()) return;
