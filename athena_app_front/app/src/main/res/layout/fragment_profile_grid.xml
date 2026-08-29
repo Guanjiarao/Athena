@@ -2,13 +2,13 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/athena_page_bg">
+    android:background="@android:color/transparent">
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_profile_grid"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/athena_page_bg"
+        android:background="@android:color/transparent"
         android:clipToPadding="false"
         android:nestedScrollingEnabled="false"
         android:overScrollMode="never"

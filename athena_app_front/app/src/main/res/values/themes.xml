@@ -24,7 +24,8 @@
         <item name="colorOnSecondary">@color/white</item>
         <!-- 状态栏 / 导航栏：浅色背景 + 深色系统图标 -->
         <item name="android:statusBarColor">@color/athena_page_bg</item>
-        <item name="android:navigationBarColor">@color/athena_surface</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:enforceNavigationBarContrast" tools:targetApi="q">false</item>
         <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
     </style>
@@ -205,6 +206,16 @@
         <item name="android:letterSpacing">0.01</item>
         <item name="android:includeFontPadding">false</item>
     </style>
+
+    <style name="AthenaBottomNavActiveIndicator" parent="">
+        <item name="android:width">56dp</item>
+        <item name="android:height">56dp</item>
+        <item name="marginHorizontal">0dp</item>
+        <item name="shapeAppearance">@style/AthenaBottomNavActiveIndicatorShape</item>
+        <item name="android:color">#EFFFFFFF</item>
+    </style>
+
+    <style name="AthenaBottomNavActiveIndicatorShape" parent="ShapeAppearance.Material3.Corner.Full" />
 
     <style name="SquareTabTextActive" parent="TextAppearance.AppCompat.Body1">
         <item name="android:textSize">17sp</item>

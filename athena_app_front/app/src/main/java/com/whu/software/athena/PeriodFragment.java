@@ -79,7 +79,7 @@ public class PeriodFragment extends Fragment {
     private TextView tvHealthStatusTitle;
     private TextView tvHealthStatusSubtitle;
     private TextView tvHealthStatusHint;
-    private View viewHealthStatusMarker;
+    private CycleStatusRingView cycleStatusRingView;
 
     private TextView btnPeriodYes;
     private TextView btnPeriodNo;
@@ -174,7 +174,7 @@ public class PeriodFragment extends Fragment {
         tvHealthStatusTitle = null;
         tvHealthStatusSubtitle = null;
         tvHealthStatusHint = null;
-        viewHealthStatusMarker = null;
+        cycleStatusRingView = null;
         actionTitleViews.clear();
         actionBaseTitles.clear();
     }
@@ -430,7 +430,9 @@ public class PeriodFragment extends Fragment {
             if ("白带".equals(row.title)) {
                 addActionSectionHeader("更多记录");
             }
-            actionListContainer.addView(inflateRow(inflater, row));
+            View rowView = inflateRow(inflater, row);
+            RecordActionReadingStyle.apply(rowView);
+            actionListContainer.addView(rowView);
         }
     }
 
@@ -460,6 +462,7 @@ public class PeriodFragment extends Fragment {
 
     private View inflateArrowRow(LayoutInflater inflater, ActionRow row) {
         View v = inflater.inflate(R.layout.item_record_action_arrow, actionListContainer, false);
+        v.setBackgroundColor(0x00FFFFFF);
         ((android.widget.ImageView) v.findViewById(R.id.action_icon)).setImageResource(row.iconRes);
         TextView titleView = v.findViewById(R.id.action_title);
         titleView.setText(row.title);
@@ -476,6 +479,7 @@ public class PeriodFragment extends Fragment {
 
     private View inflateAddRow(LayoutInflater inflater, ActionRow row) {
         View v = inflater.inflate(R.layout.item_record_action, actionListContainer, false);
+        v.setBackgroundColor(0x00FFFFFF);
         ((android.widget.ImageView) v.findViewById(R.id.action_icon)).setImageResource(row.iconRes);
         TextView titleView = v.findViewById(R.id.action_title);
         titleView.setText(row.title);
@@ -486,6 +490,7 @@ public class PeriodFragment extends Fragment {
 
     private View inflateMoodRow(LayoutInflater inflater, ActionRow row) {
         View v = inflater.inflate(R.layout.item_record_action, actionListContainer, false);
+        v.setBackgroundColor(0x00FFFFFF);
         ((android.widget.ImageView) v.findViewById(R.id.action_icon)).setImageResource(row.iconRes);
         TextView titleView = v.findViewById(R.id.action_title);
         titleView.setText(row.title);
@@ -498,6 +503,7 @@ public class PeriodFragment extends Fragment {
 
     private View inflateHabitRow(LayoutInflater inflater, ActionRow row) {
         View v = inflater.inflate(R.layout.item_record_action, actionListContainer, false);
+        v.setBackgroundColor(0x00FFFFFF);
         ((android.widget.ImageView) v.findViewById(R.id.action_icon)).setImageResource(row.iconRes);
         TextView titleView = v.findViewById(R.id.action_title);
         titleView.setText(row.title);
@@ -544,11 +550,6 @@ public class PeriodFragment extends Fragment {
         if (moreDataBtn != null) {
             moreDataBtn.setOnClickListener(v ->
                     startActivity(new Intent(requireContext(), AnalysisReportActivity.class)));
-        }
-        View smartBandBtn = root.findViewById(R.id.ll_smart_band_data);
-        if (smartBandBtn != null) {
-            smartBandBtn.setOnClickListener(v ->
-                    startActivity(new Intent(requireContext(), SmartBandActivity.class)));
         }
         View healthCard = root.findViewById(R.id.card_health_data);
         if (healthCard != null) {
@@ -619,7 +620,7 @@ public class PeriodFragment extends Fragment {
         tvHealthStatusTitle = root.findViewById(R.id.tv_health_status_title);
         tvHealthStatusSubtitle = root.findViewById(R.id.tv_health_status_subtitle);
         tvHealthStatusHint = root.findViewById(R.id.tv_health_status_hint);
-        viewHealthStatusMarker = root.findViewById(R.id.view_health_status_marker);
+        cycleStatusRingView = root.findViewById(R.id.view_cycle_status_ring);
         refreshHealthStatusCard();
     }
 
@@ -669,11 +670,13 @@ public class PeriodFragment extends Fragment {
                 displayDays = (int) (ChronoUnit.DAYS.between(displayStartDate, effectiveEndDate) + 1);
             }
             if (displayDays > 0) {
+                if (cycleStatusRingView != null) cycleStatusRingView.setMarkerLabel(String.valueOf(displayDays));
                 tvHealthStatusTitle.setText("经期第 " + displayDays + " 天");
                 tvHealthStatusSubtitle.setText("开始于 " + (displayStartDate != null ? displayStartDate : "今天"));
                 int periodDays = Math.max(1, CycleDataManager.getPeriodDays(requireContext()));
                 updateHealthStatusMarker((displayDays - 1f) / Math.max(1, periodDays - 1));
             } else {
+                if (cycleStatusRingView != null) cycleStatusRingView.setMarkerLabel(null);
                 tvHealthStatusTitle.setText("经期进行中");
                 tvHealthStatusSubtitle.setText("正在同步当前周期状态");
                 updateHealthStatusMarker(0f);
@@ -684,6 +687,7 @@ public class PeriodFragment extends Fragment {
 
         int cycleDay = resolveCurrentCycleDay();
         if (cycleDay > 0) {
+            if (cycleStatusRingView != null) cycleStatusRingView.setMarkerLabel(String.valueOf(cycleDay));
             int cycleDays = Math.max(1, CycleDataManager.getCycleDays(requireContext()));
             updateHealthStatusMarker((cycleDay - 1f) / Math.max(1, cycleDays - 1));
             tvHealthStatusTitle.setText("周期第 " + cycleDay + " 天");
@@ -695,6 +699,7 @@ public class PeriodFragment extends Fragment {
                 tvHealthStatusHint.setText("记录几天后，Athena 会帮你整理更稳定的节律。");
             }
         } else {
+            if (cycleStatusRingView != null) cycleStatusRingView.setMarkerLabel(null);
             updateHealthStatusMarker(0.5f);
             tvHealthStatusTitle.setText("暂无完整周期");
             tvHealthStatusSubtitle.setText("记录 2-3 个周期后，Athena 会帮你整理规律");
@@ -703,24 +708,10 @@ public class PeriodFragment extends Fragment {
     }
 
     private void updateHealthStatusMarker(float progress) {
-        if (viewHealthStatusMarker == null) {
+        if (cycleStatusRingView == null) {
             return;
         }
-        viewHealthStatusMarker.post(() -> {
-            View parent = (View) viewHealthStatusMarker.getParent();
-            if (parent == null) {
-                return;
-            }
-            int travel = parent.getWidth() - viewHealthStatusMarker.getWidth();
-            if (travel <= 0) {
-                return;
-            }
-            float safeProgress = Math.max(0f, Math.min(1f, progress));
-            viewHealthStatusMarker.animate()
-                    .translationX((safeProgress - 0.5f) * travel)
-                    .setDuration(360L)
-                    .start();
-        });
+        cycleStatusRingView.setProgress(progress);
     }
 
     private int resolveCurrentCycleDay() {

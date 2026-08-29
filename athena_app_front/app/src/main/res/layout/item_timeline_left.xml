@@ -5,27 +5,6 @@
     android:layout_height="wrap_content"
     android:orientation="vertical">
 
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="30dp">
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="2dp"
-            android:layout_marginTop="6dp"
-            android:background="#FFB6C1" /> <View
-            android:layout_width="14dp"
-            android:layout_height="14dp"
-            android:layout_centerHorizontal="true"
-            android:background="@drawable/circle_background"
-            android:backgroundTint="#FF1493" /> <View
-            android:layout_width="2dp"
-            android:layout_height="24dp"
-            android:layout_centerHorizontal="true"
-            android:layout_marginTop="12dp"
-            android:background="#FFB6C1" />
-    </RelativeLayout>
-
     <androidx.cardview.widget.CardView
         android:id="@+id/card_timeline"
         android:layout_width="260dp"
@@ -34,13 +13,15 @@
         android:layout_marginBottom="16dp"
         android:clickable="true"
         android:focusable="true"
-        app:cardCornerRadius="14dp"
+        app:cardCornerRadius="23dp"
         app:cardElevation="4dp"
-        app:cardBackgroundColor="#FFFFFF">
+        app:cardBackgroundColor="@android:color/transparent">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@drawable/bg_body_clue_content_info"
+            android:clipToOutline="true"
             android:orientation="vertical">
 
             <ImageView
@@ -53,6 +34,7 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="@android:color/transparent"
                 android:orientation="vertical"
                 android:padding="12dp">
 
@@ -60,6 +42,7 @@
                     android:id="@+id/tv_timeline_title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:background="@android:color/transparent"
                     android:textColor="#222222"
                     android:textSize="14sp"
                     android:textStyle="bold"
@@ -70,6 +53,7 @@
                     android:id="@+id/tv_timeline_desc"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:background="@android:color/transparent"
                     android:layout_marginTop="6dp"
                     android:textColor="#555555"
                     android:textSize="12sp"

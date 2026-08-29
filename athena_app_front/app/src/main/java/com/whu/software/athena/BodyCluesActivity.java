@@ -2,9 +2,14 @@ package com.whu.software.athena;
 
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.RelativeSizeSpan;
+import android.text.style.StyleSpan;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -67,6 +72,9 @@ public class BodyCluesActivity extends AppCompatActivity {
 
     private void show(ClueListView next) {
         section = next; page = 1; list.removeAllViews(); visibleClueIds.clear();
+        findViewById(R.id.tab_pending).setSelected(section == ClueListView.PENDING);
+        findViewById(R.id.tab_organized).setSelected(section == ClueListView.ORGANIZED);
+        findViewById(R.id.tab_questions).setSelected(section == ClueListView.QUESTIONS);
         if (inbox == null) return;
         if (section == ClueListView.PENDING) {
             for (Clue clue : safe(inbox.pendingClues)) { visibleClueIds.add(clue.id); list.addView(clueView(clue)); }
@@ -113,9 +121,28 @@ public class BodyCluesActivity extends AppCompatActivity {
     }
 
     private TextView card(String value) {
-        TextView view = new TextView(this); view.setText(value); view.setTextColor(Color.rgb(45, 53, 50)); view.setTextSize(15);
-        view.setLineSpacing(0, 1.15f); view.setBackgroundColor(Color.WHITE); int p = dp(16); view.setPadding(p, p, p, p);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2); params.bottomMargin = dp(10); view.setLayoutParams(params); return view;
+        TextView view = new TextView(this);
+        SpannableString styledText = new SpannableString(value);
+        int titleEnd = value.indexOf('\n');
+        if (titleEnd < 0) titleEnd = value.length();
+        styledText.setSpan(new StyleSpan(Typeface.BOLD), 0, titleEnd,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        styledText.setSpan(new RelativeSizeSpan(1.22f), 0, titleEnd,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        view.setText(styledText);
+        view.setTextColor(Color.rgb(95, 89, 98));
+        view.setTextSize(13);
+        view.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
+        view.setLineSpacing(dp(3), 1.15f);
+        view.setBackgroundResource(R.drawable.bg_body_clue_content_info);
+        view.setElevation(dp(4));
+        int horizontal = dp(18);
+        int vertical = dp(17);
+        view.setPadding(horizontal, vertical, horizontal, dp(18));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.bottomMargin = dp(12);
+        view.setLayoutParams(params);
+        return view;
     }
 
     private void createDigest() {

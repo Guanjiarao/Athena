@@ -3,11 +3,23 @@
     android:width="28dp" android:height="28dp"
     android:viewportWidth="28" android:viewportHeight="28">
     <!-- 身体轮廓 -->
-    <path android:fillColor="#E5375A"
-        android:pathData="M14,3 C11.8,3 10,4.8 10,7 C10,9.2 11.8,11 14,11 C16.2,11 18,9.2 18,7 C18,4.8 16.2,3 14,3 Z"/>
+    <path android:fillColor="#00000000"
+        android:pathData="M14,3 C11.8,3 10,4.8 10,7 C10,9.2 11.8,11 14,11 C16.2,11 18,9.2 18,7 C18,4.8 16.2,3 14,3 Z"
+        android:strokeColor="#6952C8"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
     <!-- 孕肚 -->
-    <path android:fillColor="#E5375A"
-        android:pathData="M10,12 L9,25 L13,25 L13,19 C14,21 16,22 18,21 L19,25 L19,25 L18,12 C17,13.5 15.5,14 14,14 C12.5,14 11,13.5 10,12 Z"/>
-    <path android:fillColor="#FF7A9A"
-        android:pathData="M15,15 C16.5,15 18,16.5 18,18.5 C18,21 16,22.5 14,22 L14,15 Z"/>
-</vector>
+    <path android:fillColor="#00000000"
+        android:pathData="M10,12 L9,25 L13,25 L13,19 C14,21 16,22 18,21 L19,25 L19,25 L18,12 C17,13.5 15.5,14 14,14 C12.5,14 11,13.5 10,12 Z"
+        android:strokeColor="#6952C8"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path android:fillColor="#00000000"
+        android:pathData="M15,15 C16.5,15 18,16.5 18,18.5 C18,21 16,22.5 14,22 L14,15 Z"
+        android:strokeColor="#6952C8"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    </vector>

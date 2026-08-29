@@ -75,7 +75,7 @@ public class PregnancyPrepFragment extends Fragment {
     private TextView tvHealthStatusTitle;
     private TextView tvHealthStatusSubtitle;
     private TextView tvHealthStatusHint;
-    private View viewHealthStatusMarker;
+    private CycleStatusRingView cycleStatusRingView;
 
     private TextView btnPeriodYes;
     private TextView btnPeriodNo;
@@ -169,7 +169,7 @@ public class PregnancyPrepFragment extends Fragment {
         tvHealthStatusTitle = null;
         tvHealthStatusSubtitle = null;
         tvHealthStatusHint = null;
-        viewHealthStatusMarker = null;
+        cycleStatusRingView = null;
         actionTitleViews.clear();
         actionBaseTitles.clear();
     }
@@ -484,7 +484,7 @@ public class PregnancyPrepFragment extends Fragment {
         tvHealthStatusTitle = root.findViewById(R.id.tv_health_status_title);
         tvHealthStatusSubtitle = root.findViewById(R.id.tv_health_status_subtitle);
         tvHealthStatusHint = root.findViewById(R.id.tv_health_status_hint);
-        viewHealthStatusMarker = root.findViewById(R.id.view_health_status_marker);
+        cycleStatusRingView = root.findViewById(R.id.view_cycle_status_ring);
         refreshHealthStatusCard();
     }
 
@@ -498,7 +498,9 @@ public class PregnancyPrepFragment extends Fragment {
             if ("我怀孕了".equals(row.title)) {
                 addActionSectionHeader("更多记录");
             }
-            actionListContainer.addView(inflateRow(inflater, row));
+            View rowView = inflateRow(inflater, row);
+            RecordActionReadingStyle.apply(rowView);
+            actionListContainer.addView(rowView);
         }
     }
 
@@ -636,7 +638,7 @@ public class PregnancyPrepFragment extends Fragment {
 
     private List<ActionRow> buildActionRows() {
         List<ActionRow> list = new ArrayList<>();
-        list.add(new ActionRow(R.drawable.ic_blood_drop,            "月经来了",  RowType.YESNO));
+        list.add(new ActionRow(R.drawable.ic_record_drop_outline,   "月经来了",  RowType.YESNO));
         list.add(new ActionRow(R.drawable.ic_action_ovulation_test, "排卵试纸",  RowType.ARROW));
         list.add(new ActionRow(R.drawable.ic_action_temp,           "基础体温",  RowType.ADD));
         list.add(new ActionRow(R.drawable.ic_action_sex,            "爱爱",      RowType.ADD));
@@ -697,24 +699,10 @@ public class PregnancyPrepFragment extends Fragment {
     }
 
     private void updateHealthStatusMarker(float progress) {
-        if (viewHealthStatusMarker == null) {
+        if (cycleStatusRingView == null) {
             return;
         }
-        viewHealthStatusMarker.post(() -> {
-            View parent = (View) viewHealthStatusMarker.getParent();
-            if (parent == null) {
-                return;
-            }
-            int travel = parent.getWidth() - viewHealthStatusMarker.getWidth();
-            if (travel <= 0) {
-                return;
-            }
-            float safeProgress = Math.max(0f, Math.min(1f, progress));
-            viewHealthStatusMarker.animate()
-                    .translationX((safeProgress - 0.5f) * travel)
-                    .setDuration(360L)
-                    .start();
-        });
+        cycleStatusRingView.setProgress(progress);
     }
 
     private int resolveCurrentCycleDay() {

@@ -3,14 +3,17 @@
 
     <item
         android:id="@+id/navigation_record"
+        android:icon="@drawable/ic_bottom_nav_health"
         android:title="健康" />
 
     <item
         android:id="@+id/navigation_knowledge"
+        android:icon="@drawable/ic_bottom_nav_knowledge"
         android:title="知识" />
 
     <item
         android:id="@+id/navigation_profile"
+        android:icon="@drawable/ic_bottom_nav_profile"
         android:title="我的" />
 
 </menu>

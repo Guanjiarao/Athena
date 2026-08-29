@@ -13,17 +13,17 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="12dp"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="0dp"
+    app:cardCornerRadius="23dp"
+    app:cardElevation="4dp"
     app:cardUseCompatPadding="false"
-    app:cardBackgroundColor="@color/athena_surface_sand">
+    app:cardBackgroundColor="@android:color/transparent">
 
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:minHeight="96dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
+        android:background="@drawable/bg_body_clue_content_info"
+        android:clipToOutline="true"
+        android:minHeight="112dp"
         android:padding="12dp">
 
         <!-- 左侧封面图（正方形，轻微圆角） -->
@@ -33,40 +33,43 @@
             android:layout_height="88dp"
             android:scaleType="centerCrop"
             android:background="@drawable/bg_category_cover"
-            android:contentDescription="分类封面" />
+            android:contentDescription="分类封面"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- 右侧文字区 -->
-        <LinearLayout
+        <TextView
+            android:id="@+id/tv_category_title"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center_vertical"
-            android:layout_marginStart="12dp">
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:maxLines="1"
+            android:textColor="@color/athena_text_primary"
+            android:textSize="17sp"
+            app:layout_constraintBottom_toTopOf="@id/tv_category_desc"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/iv_category_cover"
+            app:layout_constraintTop_toTopOf="@id/iv_category_cover"
+            app:layout_constraintVertical_chainStyle="packed" />
 
-            <TextView
-                android:id="@+id/tv_category_title"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textSize="17sp"
-                android:fontFamily="sans-serif-medium"
-                android:textColor="@color/athena_text_primary"
-                android:maxLines="1"
-                android:ellipsize="end" />
+        <TextView
+            android:id="@+id/tv_category_desc"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:lineSpacingExtra="2dp"
+            android:maxLines="2"
+            android:textColor="@color/athena_text_secondary"
+            android:textSize="12sp"
+            app:layout_constraintBottom_toBottomOf="@id/iv_category_cover"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/iv_category_cover"
+            app:layout_constraintTop_toBottomOf="@id/tv_category_title" />
 
-            <TextView
-                android:id="@+id/tv_category_desc"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textSize="12sp"
-                android:textColor="@color/athena_text_secondary"
-                android:maxLines="2"
-                android:ellipsize="end"
-                android:lineSpacingExtra="2dp" />
-
-        </LinearLayout>
-
-    </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.cardview.widget.CardView>

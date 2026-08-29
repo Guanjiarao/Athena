@@ -3,18 +3,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@color/athena_page_bg">
+    android:background="@color/athena_page_bg"
+    android:orientation="vertical">
 
-    <!-- ═══════════════════════════════════════════════════════
-         顶部页眉（固定，不随内容滚动，不随页面切换消失）
-         ═══════════════════════════════════════════════════════ -->
     <RelativeLayout
-        android:id="@+id/knowledge_header"
         android:layout_width="match_parent"
-        android:layout_height="112dp"
+        android:layout_height="104dp"
         android:layout_marginTop="48dp"
-        android:background="@color/athena_page_bg"
         android:paddingHorizontal="20dp">
 
         <TextView
@@ -22,59 +17,12 @@
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
             android:layout_alignParentTop="true"
+            android:fontFamily="sans-serif-medium"
+            android:includeFontPadding="false"
             android:text="知识"
             android:textColor="@color/athena_text_primary"
-            android:textSize="28sp"
-            android:fontFamily="sans-serif-medium"
-            android:includeFontPadding="false" />
+            android:textSize="28sp" />
 
-        <!-- 左侧发布按钮（科普页用 INVISIBLE 隐藏，保留占位） -->
-        <ImageButton
-            android:id="@+id/knowledge_btn_create"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_alignParentStart="true"
-            android:layout_alignParentBottom="true"
-            android:background="@drawable/bg_athena_icon_button"
-            android:contentDescription="创作"
-            android:src="@drawable/ic_add"
-            android:scaleType="centerInside"
-            android:padding="13dp"
-            app:tint="@color/athena_text_primary"
-            android:clickable="true"
-            android:focusable="true" />
-
-        <!-- 中间 推荐 / 科普 标签（始终居中） -->
-        <com.google.android.material.tabs.TabLayout
-            android:id="@+id/knowledge_tab_layout"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
-            android:layout_centerHorizontal="true"
-            android:background="@android:color/transparent"
-            app:tabGravity="center"
-            app:tabMode="fixed"
-            app:tabIndicatorColor="@color/athena_sage_strong"
-            app:tabIndicatorHeight="2dp"
-            app:tabSelectedTextColor="@color/athena_text_primary"
-            app:tabTextColor="@color/athena_text_secondary"
-            app:tabRippleColor="@android:color/transparent"
-            app:tabTextAppearance="@style/TabLayoutTextInactive"
-            app:tabSelectedTextAppearance="@style/TabLayoutTextActive">
-
-            <com.google.android.material.tabs.TabItem
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="推荐" />
-
-            <com.google.android.material.tabs.TabItem
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="科普" />
-
-        </com.google.android.material.tabs.TabLayout>
-
-        <!-- 右侧搜索按钮（始终可见） -->
         <ImageButton
             android:id="@+id/knowledge_btn_search"
             android:layout_width="48dp"
@@ -82,21 +30,18 @@
             android:layout_alignParentEnd="true"
             android:layout_alignParentBottom="true"
             android:background="@drawable/bg_athena_icon_button"
-            android:contentDescription="搜索"
-            android:src="@drawable/ic_search"
-            android:scaleType="centerInside"
-            android:padding="13dp"
-            app:tint="@color/athena_text_primary"
             android:clickable="true"
-            android:focusable="true" />
+            android:contentDescription="AI 科普"
+            android:focusable="true"
+            android:padding="13dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/science_ai"
+            app:tint="@color/athena_text_primary" />
 
     </RelativeLayout>
 
-    <!-- ═══════════════════════════════════════════════════════
-         主体内容区：ViewPager2 承载"推荐"和"科普"两个子页面
-         ═══════════════════════════════════════════════════════ -->
-    <androidx.viewpager2.widget.ViewPager2
-        android:id="@+id/knowledge_content_pager"
+    <FrameLayout
+        android:id="@+id/knowledge_content_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />

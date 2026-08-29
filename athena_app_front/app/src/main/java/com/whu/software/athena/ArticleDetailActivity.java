@@ -1,12 +1,21 @@
 package com.whu.software.athena;
 
 import android.os.Bundle;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.EditText;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -53,6 +62,7 @@ public class ArticleDetailActivity extends AppCompatActivity {
     private String currentArticleId = "";
     private String currentArticleTitle = "文章详情";
     private int currentArticleType = 100;
+    private String currentArticleSource = "Athena 健康内容库";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,7 +108,8 @@ public class ArticleDetailActivity extends AppCompatActivity {
                 + " resolvedType=" + type
                 + " prefetchedContentLength=" + (prefetchedContent == null ? 0 : prefetchedContent.length())
                 + " hasAuthor=" + !TextUtils.isEmpty(prefetchedAuthorName));
-        renderTrustMetadata(prefetchedAuthorName);
+        currentArticleSource = TextUtils.isEmpty(prefetchedAuthorName)
+                ? "Athena 健康内容库" : prefetchedAuthorName;
         tvTitle.setText(title != null ? title : "文章详情");
         findViewById(R.id.btn_mark_related).setOnClickListener(v -> captureSelection(ClueIntent.RELATED));
         findViewById(R.id.btn_mark_question).setOnClickListener(v -> captureSelection(ClueIntent.QUESTION));
@@ -232,21 +243,54 @@ public class ArticleDetailActivity extends AppCompatActivity {
     }
 
     private void renderArticleContent(@NonNull String content) {
-        String css = "<style>img{max-width:100%;height:auto;border-radius:8px;} body{word-wrap:break-word; padding:12px; margin:0; font-family:sans-serif;}</style>";
+        int readingMinutes = Math.max(1, Math.round(stripHtml(content).length() / 360f));
+        String css = "<style>"
+                + ":root{color-scheme:light;}html,body{background:#FAF7F2;}"
+                + "*{box-sizing:border-box;}"
+                + "body{word-wrap:break-word;padding:22px 26px 118px;margin:0;font-family:'Noto Serif SC','Source Han Serif SC','Songti SC',serif;"
+                + "color:#3A353B;font-size:17px;line-height:1.9;-webkit-user-select:text;user-select:text;}"
+                + ".article-title{margin:22px 0 12px;color:#211F23;font-family:'Noto Serif SC','Source Han Serif SC','Songti SC',serif;font-size:36px;line-height:1.3;letter-spacing:-.025em;font-weight:700;}"
+                + ".article-meta{display:flex;align-items:center;gap:9px;margin:26px 0 28px;color:#928C94;font-family:-apple-system,BlinkMacSystemFont,'Noto Sans SC',sans-serif;font-size:13px;}"
+                + ".meta-dot{width:3px;height:3px;border-radius:50%;background:#B7AFB8;}"
+                + ".article-body h1,.article-body h2,.article-body h3{color:#29262B;font-family:'Noto Serif SC','Source Han Serif SC','Songti SC',serif;line-height:1.42;letter-spacing:-.015em;margin:1.55em 0 .65em;font-weight:700;}"
+                + ".article-body h1{font-size:27px}.article-body h2{font-size:23px}.article-body h3{font-size:20px}"
+                + ".article-body p{margin:.85em 0;}a{color:#7059DF;}"
+                + ".article-body img{max-width:100%;height:auto;border-radius:18px;margin:12px 0;}"
+                + ".article-body blockquote{margin:18px 0;padding:12px 15px;border-left:3px solid #9D83F7;background:#F3EEFF;border-radius:0 14px 14px 0;}"
+                + ".trust-card{margin:38px 0 4px;padding:17px 18px 18px;border:1px solid rgba(255,255,255,.92);border-radius:23px;"
+                + "background:linear-gradient(135deg,rgba(237,232,255,.78),rgba(255,250,249,.92) 48%,rgba(231,248,249,.78));"
+                + "box-shadow:0 12px 30px rgba(65,49,72,.08);color:#5F5962;font-size:13px;line-height:1.72;}"
+                + ".trust-title{display:flex;align-items:center;gap:10px;margin:0 0 9px;color:#252329;font-size:18px;font-weight:700;}"
+                + ".trust-icon{position:relative;display:inline-block;width:28px;height:28px;flex:0 0 28px;border-radius:50%;background:rgba(140,119,239,.12);}"
+                + ".trust-icon:before{content:'';position:absolute;left:9px;top:7px;width:10px;height:13px;border:1.6px solid #8472E7;border-radius:2px;}"
+                + ".trust-icon:after{content:'';position:absolute;left:12px;top:11px;width:4px;height:4px;border-left:1.5px solid #8472E7;border-bottom:1.5px solid #8472E7;}"
+                + ".trust-row{margin:3px 0;}"
+                + "::selection{background:#DCCBFF;color:#17151A;}"
+                + "</style>";
+        String header = "<h1 class='article-title'>" + escapeHtml(currentArticleTitle) + "</h1>"
+                + "<div class='article-meta'><span>阅读约 " + readingMinutes + " 分钟</span>"
+                + "<span class='meta-dot'></span><span>健康科普</span></div>";
+        String trust = "<section class='trust-card'><div class='trust-title'><span class='trust-icon'></span>内容说明</div>"
+                + "<div class='trust-row'>来源：" + escapeHtml(currentArticleSource) + "</div>"
+                + "<div class='trust-row'>审核状态：健康内容编辑审核</div>"
+                + "<div class='trust-row'>科普信息不能替代诊断</div>"
+                + "<div class='trust-row'>和我有关：本内容与日常健康管理相关</div>"
+                + "<div class='trust-row'>更新日期：2026-08</div></section>";
         String finalHtml = "<html><head><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                + css + "</head><body>" + content + "</body></html>";
+                + css + "</head><body>" + header + "<article class='article-body'>" + content
+                + "</article>" + trust + "</body></html>";
         webContent.loadDataWithBaseURL(null, finalHtml, "text/html", "UTF-8", null);
     }
 
-    private void renderTrustMetadata(String author) {
-        String source = TextUtils.isEmpty(author) ? "Athena 健康内容库" : author;
-        ((TextView) findViewById(R.id.tv_article_trust)).setText(
-                "来源：" + source
-                        + "\n审核状态：健康内容编辑审核"
-                        + "\n最近更新：2026 年 8 月"
-                        + "\n适用人群：希望了解基础身体知识的成年人"
-                        + "\n内容边界：科普信息不能替代诊断；持续或加重的不适请寻求专业帮助。"
-                        + "\n\n为什么推荐给我：基于你主动选择的关注方向，不依据浏览、点赞或收藏推断身体状态。");
+    @NonNull
+    private String stripHtml(@NonNull String html) {
+        return android.text.Html.fromHtml(html, android.text.Html.FROM_HTML_MODE_LEGACY)
+                .toString().replaceAll("\\s+", "").trim();
+    }
+
+    @NonNull
+    private String escapeHtml(String value) {
+        return TextUtils.htmlEncode(value == null ? "" : value);
     }
 
     private void captureSelection(@NonNull ClueIntent intent) {
@@ -269,34 +313,37 @@ public class ArticleDetailActivity extends AppCompatActivity {
         String[] relations = {"我现在有类似情况", "以前出现过", "我不确定，但想观察", "只是觉得值得了解"};
         RelationType[] values = {RelationType.CURRENT, RelationType.PAST,
                 RelationType.OBSERVE, RelationType.KNOWLEDGE_ONLY};
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("这段内容和你是什么关系？")
-                .setItems(relations, (dialog, which) -> showDesiredHelpDialog(selected, values[which]))
+                .setItems(relations, (innerDialog, which) -> showDesiredHelpDialog(selected, values[which]))
                 .setNegativeButton("取消", null)
-                .show();
+                .create();
+        showGlassDialog(dialog);
     }
 
     private void showDesiredHelpDialog(String selected, RelationType detail) {
         String[] labels = {"帮我持续观察", "帮我找可信知识", "帮我了解是否需要留意", "暂时只保存"};
         HelpRequestType[] values = {HelpRequestType.OBSERVE, HelpRequestType.KNOWLEDGE,
                 HelpRequestType.ATTENTION, HelpRequestType.SAVE_ONLY};
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("你希望 Athena 做什么？")
-                .setItems(labels, (dialog, which) ->
+                .setItems(labels, (innerDialog, which) ->
                         saveClue(ClueIntent.RELATED, selected, null, detail, values[which], null, "和我有关"))
                 .setNegativeButton("取消", null)
-                .show();
+                .create();
+        showGlassDialog(dialog);
     }
 
     private void showQuestionTypeDialog(String selected) {
         String[] labels = {"这常见吗", "可能有哪些原因", "我能做什么", "什么时候需要专业帮助", "自定义问题"};
         QuestionType[] values = {QuestionType.IS_COMMON, QuestionType.POSSIBLE_CAUSES,
                 QuestionType.SELF_CARE, QuestionType.PROFESSIONAL_HELP, QuestionType.CUSTOM};
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("你最想弄明白什么？")
-                .setItems(labels, (dialog, which) -> showQuestionDialog(selected, values[which], labels[which]))
+                .setItems(labels, (innerDialog, which) -> showQuestionDialog(selected, values[which], labels[which]))
                 .setNegativeButton("取消", null)
-                .show();
+                .create();
+        showGlassDialog(dialog);
     }
 
     private void showQuestionDialog(String selected, QuestionType questionType, String defaultQuestion) {
@@ -304,19 +351,23 @@ public class ArticleDetailActivity extends AppCompatActivity {
         input.setHint("你想弄明白什么？");
         if (questionType != QuestionType.CUSTOM) input.setText(defaultQuestion + "？");
         input.setMinLines(2);
+        input.setTextColor(Color.parseColor("#2F2B32"));
+        input.setHintTextColor(Color.parseColor("#8D858F"));
+        input.setBackgroundResource(R.drawable.bg_article_dialog_input);
         int padding = Math.round(20 * getResources().getDisplayMetrics().density);
         input.setPadding(padding, padding, padding, padding);
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("记录我的疑问")
                 .setView(input)
-                .setPositiveButton("保存", (dialog, which) -> {
+                .setPositiveButton("保存", (innerDialog, which) -> {
                     String question = input.getText().toString().trim();
                     if (question.isEmpty()) Toast.makeText(this, "请写下你的问题", Toast.LENGTH_SHORT).show();
                     else saveClue(ClueIntent.QUESTION, selected, question,
                             RelationType.OBSERVE, HelpRequestType.KNOWLEDGE, questionType, "我有疑问");
                 })
                 .setNegativeButton("取消", null)
-                .show();
+                .create();
+        showGlassDialog(dialog);
     }
 
     private void saveClue(ClueIntent intent, String selected, String question,
@@ -347,9 +398,10 @@ public class ArticleDetailActivity extends AppCompatActivity {
                     Toast.makeText(ArticleDetailActivity.this, message, Toast.LENGTH_SHORT).show();
                     return;
                 }
-                new AlertDialog.Builder(ArticleDetailActivity.this).setMessage(message)
+                AlertDialog dialog = new AlertDialog.Builder(ArticleDetailActivity.this).setMessage(message)
                         .setPositiveButton("知道了", null)
-                        .setNegativeButton("撤销", (dialog, which) -> undoClue(value.clue.id)).show();
+                        .setNegativeButton("撤销", (innerDialog, which) -> undoClue(value.clue.id)).create();
+                showGlassDialog(dialog);
             }
             @Override public void onError(String message) {
                 Toast.makeText(ArticleDetailActivity.this, message, Toast.LENGTH_SHORT).show();
@@ -366,6 +418,54 @@ public class ArticleDetailActivity extends AppCompatActivity {
                 Toast.makeText(ArticleDetailActivity.this, message, Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    private void showGlassDialog(@NonNull AlertDialog dialog) {
+        dialog.setOnShowListener(ignored -> {
+            Window window = dialog.getWindow();
+            if (window != null) {
+                window.setBackgroundDrawableResource(R.drawable.bg_article_dialog_glass);
+                WindowManager.LayoutParams params = window.getAttributes();
+                params.width = Math.round(getResources().getDisplayMetrics().widthPixels * 0.88f);
+                params.dimAmount = 0.22f;
+                window.setAttributes(params);
+                window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            }
+            styleDialogText(dialog.getWindow() == null ? null : dialog.getWindow().getDecorView());
+            tintDialogButton(dialog.getButton(AlertDialog.BUTTON_POSITIVE));
+            tintDialogButton(dialog.getButton(AlertDialog.BUTTON_NEGATIVE));
+            ListView listView = dialog.getListView();
+            if (listView != null) {
+                listView.setDivider(new ColorDrawable(Color.parseColor("#1A6952C8")));
+                listView.setDividerHeight(1);
+            }
+        });
+        dialog.show();
+    }
+
+    private void tintDialogButton(Button button) {
+        if (button == null) return;
+        button.setTextColor(Color.parseColor("#6952C8"));
+        button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        button.setBackgroundColor(Color.TRANSPARENT);
+    }
+
+    private void styleDialogText(View view) {
+        if (view == null) return;
+        if (view instanceof TextView && !(view instanceof Button)) {
+            TextView textView = (TextView) view;
+            textView.setTextColor(Color.parseColor("#3A353B"));
+            if (view.getId() == getResources().getIdentifier("alertTitle", "id", "android")) {
+                textView.setTextColor(Color.parseColor("#211F23"));
+                textView.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            }
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                styleDialogText(group.getChildAt(i));
+            }
+        }
     }
 
     private String decodeJavascriptString(String raw) {

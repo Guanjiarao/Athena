@@ -244,8 +244,8 @@ public class CalendarDayAdapter extends RecyclerView.Adapter<CalendarDayAdapter.
         if (cell.subLabel != null && !cell.subLabel.isEmpty()) {
             holder.tvSub.setVisibility(View.VISIBLE);
             holder.tvSub.setText(cell.subLabel);
-            boolean darkBg = effectiveType == DAY_TYPE_PERIOD || effectiveType == DAY_TYPE_OVULATION_DAY;
-            holder.tvSub.setTextColor(darkBg ? Color.WHITE : Color.parseColor("#99857B73"));
+            boolean darkBg = !cell.isSelected && effectiveType == DAY_TYPE_PERIOD;
+            holder.tvSub.setTextColor(darkBg ? Color.WHITE : Color.parseColor("#777777"));
         } else {
             holder.tvSub.setVisibility(View.GONE);
         }
@@ -277,8 +277,8 @@ public class CalendarDayAdapter extends RecyclerView.Adapter<CalendarDayAdapter.
     // ── 私有辅助 ──────────────────────────────────────────────────────────────
 
     private void applyBackground(@NonNull DayViewHolder h, DayCell cell, int effectiveType) {
-        boolean solidBg = effectiveType == DAY_TYPE_PERIOD || effectiveType == DAY_TYPE_OVULATION_DAY;
-        if (cell.isSelected && !solidBg) {
+        // Selection is always the top visual priority, including period/ovulation dates.
+        if (cell.isSelected) {
             h.root.setBackgroundResource(R.drawable.bg_calendar_day_selected);
             return;
         }
@@ -296,29 +296,34 @@ public class CalendarDayAdapter extends RecyclerView.Adapter<CalendarDayAdapter.
     }
 
     private void applyTextColor(@NonNull DayViewHolder h, DayCell cell, int effectiveType) {
+        if (cell.isSelected) {
+            h.tvDay.setTextColor(Color.parseColor("#C66F96"));
+            h.tvDay.setTypeface(null, Typeface.BOLD);
+            return;
+        }
         switch (effectiveType) {
             case DAY_TYPE_PERIOD:
-            case DAY_TYPE_OVULATION_DAY:
                 h.tvDay.setTextColor(Color.WHITE);
                 h.tvDay.setTypeface(null, Typeface.BOLD);
                 break;
+            case DAY_TYPE_OVULATION_DAY:
+                h.tvDay.setTextColor(Color.parseColor("#725A92"));
+                h.tvDay.setTypeface(null, Typeface.BOLD);
+                break;
             case DAY_TYPE_PREDICTED:
-                h.tvDay.setTextColor(Color.parseColor("#F06A82"));
+                h.tvDay.setTextColor(Color.parseColor("#333333"));
                 h.tvDay.setTypeface(null, Typeface.NORMAL);
                 break;
             case DAY_TYPE_OVULATION:
-                h.tvDay.setTextColor(Color.parseColor("#8D74CB"));
+                h.tvDay.setTextColor(Color.parseColor("#333333"));
                 h.tvDay.setTypeface(null, Typeface.NORMAL);
                 break;
             default:
-                if (cell.isSelected) {
-                    h.tvDay.setTextColor(Color.parseColor("#F06A82"));
-                    h.tvDay.setTypeface(null, Typeface.BOLD);
-                } else if (cell.isFuture) {
-                    h.tvDay.setTextColor(Color.parseColor("#B8AEA7"));
+                if (cell.isFuture) {
+                    h.tvDay.setTextColor(Color.parseColor("#B0B0B0"));
                     h.tvDay.setTypeface(null, Typeface.NORMAL);
                 } else {
-                    h.tvDay.setTextColor(Color.parseColor("#2F2926"));
+                    h.tvDay.setTextColor(Color.parseColor("#202020"));
                     h.tvDay.setTypeface(null, Typeface.NORMAL);
                 }
                 break;
