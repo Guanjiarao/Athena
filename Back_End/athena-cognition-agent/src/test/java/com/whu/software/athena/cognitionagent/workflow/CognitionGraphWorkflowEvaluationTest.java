@@ -178,7 +178,7 @@ class CognitionGraphWorkflowEvaluationTest {
     private void evaluateRepeatedBodyObservation(EvaluationCase testCase) {
         GraphUpdatePreparationRequest request = request(testCase.caseId);
         request.graph = GraphTestFixtures.emptyGraph();
-        request.suggestedTopicTitle = "Repeated body observation";
+        request.suggestedTopicTitle = "重复的身体观察";
         request.candidates = List.of(
                 bodyObservation("body_event_1", "record_1", "2026-08-20T08:00:00+08:00"),
                 bodyObservation("body_event_2", "record_2", "2026-08-27T08:00:00+08:00"));

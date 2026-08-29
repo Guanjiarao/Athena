@@ -188,7 +188,7 @@ public class FeedbackGraphUpdateService {
         proposal.route = GraphUpdateRoute.UPDATE_EXISTING;
         proposal.targetTopicId = feedback.topicId;
         proposal.evidenceIds = List.of(evidenceId);
-        proposal.changeSummary = "Record action feedback and close the pending observation.";
+        proposal.changeSummary = "记录行动反馈并关闭本次观察。";
         proposal.requiresUserConfirmation = true;
         proposal.workflowVersion = GraphContract.FEEDBACK_WORKFLOW_VERSION;
         proposal.createdAt = feedback.evidence.occurredAt;
@@ -199,7 +199,7 @@ public class FeedbackGraphUpdateService {
         updatedAction.updatedAt = feedback.evidence.occurredAt;
         updatedAction.version = action.version + 1;
         proposal.operations.add(updateNode(updatedAction, evidenceId,
-                "Close the pending action using its explicit user feedback."));
+                "根据用户反馈关闭本次观察行动。"));
 
         String sourceId = ids.id("source", request.idempotencyKey,
                 feedback.feedbackId + ":source");
@@ -208,25 +208,25 @@ public class FeedbackGraphUpdateService {
         source.type = GraphNodeType.SOURCE_EVIDENCE;
         source.status = GraphNodeStatus.ACTIVE;
         source.topicId = feedback.topicId;
-        source.title = "ACTION_FEEDBACK";
+        source.title = "行动反馈";
         source.content = feedback.evidence.summary;
         source.evidenceIds = List.of(evidenceId);
         source.createdAt = feedback.evidence.occurredAt;
         source.updatedAt = feedback.evidence.occurredAt;
         proposal.operations.add(addNode(source, evidenceId,
-                "Add the normalized feedback as traceable source evidence."));
+                "把这次反馈作为可追溯的原始记录。"));
 
         addEdge(proposal, request, GraphEdgeType.ABOUT, sourceId,
-                feedback.topicId, evidenceId, "Link feedback evidence to its topic.");
+                feedback.topicId, evidenceId, "把反馈记录关联到所属主题。");
         addEdge(proposal, request, GraphEdgeType.FEEDBACK_FOR, sourceId,
-                action.id, evidenceId, "Link feedback evidence to the completed action.");
+                action.id, evidenceId, "把反馈记录关联到对应行动。");
 
         if (feedback.result != GraphActionFeedbackResult.SKIPPED) {
             GraphNode semantic = semanticNode(request, feedback);
             proposal.operations.add(addNode(semantic, evidenceId,
-                    "Add the bounded meaning of the submitted feedback."));
+                    "根据反馈补充一项有边界的认知内容。"));
             addEdge(proposal, request, GraphEdgeType.GROUNDS, sourceId,
-                    semantic.id, evidenceId, "Ground feedback meaning in its source event.");
+                    semantic.id, evidenceId, "把认知内容关联到它的反馈来源。");
         }
         proposal.operations.sort((left, right) -> Integer.compare(
                 operationPriority(left.operationType), operationPriority(right.operationType)));
@@ -243,10 +243,10 @@ public class FeedbackGraphUpdateService {
         node.status = GraphNodeStatus.ACTIVE;
         node.topicId = feedback.topicId;
         node.content = switch (feedback.result) {
-            case OCCURRED -> "The user reported that the planned observation occurred.";
+            case OCCURRED -> "用户反馈这次观察的情况出现了。";
             case NOT_OCCURRED ->
-                    "The user reported that the planned observation did not occur.";
-            case UNCERTAIN -> "The result of the planned observation remains uncertain.";
+                    "用户反馈这次观察的情况本次未出现。";
+            case UNCERTAIN -> "用户反馈这次观察的结果仍不确定。";
             case SKIPPED -> throw new IllegalStateException("skipped feedback has no meaning node");
         };
         node.evidenceIds = List.of(feedback.evidence.evidenceId);

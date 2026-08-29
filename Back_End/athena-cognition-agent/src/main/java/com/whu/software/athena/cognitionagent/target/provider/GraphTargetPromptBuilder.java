@@ -21,7 +21,13 @@ public class GraphTargetPromptBuilder {
                 + " CREATE_BRANCH or NEEDS_CONFIRMATION), matchedTopicId (the chosen candidate"
                 + " topic id, or null), suggestedTopicTitle (string or null), rationale"
                 + " (string). Do not add any other keys. Do not use key=value lines."
-                + " Do not wrap the JSON in markdown fences.";
+                + " Do not wrap the JSON in markdown fences."
+                + " All user-visible text fields (topicTitle, stageUnderstanding,"
+                + " changeSummary, changes content, action title/description/rationale,"
+                + " and any suggested titles) must be written in natural, concise"
+                + " Simplified Chinese, even when the input article, existing graph,"
+                + " or context is in English. JSON field names and enum values stay"
+                + " exactly as defined by the contract and are never translated.";
     }
 
     public String userPrompt(GraphTargetModelContext context) {

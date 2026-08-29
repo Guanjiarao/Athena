@@ -41,7 +41,7 @@ public class MockModelGateway implements ModelGateway {
             output.put("route", "NEEDS_CONFIRMATION");
             output.putNull("matchedTopicId");
             output.put("suggestedTopicTitle", "待理解内容");
-            output.put("rationale", "The mock cannot make a semantic topic match.");
+            output.put("rationale", "Mock 无法做语义主题匹配，交给用户确认。");
         } else if (GraphContract.SEMANTIC_PROMPT_VERSION.equals(request.promptVersion())) {
             JsonNode context = readContext(request.userPrompt());
             output.put("topicTitle", context.path("targetTopicTitle").asText("待理解内容"));
@@ -62,14 +62,14 @@ public class MockModelGateway implements ModelGateway {
         } else if (GraphContract.ACTION_PROMPT_VERSION.equals(request.promptVersion())) {
             JsonNode context = readContext(request.userPrompt());
             output.put("actionType", "RECORD_BODY");
-            output.put("title", "Record one related body change");
+            output.put("title", "记录一次相关的身体变化");
             output.put("description",
-                    "Record when it occurs and how strong it feels, or report that it did not occur.");
+                    "记录它发生的时间和强烈程度，如果没有发生也如实反馈。");
             ArrayNode actionEvidenceIds = output.putArray("evidenceIds");
             context.path("evidences").forEach(value ->
                     actionEvidenceIds.add(value.path("evidenceId").asText()));
             output.put("rationale",
-                    "One observation can answer the open question without assuming a diagnosis.");
+                    "一次观察就能回答这个待确认问题，且不需要假定任何诊断结论。");
         } else {
             throw new IllegalArgumentException("unsupported mock prompt version");
         }

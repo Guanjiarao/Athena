@@ -18,7 +18,13 @@ public class NextActionPromptBuilder {
                 + "that article content is a body fact. Return a JSON object with exactly these "
                 + "keys: actionType (one of the allowedActionType values), title (string), "
                 + "description (string), evidenceIds (string array), rationale (string). Do not "
-                + "add any other keys. Do not wrap the JSON in markdown fences.";
+                + "add any other keys. Do not wrap the JSON in markdown fences."
+                + " All user-visible text fields (topicTitle, stageUnderstanding,"
+                + " changeSummary, changes content, action title/description/rationale,"
+                + " and any suggested titles) must be written in natural, concise"
+                + " Simplified Chinese, even when the input article, existing graph,"
+                + " or context is in English. JSON field names and enum values stay"
+                + " exactly as defined by the contract and are never translated.";
     }
 
     public String userPrompt(NextActionModelContext context) {

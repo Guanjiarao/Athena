@@ -172,17 +172,17 @@ public class GraphPatchAssemblyService {
                 node.type = GraphNodeType.SOURCE_EVIDENCE;
                 node.status = GraphNodeStatus.ACTIVE;
                 node.topicId = topicId;
-                node.title = evidence.sourceType.name();
+                node.title = sourceTitle(evidence.sourceType);
                 node.content = evidence.summary;
                 node.evidenceIds = List.of(evidence.evidenceId);
                 node.createdAt = request.proposalCreatedAt;
                 node.updatedAt = request.proposalCreatedAt;
                 proposal.operations.add(addNode(node, List.of(evidence.evidenceId),
-                        "Add the canonical source evidence used by this proposal."));
+                        "补充本次整理所依据的原始内容。"));
             }
             addEdgeIfAbsent(request, proposal, GraphEdgeType.ABOUT,
                     sourceNodeId, topicId, List.of(evidence.evidenceId),
-                    "Link source evidence to the target topic.");
+                    "把原始内容关联到目标主题。");
         }
         return sources;
     }
@@ -202,7 +202,7 @@ public class GraphPatchAssemblyService {
             topic.createdAt = request.proposalCreatedAt;
             topic.updatedAt = request.proposalCreatedAt;
             proposal.operations.add(addNode(topic, topic.evidenceIds,
-                    "Create the user-confirmable topic branch."));
+                    "建立一个等待用户确认的观察主题。"));
             return;
         }
         GraphNode existing = request.graph.nodes.stream()
@@ -215,7 +215,7 @@ public class GraphPatchAssemblyService {
         updated.version = existing.version + 1;
         proposal.operations.add(updateNode(updated,
                 request.semanticDraft.stageUnderstandingEvidenceIds,
-                "Refresh only the target topic stage understanding."));
+                "仅刷新目标主题的阶段理解。"));
     }
 
     private void addSemanticChanges(GraphPatchAssemblyRequest request,
@@ -239,7 +239,7 @@ public class GraphPatchAssemblyService {
                 node.createdAt = request.proposalCreatedAt;
                 node.updatedAt = request.proposalCreatedAt;
                 proposal.operations.add(addNode(node, change.evidenceIds,
-                        "Add one evidence-grounded semantic change."));
+                        "根据这条依据补充一项认知内容。"));
             } else {
                 GraphNode existing = request.graph.nodes.stream()
                         .filter(node -> node.id.equals(change.targetNodeId))
@@ -251,14 +251,14 @@ public class GraphPatchAssemblyService {
                 updated.updatedAt = request.proposalCreatedAt;
                 updated.version = existing.version + 1;
                 proposal.operations.add(updateNode(updated, change.evidenceIds,
-                        "Revise one mutable semantic node without deleting its history."));
+                        "修订一条可修改的认知内容，并保留其历史。"));
             }
             for (String evidenceId : change.evidenceIds) {
                 sources.stream().filter(source -> source.evidenceId.equals(evidenceId))
                         .findFirst().ifPresent(source -> addEdgeIfAbsent(
                                 request, proposal, GraphEdgeType.GROUNDS,
                                 source.nodeId, semanticNodeId, List.of(evidenceId),
-                                "Ground the semantic change in canonical evidence."));
+                                "把这项认知内容锚定到对应的原始依据。"));
             }
         }
     }
@@ -286,7 +286,7 @@ public class GraphPatchAssemblyService {
                 request.actionPlan.rationale));
         addEdgeIfAbsent(request, proposal, GraphEdgeType.NEXT_STEP_FOR,
                 actionId, topicId, request.actionPlan.evidenceIds,
-                "Link the proposed observation action to the target topic.");
+                "把建议的观察行动关联到目标主题。");
     }
 
     private void addEdgeIfAbsent(GraphPatchAssemblyRequest request,
@@ -342,6 +342,18 @@ public class GraphPatchAssemblyService {
         operation.evidenceIds = List.copyOf(evidenceIds);
         operation.reason = reason;
         return operation;
+    }
+
+    /**
+     * User-facing Chinese display title for a source-evidence node; the enum value
+     * itself stays the contract identifier and is never shown to users.
+     */
+    private String sourceTitle(com.whu.software.athena.cognitionagent.graph.contract.EvidenceSourceType sourceType) {
+        return switch (sourceType) {
+            case ARTICLE_HIGHLIGHT -> "文章标记";
+            case BODY_RECORD -> "身体记录";
+            case ACTION_FEEDBACK -> "行动反馈";
+        };
     }
 
     private GraphNode findEvidenceNode(GraphPatchAssemblyRequest request, String evidenceId) {

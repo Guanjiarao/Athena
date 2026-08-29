@@ -46,7 +46,13 @@ public class GraphSemanticPromptBuilder {
                 + "\"stageUnderstandingEvidenceIds\":[\"<evidence id>\"],\"changes\":"
                 + "[{\"changeType\":\"ADD\",\"nodeType\":\"OPEN_QUESTION\",\"targetNodeId\":null,"
                 + "\"content\":\"<open question>\",\"evidenceIds\":[\"<evidence id>\"]}],"
-                + "\"changeSummary\":\"<one sentence summary>\"}.";
+                + "\"changeSummary\":\"<one sentence summary>\"}."
+                + " All user-visible text fields (topicTitle, stageUnderstanding,"
+                + " changeSummary, changes content, action title/description/rationale,"
+                + " and any suggested titles) must be written in natural, concise"
+                + " Simplified Chinese, even when the input article, existing graph,"
+                + " or context is in English. JSON field names and enum values stay"
+                + " exactly as defined by the contract and are never translated.";
     }
 
     public String userPrompt(GraphSemanticModelContext context) {
