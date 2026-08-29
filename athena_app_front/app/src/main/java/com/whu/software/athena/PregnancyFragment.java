@@ -140,7 +140,7 @@ public class PregnancyFragment extends Fragment {
     private TextView              tvHealthStatusTitle;
     private TextView              tvHealthStatusSubtitle;
     private TextView              tvHealthStatusHint;
-    private View                  viewHealthStatusMarker;
+    private CycleStatusRingView   cycleStatusRingView;
     private RecyclerView          rvCalendar;
     private PregnancyCalendarAdapter calendarAdapter;
     private LinearLayout          actionListContainer;
@@ -213,7 +213,7 @@ public class PregnancyFragment extends Fragment {
         tvHealthStatusTitle = null;
         tvHealthStatusSubtitle = null;
         tvHealthStatusHint = null;
-        viewHealthStatusMarker = null;
+        cycleStatusRingView = null;
     }
 
     // -----------------------------------------------------------------------
@@ -355,7 +355,7 @@ public class PregnancyFragment extends Fragment {
         tvHealthStatusTitle = root.findViewById(R.id.tv_health_status_title);
         tvHealthStatusSubtitle = root.findViewById(R.id.tv_health_status_subtitle);
         tvHealthStatusHint = root.findViewById(R.id.tv_health_status_hint);
-        viewHealthStatusMarker = root.findViewById(R.id.view_health_status_marker);
+        cycleStatusRingView = root.findViewById(R.id.view_cycle_status_ring);
         refreshPregnancyStatusCard();
     }
 
@@ -406,24 +406,10 @@ public class PregnancyFragment extends Fragment {
     }
 
     private void updateHealthStatusMarker(float progress) {
-        if (viewHealthStatusMarker == null) {
+        if (cycleStatusRingView == null) {
             return;
         }
-        viewHealthStatusMarker.post(() -> {
-            View parent = (View) viewHealthStatusMarker.getParent();
-            if (parent == null) {
-                return;
-            }
-            int travel = parent.getWidth() - viewHealthStatusMarker.getWidth();
-            if (travel <= 0) {
-                return;
-            }
-            float safeProgress = Math.max(0f, Math.min(1f, progress));
-            viewHealthStatusMarker.animate()
-                    .translationX((safeProgress - 0.5f) * travel)
-                    .setDuration(360L)
-                    .start();
-        });
+        cycleStatusRingView.setProgress(progress);
     }
 
     private String resolvePregnancyStageLabel(int pregDays) {
@@ -674,7 +660,9 @@ public class PregnancyFragment extends Fragment {
             if ("hCG".equals(row.title)) {
                 addActionSectionHeader("更多记录");
             }
-            actionListContainer.addView(inflateRow(inflater, row));
+            View rowView = inflateRow(inflater, row);
+            RecordActionReadingStyle.apply(rowView);
+            actionListContainer.addView(rowView);
         }
     }
 
@@ -1073,7 +1061,12 @@ public class PregnancyFragment extends Fragment {
             }
 
             // ── 文字颜色 ────────────────────────────────────────────────────
-            h.tvDay.setTextColor(cell.isFuture ? 0xFFB8AEA7 : 0xFF2F2926);
+            h.tvDay.setTextColor(cell.isSelected
+                    ? 0xFFC66F96
+                    : (cell.isFuture ? 0xFFB8AEA7 : 0xFF2F2926));
+            h.tvDay.setTypeface(null, cell.isSelected
+                    ? android.graphics.Typeface.BOLD
+                    : android.graphics.Typeface.NORMAL);
 
             // ── 背景（优先级：产检日 > 选中 > 孕期色块 > 普通）────────────
             String checkKey = cell.year + "-" + cell.month + "-" + cell.day;

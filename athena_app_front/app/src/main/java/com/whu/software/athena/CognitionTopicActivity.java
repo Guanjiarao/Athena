@@ -51,8 +51,8 @@ public class CognitionTopicActivity extends AppCompatActivity {
         for (Topic item : topics) {
             TextView tab = new TextView(this); tab.setText(item.title); tab.setTextSize(14);
             boolean selected = item.id != null && item.id.equals(topicId);
-            tab.setTextColor(selected ? Color.rgb(33, 83, 66) : Color.rgb(99, 105, 102));
-            tab.setBackgroundColor(selected ? Color.rgb(233, 240, 234) : Color.TRANSPARENT); tab.setPadding(dp(14), dp(9), dp(14), dp(9));
+            tab.setTextColor(selected ? Color.rgb(201, 111, 125) : Color.rgb(128, 118, 111));
+            tab.setBackgroundColor(selected ? Color.rgb(244, 224, 227) : Color.TRANSPARENT); tab.setPadding(dp(14), dp(9), dp(14), dp(9));
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-2, -2); params.setMarginEnd(dp(8)); tab.setLayoutParams(params);
             tab.setOnClickListener(v -> { topicId = item.id; renderTabs(topics); load(); }); tabs.addView(tab);
         }

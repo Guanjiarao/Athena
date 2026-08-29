@@ -7,11 +7,23 @@
         android:fillColor="#00000000"
         android:pathData="M14,14 m-8,0 a8,6 0 1,0 16,0 a8,6 0 1,0 -16,0"/>
     <!-- 卵泡（大） -->
-    <path android:fillColor="#E5375A"
-        android:pathData="M14,11 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0"/>
+    <path android:fillColor="#00000000"
+        android:pathData="M14,11 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0"
+        android:strokeColor="#6952C8"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
     <!-- 卵泡（小） -->
-    <path android:fillColor="#FF7A9A"
-        android:pathData="M20,13 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0"/>
-    <path android:fillColor="#FF7A9A"
-        android:pathData="M8,15 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0"/>
-</vector>
+    <path android:fillColor="#00000000"
+        android:pathData="M20,13 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0"
+        android:strokeColor="#6952C8"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path android:fillColor="#00000000"
+        android:pathData="M8,15 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0"
+        android:strokeColor="#6952C8"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    </vector>

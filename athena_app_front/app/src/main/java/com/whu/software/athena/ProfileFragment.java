@@ -14,12 +14,15 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.bumptech.glide.Glide;
 import com.google.android.material.imageview.ShapeableImageView;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 import org.json.JSONObject;
@@ -47,12 +50,18 @@ public class ProfileFragment extends Fragment {
     private View ivSettings;
     private View btnDataAsset;
     private View btnLogin;
+    private View itemProfileEdit;
+    private View itemProfileNotifications;
+    private View itemProfilePrivacy;
+    private View itemProfileAbout;
+    private View btnProfileLogout;
+    private ChipGroup profileChipPreferences;
 
     private UserDao userDao;
     private FollowRequestManager followRequestManager;
     private ActivityResultLauncher<Intent> loginLauncher;
 
-    private static final String[] TAB_TITLES = {"作品", "收藏", "点赞", "历史"};
+    private static final String[] TAB_TITLES = {"收藏", "点赞", "历史"};
 
     @Nullable
     @Override
@@ -79,8 +88,8 @@ public class ProfileFragment extends Fragment {
                 }
         );
         initViews(view);
-        setupTabAndPager();
         setupClickListeners();
+        restorePreferenceChips();
         loadLoginStatus();
     }
 
@@ -112,10 +121,14 @@ public class ProfileFragment extends Fragment {
         layoutFollowing   = view.findViewById(R.id.layout_following);
         layoutFollowers   = view.findViewById(R.id.layout_followers);
         layoutLikes       = view.findViewById(R.id.layout_likes);
-        tabLayoutProfile  = view.findViewById(R.id.tab_layout_profile);
-        vpProfileContent  = view.findViewById(R.id.vp_profile_content);
         ivSettings        = view.findViewById(R.id.iv_settings);
         btnDataAsset      = view.findViewById(R.id.btn_data_asset);
+        itemProfileEdit = view.findViewById(R.id.item_profile_edit);
+        itemProfileNotifications = view.findViewById(R.id.item_profile_notifications);
+        itemProfilePrivacy = view.findViewById(R.id.item_profile_privacy);
+        itemProfileAbout = view.findViewById(R.id.item_profile_about);
+        btnProfileLogout = view.findViewById(R.id.btn_profile_logout);
+        profileChipPreferences = view.findViewById(R.id.profile_chip_preferences);
     }
 
     private void setupTabAndPager() {
@@ -123,7 +136,8 @@ public class ProfileFragment extends Fragment {
             @NonNull
             @Override
             public Fragment createFragment(int position) {
-                return ProfileGridFragment.newInstance(position);
+                // ProfileGridFragment 的 0 仍对应旧的“作品”接口；个人页从收藏开始展示。
+                return ProfileGridFragment.newInstance(position + 1);
             }
 
             @Override
@@ -143,21 +157,70 @@ public class ProfileFragment extends Fragment {
     private void setupClickListeners() {
         btnLogin.setOnClickListener(v -> startLoginActivity());
 
-        ivSettings.setOnClickListener(v -> openSettings());
-
-        layoutFollowing.setOnClickListener(v ->
-                startActivity(new Intent(requireActivity(), FollowingListActivity.class)));
-
-        layoutFollowers.setOnClickListener(v ->
-                startActivity(new Intent(requireActivity(), FollowerListActivity.class)));
-
-        layoutLikes.setOnClickListener(v ->
-                Toast.makeText(requireContext(), "获赞详情", Toast.LENGTH_SHORT).show());
+        itemProfileEdit.setOnClickListener(v -> startActivity(new Intent(requireActivity(), EditProfileActivity.class)));
+        itemProfileNotifications.setOnClickListener(v -> Toast.makeText(requireContext(), "消息通知（开发中）", Toast.LENGTH_SHORT).show());
+        itemProfilePrivacy.setOnClickListener(v -> startActivity(new Intent(requireActivity(), DataPrivacyActivity.class)));
+        itemProfileAbout.setOnClickListener(v -> Toast.makeText(requireContext(), "关于我们（开发中）", Toast.LENGTH_SHORT).show());
+        btnProfileLogout.setOnClickListener(v -> confirmLogout());
+        profileChipPreferences.setOnCheckedStateChangeListener((group, checkedIds) -> savePreferenceChips());
 
         if (btnDataAsset != null) {
             btnDataAsset.setOnClickListener(v ->
                     startActivity(new Intent(requireActivity(), MyCognitionActivity.class)));
         }
+    }
+
+    private void savePreferenceChips() {
+        StringBuilder value = new StringBuilder();
+        for (int id : profileChipPreferences.getCheckedChipIds()) {
+            Chip chip = profileChipPreferences.findViewById(id);
+            if (chip != null) {
+                if (value.length() > 0) value.append(",");
+                value.append(chip.getText());
+            }
+        }
+        requireContext().getSharedPreferences("athena_prefs", android.content.Context.MODE_PRIVATE)
+                .edit().putString("user_preferences", value.toString()).apply();
+    }
+
+    private void restorePreferenceChips() {
+        String saved = requireContext().getSharedPreferences("athena_prefs", android.content.Context.MODE_PRIVATE)
+                .getString("user_preferences", "");
+        if (saved == null || saved.isEmpty()) return;
+        for (String label : saved.split(",")) {
+            for (int i = 0; i < profileChipPreferences.getChildCount(); i++) {
+                View child = profileChipPreferences.getChildAt(i);
+                if (child instanceof Chip && ((Chip) child).getText().toString().equals(label.trim())) {
+                    ((Chip) child).setChecked(true);
+                }
+            }
+        }
+    }
+
+    private void confirmLogout() {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("退出登录")
+                .setMessage("确定要退出当前账号吗？")
+                .setNegativeButton("取消", null)
+                .setPositiveButton("退出", (dialog, which) -> performLogout())
+                .show();
+    }
+
+    private void performLogout() {
+        try {
+            userDao.open();
+            String[] currentUser = userDao.getCurrentLoginUser();
+            if (currentUser != null && currentUser.length > 1) {
+                userDao.updateLoginStatus(currentUser[1], 0);
+            }
+        } finally {
+            userDao.close();
+        }
+        requireContext().getSharedPreferences("auth_prefs", android.content.Context.MODE_PRIVATE)
+                .edit().remove("token").apply();
+        startActivity(new Intent(requireActivity(), LoginActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
+        requireActivity().finish();
     }
 
     private void startLoginActivity() {

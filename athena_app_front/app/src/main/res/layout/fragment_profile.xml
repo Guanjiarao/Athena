@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -6,6 +7,11 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/athena_page_bg">
+
+
+    <!-- ========================= -->
+    <!-- 未登录状态 -->
+    <!-- ========================= -->
 
     <LinearLayout
         android:id="@+id/layout_not_logged_in"
@@ -71,6 +77,11 @@
 
     </LinearLayout>
 
+
+    <!-- ========================= -->
+    <!-- 已登录状态 -->
+    <!-- ========================= -->
+
     <androidx.core.widget.NestedScrollView
         android:id="@+id/layout_logged_in"
         android:layout_width="match_parent"
@@ -84,49 +95,72 @@
             android:layout_height="wrap_content"
             android:background="@color/athena_page_bg">
 
+
+            <!-- ========================= -->
+            <!-- 顶部个人信息玻璃背景 -->
+            <!-- 原来 190dp，现在缩成 150dp -->
+            <!-- ========================= -->
+
             <ImageView
                 android:id="@+id/iv_profile_bg"
                 android:layout_width="0dp"
-                android:layout_height="360dp"
-                android:background="@drawable/bg_profile_hero"
+                android:layout_height="92dp"
+                android:layout_marginStart="18dp"
+                android:layout_marginTop="28dp"
+                android:layout_marginEnd="18dp"
+                android:background="@drawable/bg_profile_identity_glass"
                 android:contentDescription="个人主页背景"
                 android:scaleType="centerCrop"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
+
+            <!-- 顶部背景遮罩 -->
             <View
                 android:id="@+id/view_bg_scrim"
                 android:layout_width="0dp"
                 android:layout_height="0dp"
-                android:background="@drawable/bg_profile_hero_scrim"
+                android:background="@android:color/transparent"
                 app:layout_constraintBottom_toBottomOf="@id/iv_profile_bg"
                 app:layout_constraintEnd_toEndOf="@id/iv_profile_bg"
                 app:layout_constraintStart_toStartOf="@id/iv_profile_bg"
                 app:layout_constraintTop_toTopOf="@id/iv_profile_bg" />
 
+
+            <!-- ========================= -->
+            <!-- 设置按钮 -->
+            <!-- ========================= -->
+
             <ImageView
                 android:id="@+id/iv_settings"
-                android:layout_width="42dp"
-                android:layout_height="42dp"
-                android:layout_marginTop="52dp"
-                android:layout_marginEnd="20dp"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:layout_marginTop="34dp"
+                android:layout_marginEnd="24dp"
                 android:background="@drawable/bg_profile_icon_button"
                 android:clickable="true"
                 android:contentDescription="设置按钮"
                 android:focusable="true"
-                android:padding="10dp"
+                android:padding="9dp"
                 android:src="@drawable/ic_settings_gear"
+                android:visibility="gone"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:tint="@color/athena_text_primary" />
 
+
+            <!-- ========================= -->
+            <!-- 头像 -->
+            <!-- 原来 92dp，现在 72dp -->
+            <!-- ========================= -->
+
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/iv_avatar"
-                android:layout_width="92dp"
-                android:layout_height="92dp"
-                android:layout_marginStart="24dp"
-                android:layout_marginTop="112dp"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="28dp"
+                android:layout_marginTop="52dp"
                 android:background="@drawable/bg_avatar_ring"
                 android:contentDescription="用户头像"
                 android:scaleType="centerCrop"
@@ -135,20 +169,27 @@
                 app:layout_constraintTop_toTopOf="parent"
                 app:shapeAppearanceOverlay="@style/CircleImageStyle"
                 app:strokeColor="@color/athena_surface"
-                app:strokeWidth="3dp" />
+                app:strokeWidth="2dp" />
+
+
+            <!-- ========================= -->
+            <!-- 用户名 + ID + 身体认知 -->
+            <!-- ========================= -->
 
             <LinearLayout
                 android:id="@+id/layout_profile_identity"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="18dp"
-                android:layout_marginEnd="20dp"
-                android:layout_marginTop="118dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="50dp"
+                android:layout_marginEnd="22dp"
                 android:orientation="vertical"
                 app:layout_constraintEnd_toStartOf="@id/iv_settings"
                 app:layout_constraintStart_toEndOf="@id/iv_avatar"
                 app:layout_constraintTop_toTopOf="parent">
 
+
+                <!-- 用户名 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -167,40 +208,57 @@
 
                 </LinearLayout>
 
+
+                <!-- 用户 ID -->
                 <TextView
                     android:id="@+id/tv_user_id"
                     style="@style/ProfileHeroMetaText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
+                    android:layout_marginTop="7dp"
                     tools:text="ID: 13800138000" />
 
+
+                <!-- 我的身体认知 -->
                 <TextView
                     android:id="@+id/btn_data_asset"
                     style="@style/ProfileAssetPillText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="8dp"
                     android:background="@drawable/bg_asset_button"
-                    android:paddingHorizontal="14dp"
-                    android:paddingVertical="7dp"
-                    android:text="我的身体认知" />
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="5dp"
+                    android:text="我的身体认知"
+                    android:visibility="gone" />
 
             </LinearLayout>
+
+
+            <!-- ========================= -->
+            <!-- 关注 / 粉丝 / 获赞 -->
+            <!-- 原逻辑保留 -->
+            <!-- ========================= -->
 
             <LinearLayout
                 android:id="@+id/layout_profile_stats"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="24dp"
-                android:layout_marginTop="28dp"
+                android:layout_marginTop="18dp"
                 android:layout_marginEnd="24dp"
+                android:background="@android:color/transparent"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
+                android:paddingHorizontal="18dp"
+                android:paddingVertical="12dp"
+                android:visibility="gone"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/iv_avatar">
 
+
+                <!-- 关注 -->
                 <LinearLayout
                     android:id="@+id/layout_following"
                     android:layout_width="wrap_content"
@@ -228,6 +286,8 @@
 
                 </LinearLayout>
 
+
+                <!-- 粉丝 -->
                 <LinearLayout
                     android:id="@+id/layout_followers"
                     android:layout_width="wrap_content"
@@ -256,6 +316,8 @@
 
                 </LinearLayout>
 
+
+                <!-- 获赞 -->
                 <LinearLayout
                     android:id="@+id/layout_likes"
                     android:layout_width="wrap_content"
@@ -286,41 +348,224 @@
 
             </LinearLayout>
 
+
+            <!-- ========================= -->
+            <!-- 下方账号设置 -->
+            <!-- ========================= -->
+
             <LinearLayout
                 android:id="@+id/layout_content_card"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="26dp"
-                android:background="@drawable/bg_profile_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="18dp"
+                android:layout_marginEnd="16dp"
+                android:layout_marginBottom="24dp"
+                android:background="@android:color/transparent"
                 android:orientation="vertical"
-                android:paddingTop="10dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="12dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/layout_profile_stats">
+                app:layout_constraintTop_toBottomOf="@id/iv_profile_bg">
 
-                <com.google.android.material.tabs.TabLayout
-                    android:id="@+id/tab_layout_profile"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:background="@android:color/transparent"
-                    android:paddingHorizontal="8dp"
-                    app:tabGravity="fill"
-                    app:tabIndicatorColor="@color/athena_sage_strong"
-                    app:tabIndicatorFullWidth="false"
-                    app:tabIndicatorHeight="2dp"
-                    app:tabMode="fixed"
-                    app:tabRippleColor="@android:color/transparent"
-                    app:tabSelectedTextAppearance="@style/ProfileTabTextActive"
-                    app:tabSelectedTextColor="@color/athena_text_primary"
-                    app:tabTextAppearance="@style/ProfileTabTextInactive"
-                    app:tabTextColor="@color/profile_tab_inactive" />
 
-                <androidx.viewpager2.widget.ViewPager2
-                    android:id="@+id/vp_profile_content"
+                <!-- 标题 -->
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:paddingHorizontal="18dp"
+                    android:paddingVertical="10dp"
+                    android:text="账号与偏好"
+                    android:textColor="@color/athena_text_primary"
+                    android:textSize="18sp" />
+
+
+                <!-- ========================= -->
+                <!-- 编辑个人资料 -->
+                <!-- ========================= -->
+
+                <LinearLayout
+                    android:id="@+id/item_profile_edit"
+                    android:layout_width="match_parent"
+                    android:layout_height="64dp"
+                    android:layout_marginHorizontal="12dp"
                     android:layout_marginTop="4dp"
-                    android:overScrollMode="never" />
+                    android:background="@drawable/bg_article_action_glass"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="18dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:lineSpacingExtra="3dp"
+                        android:text="编辑个人资料\n修改昵称、头像、生日、年龄"
+                        android:textColor="@color/athena_text_primary"
+                        android:textSize="15sp" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="进入"
+                        android:src="@drawable/ic_arrow_right" />
+
+                </LinearLayout>
+
+
+                <!-- ========================= -->
+                <!-- 内容偏好 -->
+                <!-- 改成普通入口，不再直接显示 Chip -->
+                <!-- ========================= -->
+
+                <LinearLayout
+                    android:id="@+id/item_profile_preferences"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginHorizontal="12dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_article_action_glass"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="18dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="内容偏好"
+                        android:textColor="@color/athena_text_primary"
+                        android:textSize="15sp" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="进入"
+                        android:src="@drawable/ic_arrow_right" />
+                        
+
+                </LinearLayout>
+
+
+                <!-- ========================= -->
+                <!-- 消息通知 -->
+                <!-- ========================= -->
+
+                <LinearLayout
+                    android:id="@+id/item_profile_notifications"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginHorizontal="12dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_article_action_glass"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="18dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="消息通知"
+                        android:textColor="@color/athena_text_primary"
+                        android:textSize="15sp" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="进入"
+                        android:src="@drawable/ic_arrow_right" />
+
+                </LinearLayout>
+
+
+                <!-- ========================= -->
+                <!-- 隐私设置 -->
+                <!-- ========================= -->
+
+                <LinearLayout
+                    android:id="@+id/item_profile_privacy"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginHorizontal="12dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_article_action_glass"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="18dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="隐私设置"
+                        android:textColor="@color/athena_text_primary"
+                        android:textSize="15sp" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="进入"
+                        android:src="@drawable/ic_arrow_right" />
+
+                </LinearLayout>
+
+
+                <!-- ========================= -->
+                <!-- 关于我们 -->
+                <!-- ========================= -->
+
+                <LinearLayout
+                    android:id="@+id/item_profile_about"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginHorizontal="12dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_article_action_glass"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="18dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="关于我们"
+                        android:textColor="@color/athena_text_primary"
+                        android:textSize="15sp" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="进入"
+                        android:src="@drawable/ic_arrow_right" />
+
+                </LinearLayout>
+
+
+                <!-- ========================= -->
+                <!-- 退出登录 -->
+                <!-- ========================= -->
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_profile_logout"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginHorizontal="12dp"
+                    android:layout_marginTop="14dp"
+                    android:text="退出登录"
+                    android:textColor="@color/athena_pink"
+                    app:backgroundTint="@android:color/transparent"
+                    app:cornerRadius="22dp"
+                    app:strokeColor="@color/athena_pink"
+                    app:strokeWidth="1dp" />
 
             </LinearLayout>
 

@@ -1,17 +1,255 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#FAFAF7" android:orientation="vertical">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="64dp" android:gravity="center_vertical"><ImageView android:id="@+id/btn_back" android:layout_width="48dp" android:layout_height="48dp" android:padding="12dp" android:src="@drawable/ic_arrow_back" android:contentDescription="返回"/><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="我的身体认知" android:textColor="#202725" android:textSize="21sp" android:textStyle="bold"/></LinearLayout>
-    <ScrollView android:layout_width="match_parent" android:layout_height="match_parent"><LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="你的问题、线索和正在形成的理解都保存在这里" android:textColor="#20352E" android:textSize="23sp" android:textStyle="bold"/>
-        <TextView android:id="@+id/tv_cognition_summary" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:background="#E9F0EA" android:lineSpacingExtra="4dp" android:padding="18dp" android:textColor="#385148"/>
-        <Button android:id="@+id/btn_my_clues" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="18dp" android:text="我的身体线索与疑问" android:textAllCaps="false"/>
-        <Button android:id="@+id/btn_my_drafts" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="8dp" android:text="待确认整理草稿" android:textAllCaps="false"/>
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="28dp" android:text="认知主题" android:textColor="#202725" android:textSize="18sp" android:textStyle="bold"/>
-        <LinearLayout android:id="@+id/layout_my_topics" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:orientation="vertical"/>
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="28dp" android:text="偏好与数据" android:textColor="#202725" android:textSize="18sp" android:textStyle="bold"/>
-        <Button android:id="@+id/btn_reminders" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="12dp" android:text="提醒偏好" android:textAllCaps="false"/>
-        <Button android:id="@+id/btn_privacy" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="8dp" android:text="我的数据与隐私" android:textAllCaps="false"/>
-        <Button android:id="@+id/btn_cognition_mode" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="8dp" android:text="切换认知数据源" android:textAllCaps="false"/>
-        <TextView android:id="@+id/btn_reset_demo" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="8dp" android:gravity="center" android:text="重置演示数据" android:textColor="#786F66"/>
-    </LinearLayout></ScrollView>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/health_page_bg"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="68dp"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp">
+
+        <ImageView
+            android:id="@+id/btn_back"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:layout_centerVertical="true"
+            android:background="@drawable/bg_article_back_button"
+            android:contentDescription="返回"
+            android:elevation="6dp"
+            android:padding="12dp"
+            android:src="@drawable/ic_arrow_back" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:fontFamily="sans-serif-black"
+            android:text="身体认知"
+            android:textColor="#211F23"
+            android:textSize="19sp"
+            android:textStyle="bold" />
+    </RelativeLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:overScrollMode="never">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingTop="18dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="42dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-black"
+                android:letterSpacing="-0.02"
+                android:text="我的身体认知"
+                android:textColor="#121318"
+                android:textSize="29sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:fontFamily="sans-serif"
+                android:lineSpacingExtra="3dp"
+                android:text="你的问题、身体线索和正在形成的理解都保存在这里"
+                android:textColor="#77736F"
+                android:textSize="14sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="150dp"
+                android:layout_marginTop="20dp"
+                android:baselineAligned="false"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:id="@+id/btn_my_clues"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_health_dashboard_card_white"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="bottom"
+                    android:orientation="vertical"
+                    android:padding="17dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:drawableEnd="@drawable/ic_arrow_right"
+                        android:drawablePadding="8dp"
+                        android:fontFamily="sans-serif-black"
+                        android:text="我的身体线索与疑问"
+                        android:textColor="#1B1C20"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="9dp"
+                        android:fontFamily="sans-serif"
+                        android:lineSpacingExtra="2dp"
+                        android:text="查看记录和文章标记"
+                        android:textColor="#77736F"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/btn_my_drafts"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_body_clue_content_info"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="bottom"
+                    android:orientation="vertical"
+                    android:padding="17dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:drawableEnd="@drawable/ic_arrow_right"
+                        android:drawablePadding="8dp"
+                        android:fontFamily="sans-serif-black"
+                        android:text="待确认整理草稿"
+                        android:textColor="#252329"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="9dp"
+                        android:fontFamily="sans-serif"
+                        android:lineSpacingExtra="2dp"
+                        android:text="查看 Athena 整理的内容"
+                        android:textColor="#5F5962"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_cognition_summary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@android:color/transparent"
+                android:fontFamily="sans-serif"
+                android:lineSpacingExtra="2dp"
+                android:textColor="#80766F"
+                android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:fontFamily="sans-serif-black"
+                android:text="认知主题"
+                android:textColor="#121318"
+                android:textSize="21sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:id="@+id/layout_my_topics"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:fontFamily="sans-serif-black"
+                android:text="偏好与数据"
+                android:textColor="#121318"
+                android:textSize="21sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_reminders"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="12dp"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="start|center_vertical"
+                android:paddingStart="20dp"
+                android:text="提醒偏好"
+                android:textAllCaps="false"
+                android:textColor="#2F2926"
+                android:textSize="15sp"
+                app:backgroundTint="#FFFDFC"
+                app:cornerRadius="22dp"
+                app:strokeColor="#E8E2DF"
+                app:strokeWidth="1dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_privacy"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="10dp"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="start|center_vertical"
+                android:paddingStart="20dp"
+                android:text="我的数据与隐私"
+                android:textAllCaps="false"
+                android:textColor="#2F2926"
+                android:textSize="15sp"
+                app:backgroundTint="#FFFDFC"
+                app:cornerRadius="22dp"
+                app:strokeColor="#E8E2DF"
+                app:strokeWidth="1dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_cognition_mode"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="10dp"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="start|center_vertical"
+                android:paddingStart="20dp"
+                android:text="切换认知数据源"
+                android:textAllCaps="false"
+                android:textColor="#2F2926"
+                android:textSize="15sp"
+                app:backgroundTint="#FFFDFC"
+                app:cornerRadius="22dp"
+                app:strokeColor="#E8E2DF"
+                app:strokeWidth="1dp" />
+
+            <TextView
+                android:id="@+id/btn_reset_demo"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:text="重置演示数据"
+                android:textColor="#80766F"
+                android:textSize="14sp" />
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
 </LinearLayout>

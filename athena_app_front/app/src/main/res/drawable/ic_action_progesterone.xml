@@ -8,8 +8,12 @@
         android:fillColor="#00000000"
         android:pathData="M14,5 L20,9 L20,17 L14,21 L8,17 L8,9 Z"/>
     <!-- 内圆代表激素核心 -->
-    <path android:fillColor="#FF7A9A"
-        android:pathData="M14,11 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0"/>
+    <path android:fillColor="#00000000"
+        android:pathData="M14,11 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0"
+        android:strokeColor="#6952C8"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
     <!-- 侧链 -->
     <path android:strokeColor="#E5375A" android:strokeWidth="1.5"
         android:fillColor="#00000000"

@@ -16,6 +16,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.shuyu.gsyvideoplayer.GSYVideoManager;
+import com.shuyu.gsyvideoplayer.utils.GSYVideoType;
 import com.shuyu.gsyvideoplayer.video.StandardGSYVideoPlayer;
 import com.whu.software.athena.config.ApiConfig;
 import com.whu.software.athena.entity.CommentBean;
@@ -178,15 +179,25 @@ public class VideoDetailActivity extends AppCompatActivity {
             window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
             window.setStatusBarColor(Color.TRANSPARENT);
-            window.setNavigationBarColor(Color.BLACK);
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                window.getDecorView().setSystemUiVisibility(
-                        View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
-                                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                );
-            }
+            window.setNavigationBarColor(Color.TRANSPARENT);
+            applyImmersiveUi();
         }
+    }
+
+    private void applyImmersiveUi() {
+        getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        | View.SYSTEM_UI_FLAG_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+        );
+    }
+
+    @Override public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) applyImmersiveUi();
     }
 
     private void initViews() {
@@ -590,6 +601,7 @@ public class VideoDetailActivity extends AppCompatActivity {
             return;
         }
         videoPlayer.setUp(url, true, title != null ? title : "");
+        GSYVideoType.setShowType(GSYVideoType.SCREEN_TYPE_FULL);
 
         // 1. 强制隐藏播放器自带的顶部标题文字（解决右上角出现的杂乱文字）
         if (videoPlayer.getTitleTextView() != null) {
@@ -630,6 +642,7 @@ public class VideoDetailActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         GSYVideoManager.releaseAllVideos();
+        GSYVideoType.setShowType(GSYVideoType.SCREEN_TYPE_DEFAULT);
         if (okHttpClient != null) {
             okHttpClient.dispatcher().cancelAll();
         }

@@ -47,7 +47,7 @@ public class MyCognitionActivity extends AppCompatActivity {
         repository.getHome(new CognitionRepository.Callback<Home>() {
             @Override public void onSuccess(Home home) {
                 summary.setText("待确认草稿 " + home.pendingDigestCount + " 份 · 失败任务 " + home.failedTaskCount
-                        + " 个\n" + (home.nextAction == null ? "当前没有待完成行动" : "下一步：" + home.nextAction.title));
+                        + " 个 · " + (home.nextAction == null ? "暂无待完成行动" : "下一步：" + home.nextAction.title));
             }
             @Override public void onError(String message) { summary.setText(message); }
         });
@@ -61,15 +61,16 @@ public class MyCognitionActivity extends AppCompatActivity {
         topicList.removeAllViews();
         if (topics.isEmpty()) {
             TextView empty = text("还没有正式认知主题。\n你可以先查看身体线索，把一组线索整理成待确认草稿。", 15);
-            empty.setTextColor(Color.rgb(105, 111, 108));
+            empty.setTextColor(Color.rgb(128, 118, 111));
             topicList.addView(empty);
             return;
         }
         for (Topic topic : topics) {
             TextView card = text(topic.title + "\n" + safe(topic.stageUnderstanding)
                     + "\n证据 " + topic.evidenceCount + " 条 · 查看完整详情 →", 15);
-            card.setBackgroundColor(Color.WHITE);
+            card.setBackgroundResource(R.drawable.bg_health_dashboard_card_white);
             card.setPadding(dp(16), dp(16), dp(16), dp(16));
+            card.setElevation(dp(1));
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
             params.bottomMargin = dp(10);
             card.setLayoutParams(params);
@@ -120,7 +121,7 @@ public class MyCognitionActivity extends AppCompatActivity {
         modeButton.setText(http ? "当前：真实账号数据 · 切换到演示" : "当前：离线演示 · 切换到真实数据");
         resetDemo.setVisibility(http ? View.GONE : View.VISIBLE);
     }
-    private TextView text(String value, int size) { TextView v = new TextView(this); v.setText(value); v.setTextSize(size); v.setTextColor(Color.rgb(45, 53, 50)); v.setLineSpacing(0, 1.15f); return v; }
+    private TextView text(String value, int size) { TextView v = new TextView(this); v.setText(value); v.setTextSize(size); v.setTextColor(Color.rgb(47, 41, 38)); v.setLineSpacing(0, 1.15f); return v; }
     private String safe(String value) { return value == null || value.isEmpty() ? "理解仍在形成中" : value; }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
 }

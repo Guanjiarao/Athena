@@ -61,15 +61,11 @@ public class HealthFragment extends Fragment {
         focusResponse = view.findViewById(R.id.tv_focus_response);
         recommendedContent = view.findViewById(R.id.tv_recommended_content);
         recommendedContent.setOnClickListener(v -> openDemoArticle());
+        view.findViewById(R.id.card_recommended_content).setOnClickListener(v -> openDemoArticle());
         date.setText(new SimpleDateFormat("M 月 d 日 EEEE", Locale.CHINA).format(new Date()));
 
-        view.findViewById(R.id.btn_body_clues).setOnClickListener(v ->
+        view.findViewById(R.id.card_my_cognition_hero).setOnClickListener(v ->
                 startActivity(new Intent(requireContext(), MyCognitionActivity.class)));
-        view.findViewById(R.id.btn_quick_record).setOnClickListener(v ->
-                requireActivity().getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.nav_host_fragment, new RecordFragment())
-                        .addToBackStack("health-record")
-                        .commit());
         topicCard.setOnClickListener(v -> openTopic());
         actionCard.setOnClickListener(v -> openAction());
         view.findViewById(R.id.btn_cycle_tool).setOnClickListener(v -> openPeriod());
@@ -77,8 +73,6 @@ public class HealthFragment extends Fragment {
                 startActivity(new Intent(requireContext(), HealthHistoryActivity.class)));
         view.findViewById(R.id.btn_analysis_tool).setOnClickListener(v ->
                 startActivity(new Intent(requireContext(), CognitionAnalysisDemoActivity.class)));
-        view.findViewById(R.id.btn_device_tool).setOnClickListener(v ->
-                startActivity(new Intent(requireContext(), DeviceDataDemoActivity.class)));
         showColdStartIfNeeded();
     }
 
@@ -107,7 +101,7 @@ public class HealthFragment extends Fragment {
     }
 
     private void renderFocus(String focus) {
-        focusContext.setText("你现在最想弄清：" + focus + "\n这只是关注方向，不是身体结论。");
+        focusContext.setText(focus + "\n只代表你当前想了解的方向");
         String action;
         String content;
         switch (focus) {
@@ -141,7 +135,9 @@ public class HealthFragment extends Fragment {
 
     private void openPeriod() {
         requireActivity().getSupportFragmentManager().beginTransaction()
-                .replace(R.id.nav_host_fragment, new PeriodFragment())
+                // The mode tabs delegate switching to RecordFragment, so enter through
+                // that container instead of mounting PeriodFragment as a root fragment.
+                .replace(R.id.nav_host_fragment, new RecordFragment())
                 .addToBackStack("health-period")
                 .commit();
     }
@@ -169,14 +165,9 @@ public class HealthFragment extends Fragment {
             @Override public void onSuccess(Home value) {
                 if (!isAdded()) return;
                 home = value == null ? new Home() : value;
-                headline.setText(safe(home.headline, stateHeadline(home.summaryState)));
-                summary.setText(home.latestInsight == null
-                        ? stateSummary(home.summaryState)
-                        : safe(home.latestInsight.title, "最新理解") + "\n" + safe(home.latestInsight.body, stateSummary(home.summaryState))
-                        + (home.latestInsight.uncertainty == null ? "" : "\n仍不确定：" + home.latestInsight.uncertainty));
                 digestCount.setText(home.pendingDigestCount > 0
-                        ? home.pendingDigestCount + " 份整理草稿等待确认"
-                        : "没有待确认的整理草稿");
+                        ? home.pendingDigestCount + " 份内容等待你确认"
+                        : "暂无待确认内容");
                 topicCard.setVisibility(home.activeTopic == null ? View.GONE : View.VISIBLE);
                 if (home.activeTopic != null) topicTitle.setText(safe(home.activeTopic.title, "认知主题")
                         + "\n证据 " + home.activeTopic.evidenceCount + " 条 · " + maturity(home.activeTopic.maturity));

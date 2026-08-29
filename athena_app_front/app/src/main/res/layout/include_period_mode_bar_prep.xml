@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/period_top_tabs"
+    android:layout_width="match_parent"
+    android:layout_height="60dp"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginBottom="36dp"
+    android:background="@drawable/bg_period_mode_selector_glass"
+    android:gravity="center"
+    android:orientation="horizontal"
+    android:padding="6dp">
+    <TextView android:id="@+id/tab_period" style="@style/HealthTabTextInactive" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:gravity="center" android:text="经期" android:textColor="#68616D" />
+    <TextView android:id="@+id/tab_pregnancy_prep" style="@style/HealthTabTextActive" android:layout_width="0dp" android:layout_height="48dp" android:layout_marginStart="4dp" android:layout_weight="1" android:background="@drawable/bg_period_mode_active" android:gravity="center" android:text="备孕" android:textColor="@color/health_text_primary" />
+    <TextView android:id="@+id/tab_pregnancy" style="@style/HealthTabTextInactive" android:layout_width="0dp" android:layout_height="48dp" android:layout_marginStart="4dp" android:layout_weight="1" android:gravity="center" android:text="怀孕" android:textColor="#68616D" />
+</LinearLayout>

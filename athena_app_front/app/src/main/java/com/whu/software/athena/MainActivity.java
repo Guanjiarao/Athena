@@ -7,6 +7,7 @@ import android.view.View;
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.view.ViewCompat;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
@@ -27,7 +28,11 @@ public class MainActivity extends AppCompatActivity {
 
         navView = findViewById(R.id.nav_view);
 
-        navView.setItemIconTintList(null);
+        ViewCompat.setOnApplyWindowInsetsListener(navView, (view, insets) -> {
+            view.setPadding(0, 0, 0, 0);
+            return insets;
+        });
+        navView.setItemActiveIndicatorEnabled(true);
         navView.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
 
@@ -90,8 +95,8 @@ public class MainActivity extends AppCompatActivity {
 
         ConstraintLayout.LayoutParams lp = (ConstraintLayout.LayoutParams) host.getLayoutParams();
         if (visible) {
-            lp.bottomToTop = R.id.nav_view;
-            lp.bottomToBottom = ConstraintLayout.LayoutParams.UNSET;
+            lp.bottomToTop = ConstraintLayout.LayoutParams.UNSET;
+            lp.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID;
             navView.setVisibility(View.VISIBLE);
         } else {
             lp.bottomToTop = ConstraintLayout.LayoutParams.UNSET;

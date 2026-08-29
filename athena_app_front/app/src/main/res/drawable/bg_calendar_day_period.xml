@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 月经期格子：柔和玫红 #FF7A9A 实心圆角矩形 -->
+<!-- 月经期：使用品牌玫粉色，避免日历中出现突兀的黑色块。 -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="@color/health_period_strong" />
+    <solid android:color="#E987AE" />
     <corners android:radius="14dp" />
 </shape>

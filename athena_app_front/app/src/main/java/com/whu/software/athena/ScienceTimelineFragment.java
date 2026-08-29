@@ -225,6 +225,8 @@ public class ScienceTimelineFragment extends Fragment {
                 ivCover = v.findViewById(R.id.iv_category_cover);
                 tvTitle = v.findViewById(R.id.tv_category_title);
                 tvDesc  = v.findViewById(R.id.tv_category_desc);
+                tvTitle.setBackground(null);
+                tvDesc.setBackground(null);
             }
         }
     }
