@@ -129,4 +129,66 @@ class AgentTaskServiceTest {
                 IDEMPOTENCY_KEY, "ACTION_FEEDBACK", status, 0, 3, null, null, null, null,
                 Instant.now(), Instant.now());
     }
+
+    // ---------- by-clue reverse lookup + payload-derived view fields ----------
+
+    @Test
+    void getTaskByClueReturnsTheClueCreatedTask() throws Exception {
+        String key = "clue:clue_101:" + GraphContract.WORKFLOW_VERSION;
+        AgentTaskRow created = new AgentTaskRow(3, "task_clue_1", USER_ID, GraphContract.WORKFLOW_VERSION,
+                key, "CLUE_CREATED", "PENDING", 0, 3, null, null, null, null,
+                Instant.now(), Instant.now());
+        when(agentRepository.findTask(USER_ID, GraphContract.WORKFLOW_VERSION, key))
+                .thenReturn(Optional.of(created));
+        String payload = new ObjectMapper().writeValueAsString(
+                AgentTaskPayload.forGraph("clue_101", null, "经前情绪变化", null));
+        when(agentRepository.findTaskPayload("task_clue_1")).thenReturn(Optional.of(payload));
+
+        AgentTaskView view = service.getTaskByClue(USER_ID, "clue_101");
+
+        assertThat(view.taskId()).isEqualTo("task_clue_1");
+        assertThat(view.clueIds()).containsExactly("clue_101");
+        assertThat(view.suggestedTopicTitle()).isEqualTo("经前情绪变化");
+        assertThat(view.candidates()).isNull();
+    }
+
+    @Test
+    void getTaskByClueMissesAsNotFound() {
+        when(agentRepository.findTask(eq(USER_ID), eq(GraphContract.WORKFLOW_VERSION), any()))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getTaskByClue(USER_ID, "clue_999"))
+                .isInstanceOf(CognitionException.class)
+                .extracting(ex -> ((CognitionException) ex).errorCode())
+                .isEqualTo(CognitionException.NOT_FOUND);
+    }
+
+    @Test
+    void userRequestViewCarriesAllClueIdsAndFeedbackViewHasNone() throws Exception {
+        AgentTaskRow userRequest = new AgentTaskRow(4, "task_ur_1", USER_ID, GraphContract.WORKFLOW_VERSION,
+                "user-request:uuid:" + GraphContract.WORKFLOW_VERSION, "USER_REQUEST", "PENDING",
+                0, 3, null, null, null, null, Instant.now(), Instant.now());
+        when(agentRepository.findTaskByTaskId("task_ur_1")).thenReturn(Optional.of(userRequest));
+        String payload = new ObjectMapper().writeValueAsString(
+                AgentTaskPayload.forGraph(null, java.util.List.of("clue_1", "clue_2"), "睡眠", null));
+        when(agentRepository.findTaskPayload("task_ur_1")).thenReturn(Optional.of(payload));
+
+        AgentTaskView view = service.getTask(USER_ID, "task_ur_1");
+        assertThat(view.clueIds()).containsExactly("clue_1", "clue_2");
+
+        AgentTaskRow feedback = new AgentTaskRow(5, "task_fb_1", USER_ID, GraphContract.FEEDBACK_WORKFLOW_VERSION,
+                IDEMPOTENCY_KEY, "ACTION_FEEDBACK", "PENDING", 0, 3, null, null, null, null,
+                Instant.now(), Instant.now());
+        when(agentRepository.findTaskByTaskId("task_fb_1")).thenReturn(Optional.of(feedback));
+        String feedbackPayload = new ObjectMapper().writeValueAsString(
+                AgentTaskPayload.forFeedback("fb_action_1", "action_1",
+                        athena.cognition.biz.rpc.agent.dto.GraphActionFeedbackResult.OCCURRED, "真的出现了",
+                        Instant.parse("2026-08-01T00:00:00Z")));
+        when(agentRepository.findTaskPayload("task_fb_1")).thenReturn(Optional.of(feedbackPayload));
+
+        AgentTaskView feedbackView = service.getTask(USER_ID, "task_fb_1");
+        assertThat(feedbackView.clueIds()).isEmpty();
+        assertThat(feedbackView.suggestedTopicTitle()).isNull();
+        assertThat(feedbackView.candidates()).isNull();
+    }
 }

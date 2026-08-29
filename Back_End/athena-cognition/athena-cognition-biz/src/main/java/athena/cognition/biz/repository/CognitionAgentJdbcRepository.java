@@ -119,6 +119,12 @@ public class CognitionAgentJdbcRepository {
                 .stream().filter(java.util.Objects::nonNull).findFirst();
     }
 
+    /** Rewrites payload_json (e.g. the worker attaching NEEDS_CONFIRMATION candidate topics). */
+    public void updateTaskPayload(String taskId, String payloadJson) {
+        jdbc.update("UPDATE cognition_agent_task SET payload_json=? WHERE task_id=?",
+                payloadJson, taskId);
+    }
+
     /** Per-user rate limiting: tasks created since the given instant (DB count, no Redis). */
     public long countRecentTasksByUser(long userId, Instant since) {
         Long count = jdbc.queryForObject("""

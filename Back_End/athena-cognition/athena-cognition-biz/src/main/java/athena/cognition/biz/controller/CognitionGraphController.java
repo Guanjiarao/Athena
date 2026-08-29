@@ -60,6 +60,12 @@ public class CognitionGraphController {
         return Result.ok(agentTaskService.getTask(userId(), taskId));
     }
 
+    /** Reverse lookup of a clue's graph-workflow task (idempotency key clue:{clueId}:cognition-graph-workflow-v1). */
+    @GetMapping("/agent-tasks/by-clue/{clueId}")
+    public Result<AgentTaskView> getAgentTaskByClue(@PathVariable String clueId) {
+        return Result.ok(agentTaskService.getTaskByClue(userId(), clueId));
+    }
+
     /** Proposal list / detail (detail carries operations and graphPreview for the confirmation page). */
     @GetMapping("/proposals")
     public Result<List<ProposalSummaryView>> listProposals(@RequestParam(required = false) String status,

@@ -131,7 +131,13 @@ public final class CognitionModels {
         }
     }
 
-    public record ClueCreateView(ClueView clue, DigestTaskTriggerView digestTask) {
+    /**
+     * @param agentTask the graph-workflow Agent task spawned for a RELATED clue, so the
+     *                  frontend can poll it directly instead of guessing from the task list;
+     *                  null for QUESTION / KNOWLEDGE_ONLY clues or when task creation failed
+     */
+    public record ClueCreateView(ClueView clue, DigestTaskTriggerView digestTask,
+                                 CognitionGraphModels.AgentTaskView agentTask) {
     }
 
     // ---------- Evidence (section 4.4) ----------

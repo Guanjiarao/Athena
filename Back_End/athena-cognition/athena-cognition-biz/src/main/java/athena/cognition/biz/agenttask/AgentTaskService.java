@@ -3,6 +3,7 @@ package athena.cognition.biz.agenttask;
 import athena.cognition.biz.agenttask.mq.AgentTaskProducer;
 import athena.cognition.biz.domain.CognitionException;
 import athena.cognition.biz.domain.CognitionGraphModels.AgentTaskView;
+import athena.cognition.biz.domain.CognitionGraphModels.CandidateTopic;
 import athena.cognition.biz.domain.CognitionGraphModels.GraphActionFeedbackRequest;
 import athena.cognition.biz.domain.CognitionGraphModels.GraphUpdateTaskCreateRequest;
 import athena.cognition.biz.domain.CognitionIds;
@@ -171,6 +172,18 @@ public class AgentTaskService {
         return toView(task);
     }
 
+    /**
+     * Reverse lookup of the clue-created task by its deterministic idempotency key
+     * (clue:{clueId}:cognition-graph-workflow-v1); a second handle for the frontend
+     * when the clue creation response did not carry the task.
+     */
+    public AgentTaskView getTaskByClue(long userId, String clueExternalId) {
+        String idempotencyKey = "clue:" + clueExternalId + ":" + GraphContract.WORKFLOW_VERSION;
+        return agentRepository.findTask(userId, GraphContract.WORKFLOW_VERSION, idempotencyKey)
+                .map(this::toView)
+                .orElseThrow(CognitionException::notFound);
+    }
+
     // ---------- internals ----------
 
     private void checkRateLimit(long userId) {
@@ -213,8 +226,33 @@ public class AgentTaskService {
     }
 
     private AgentTaskView toView(AgentTaskRow row) {
+        AgentTaskPayload payload = readPayload(row.taskId());
+        List<String> clueIds = List.of();
+        String suggestedTopicTitle = null;
+        List<CandidateTopic> candidates = null;
+        if (payload != null) {
+            clueIds = payload.clueIds() != null ? payload.clueIds()
+                    : (payload.clueId() != null ? List.of(payload.clueId()) : List.of());
+            suggestedTopicTitle = payload.suggestedTopicTitle();
+            candidates = payload.candidates();
+        }
         return new AgentTaskView(row.taskId(), row.workflowVersion(), row.idempotencyKey(), row.triggerType(),
                 row.status(), row.retryCount(), row.maxRetry(), row.proposalId(), row.errorCode(),
-                row.errorRetryable(), row.createdAt(), row.updatedAt());
+                row.errorRetryable(), row.createdAt(), row.updatedAt(),
+                clueIds, suggestedTopicTitle, candidates);
+    }
+
+    /** Best-effort payload read: an unparseable/missing payload never breaks the task query. */
+    private AgentTaskPayload readPayload(String taskId) {
+        String json = agentRepository.findTaskPayload(taskId).orElse(null);
+        if (json == null) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(json, AgentTaskPayload.class);
+        } catch (Exception ex) {
+            log.warn("cannot parse payload of agent task {} for view assembly", taskId, ex);
+            return null;
+        }
     }
 }

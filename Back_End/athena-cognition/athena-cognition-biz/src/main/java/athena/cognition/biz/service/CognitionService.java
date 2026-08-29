@@ -97,8 +97,8 @@ public class CognitionService {
 
         long id = repository.insertClue(userId, request, intent, status, helpRequestType, cycleRelation);
         ClueRow saved = repository.findClue(userId, id).orElseThrow(CognitionException::notFound);
-        maybeSubmitAgentTask(userId, saved);
-        return new ClueCreateView(toClueView(saved), maybeAutoTrigger(userId, saved));
+        AgentTaskView agentTask = maybeSubmitAgentTask(userId, saved);
+        return new ClueCreateView(toClueView(saved), maybeAutoTrigger(userId, saved), agentTask);
     }
 
     /**
@@ -107,10 +107,14 @@ public class CognitionService {
      * (clue:{clueId}:cognition-graph-workflow-v1, idempotent via the unique
      * constraint). Submitted after commit so the worker never reads an
      * uncommitted clue row; failures here never fail the clue creation itself.
+     *
+     * <p>Returns the created task view so the clue creation response can hand it
+     * to the frontend directly; null when the clue does not spawn a task or task
+     * creation failed.
      */
-    private void maybeSubmitAgentTask(long userId, ClueRow saved) {
+    private AgentTaskView maybeSubmitAgentTask(long userId, ClueRow saved) {
         if (saved.intent() != ClueIntent.RELATED || saved.status() != ClueStatus.PENDING) {
-            return;
+            return null;
         }
         String clueExternalId = CognitionIds.of(CognitionIds.CLUE, saved.id());
         // handoff section 11: persist the task row inside the clue transaction;
@@ -122,11 +126,11 @@ public class CognitionService {
             task = agentTaskService.createClueTaskRecord(userId, clueExternalId);
         } catch (RuntimeException ex) {
             log.error("failed to create agent task for clue {}", clueExternalId, ex);
-            return;
+            return null;
         }
         if (task == null) {
             // unit tests inject an unstubbed mock; nothing to submit
-            return;
+            return null;
         }
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -138,6 +142,7 @@ public class CognitionService {
         } else {
             submitAgentTaskQuietly(task.taskId(), clueExternalId);
         }
+        return task;
     }
 
     private void submitAgentTaskQuietly(String taskId, String clueExternalId) {

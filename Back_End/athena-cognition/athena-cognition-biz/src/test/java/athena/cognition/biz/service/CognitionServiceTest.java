@@ -4,6 +4,7 @@ import athena.cognition.biz.agenttask.AgentTaskService;
 import athena.cognition.biz.bodyrecord.BodyRecordEvidenceProvider;
 import athena.cognition.biz.bodyrecord.BodyRecordEvidenceProvider.ConfirmedBodyRecord;
 import athena.cognition.biz.domain.CognitionException;
+import athena.cognition.biz.domain.CognitionGraphModels.AgentTaskView;
 import athena.cognition.biz.domain.CognitionModels.*;
 import athena.cognition.biz.generator.DigestGenerator;
 import athena.cognition.biz.repository.CognitionJdbcRepository;
@@ -165,6 +166,50 @@ class CognitionServiceTest {
 
             assertThat(ex.errorCode()).isEqualTo(CognitionException.INVALID_ARGUMENT);
             verify(repository, never()).insertClue(anyLong(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        void relatedClueResponseCarriesTheSpawnedAgentTask() {
+            ClueCreateRequest request = marker(ClueIntent.RELATED, RelationType.CURRENT);
+            stubInsertAndFind(11L, ClueIntent.RELATED, ClueStatus.PENDING);
+            AgentTaskView task = new AgentTaskView("task_1", "cognition-graph-workflow-v1",
+                    "clue:clue_11:cognition-graph-workflow-v1", "CLUE_CREATED", "PENDING", 0, 3, null,
+                    null, null, Instant.now(), Instant.now(), List.of("clue_11"), null, null);
+            when(agentTaskService.createClueTaskRecord(USER_ID, "clue_11")).thenReturn(task);
+
+            ClueCreateView result = service.createClue(USER_ID, request);
+
+            assertThat(result.agentTask()).isEqualTo(task);
+            verify(agentTaskService).submitClueTask("task_1", "clue_11");
+        }
+
+        @Test
+        void questionClueResponseHasNoAgentTask() {
+            ClueCreateRequest request = new ClueCreateRequest(
+                    ClueType.ARTICLE_HIGHLIGHT, ClueIntent.QUESTION, null, HelpRequestType.KNOWLEDGE,
+                    "1024", "文章", 100, "选中文字", QuestionType.IS_COMMON, "这是否常见？",
+                    null, CycleRelation.UNKNOWN, null, null, ClueSource.KNOWLEDGE_ARTICLE,
+                    null, null, "我有疑问");
+            stubInsertAndFind(12L, ClueIntent.QUESTION, ClueStatus.PENDING);
+
+            ClueCreateView result = service.createClue(USER_ID, request);
+
+            assertThat(result.agentTask()).isNull();
+            verify(agentTaskService, never()).createClueTaskRecord(anyLong(), any());
+        }
+
+        @Test
+        void relatedClueResponseToleratesTaskCreationFailure() {
+            ClueCreateRequest request = marker(ClueIntent.RELATED, RelationType.CURRENT);
+            stubInsertAndFind(13L, ClueIntent.RELATED, ClueStatus.PENDING);
+            // unstubbed mock returns null (and a throwing service must also not fail the clue)
+            ClueCreateView result = service.createClue(USER_ID, request);
+            assertThat(result.agentTask()).isNull();
+
+            when(agentTaskService.createClueTaskRecord(anyLong(), any()))
+                    .thenThrow(new RuntimeException("db down"));
+            ClueCreateView second = service.createClue(USER_ID, request);
+            assertThat(second.agentTask()).isNull();
         }
 
         private ClueCreateRequest marker(ClueIntent intent, RelationType relationType) {

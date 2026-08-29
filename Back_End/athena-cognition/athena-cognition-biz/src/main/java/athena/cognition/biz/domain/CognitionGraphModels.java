@@ -37,9 +37,23 @@ public final class CognitionGraphModels {
 
     // ---------- views ----------
 
+    /**
+     * @param clueIds             clue external ids from the task payload (CLUE_CREATED: one element,
+     *                            USER_REQUEST: many, ACTION_FEEDBACK: empty)
+     * @param suggestedTopicTitle suggested branch title from the task payload, nullable
+     * @param candidates          topic candidates for the user to pick; only set when the task
+     *                            ended NEEDS_CONFIRMATION, null otherwise (frontend then lets the
+     *                            user pick a topic freely)
+     */
     public record AgentTaskView(String taskId, String workflowVersion, String idempotencyKey, String triggerType,
                                 String status, int retryCount, int maxRetry, String proposalId,
-                                String errorCode, Boolean errorRetryable, Instant createdAt, Instant updatedAt) {
+                                String errorCode, Boolean errorRetryable, Instant createdAt, Instant updatedAt,
+                                List<String> clueIds, String suggestedTopicTitle,
+                                List<CandidateTopic> candidates) {
+    }
+
+    /** A topic the user may confirm as the target of a NEEDS_CONFIRMATION task. */
+    public record CandidateTopic(String topicId, String title) {
     }
 
     public record ProposalSummaryView(String proposalId, String status, String route, String targetTopicId,

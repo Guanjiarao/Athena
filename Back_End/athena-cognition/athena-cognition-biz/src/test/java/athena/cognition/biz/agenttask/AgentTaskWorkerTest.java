@@ -1,9 +1,11 @@
 package athena.cognition.biz.agenttask;
 
 import athena.cognition.biz.agenttask.AgentTaskService.GraphTaskContext;
+import athena.cognition.biz.domain.CognitionGraphModels.CandidateTopic;
 import athena.cognition.biz.domain.CognitionModels;
 import athena.cognition.biz.repository.CognitionAgentJdbcRepository;
 import athena.cognition.biz.repository.CognitionAgentJdbcRepository.AgentTaskRow;
+import athena.cognition.biz.repository.CognitionGraphJdbcRepository.GraphNodeRow;
 import athena.cognition.biz.repository.CognitionGraphJdbcRepository.GraphRow;
 import athena.cognition.biz.repository.CognitionGraphJdbcRepository.GraphSnapshot;
 import athena.cognition.biz.repository.CognitionJdbcRepository;
@@ -210,6 +212,64 @@ class AgentTaskWorkerTest {
         verify(agentRepository, times(2)).insertNodeRun(any(), eq("MODEL_CALL"), isNull(), any());
         // 冲突不影响主流程：任务照常终态
         verify(agentRepository).markTaskFinished(TASK_ID, "SUCCEEDED", null, null, null);
+    }
+
+    // ---------- NEEDS_CONFIRMATION: candidate topics are persisted into the payload ----------
+
+    @Test
+    void needsConfirmationPersistsCandidateTopicsIntoPayload() throws Exception {
+        when(agentClient.classifyIntent(any())).thenReturn(intent(
+                IntentClassificationStatus.SUCCEEDED, ClueIntent.RELATED, NextRoute.MATCH_EXISTING_TOPIC_CANDIDATE));
+        GraphUpdatePreparationResponse response = workflowResponse(
+                GraphPreparationStatus.NEEDS_CONFIRMATION, null, null);
+        // one candidate carries its title; the other only has topicId and gets the
+        // title backfilled from the current graph nodes
+        response.targetResult = new ObjectMapper().readTree("""
+                {"status":"NEEDS_CONFIRMATION","route":"NEEDS_CONFIRMATION","targetTopicId":null,
+                 "suggestedTopicTitle":"经前情绪变化",
+                 "candidateTopics":[{"topicId":"topic_1","title":"睡眠"},
+                                    {"topicId":"topic_2"}]}
+                """);
+        when(agentClient.prepareGraphUpdate(any())).thenReturn(response);
+        GraphSnapshot snapshot = new GraphSnapshot(
+                new GraphRow(1, USER_ID, "graph_1", "personal-cognition-graph-v1", 0,
+                        Instant.now(), Instant.now()),
+                List.of(new GraphNodeRow(1, "graph_1", "topic_2", "TOPIC", "ACTIVE", null, "情绪管理",
+                        null, null, null, null, null, null, null, 1, Instant.now(), Instant.now())),
+                List.of());
+        when(graphService.getOrCreateGraph(USER_ID)).thenReturn(snapshot);
+        String payload = new ObjectMapper().writeValueAsString(
+                AgentTaskPayload.forGraph(CLUE_EXTERNAL_ID, null, null, null));
+        when(agentRepository.findTaskPayload(TASK_ID)).thenReturn(Optional.of(payload));
+
+        worker.executeGraphTask(TASK_ID, clueContext());
+
+        ArgumentCaptor<String> updatedPayload = ArgumentCaptor.forClass(String.class);
+        verify(agentRepository).updateTaskPayload(eq(TASK_ID), updatedPayload.capture());
+        AgentTaskPayload stored = new ObjectMapper().findAndRegisterModules()
+                .readValue(updatedPayload.getValue(), AgentTaskPayload.class);
+        assertThat(stored.candidates()).containsExactly(
+                new CandidateTopic("topic_1", "睡眠"),
+                new CandidateTopic("topic_2", "情绪管理"));
+        // the execution context fields are untouched by the rewrite
+        assertThat(stored.clueId()).isEqualTo(CLUE_EXTERNAL_ID);
+        verify(agentRepository).markTaskFinished(TASK_ID, "NEEDS_CONFIRMATION", null, null, null);
+    }
+
+    @Test
+    void needsConfirmationWithoutExtractableCandidatesLeavesPayloadUntouched() throws Exception {
+        when(agentClient.classifyIntent(any())).thenReturn(intent(
+                IntentClassificationStatus.SUCCEEDED, ClueIntent.RELATED, NextRoute.MATCH_EXISTING_TOPIC_CANDIDATE));
+        GraphUpdatePreparationResponse response = workflowResponse(
+                GraphPreparationStatus.NEEDS_CONFIRMATION, null, null);
+        response.targetResult = new ObjectMapper().readTree(
+                "{\"status\":\"NEEDS_CONFIRMATION\",\"targetTopicId\":null}");
+        when(agentClient.prepareGraphUpdate(any())).thenReturn(response);
+
+        worker.executeGraphTask(TASK_ID, clueContext());
+
+        verify(agentRepository, never()).updateTaskPayload(any(), any());
+        verify(agentRepository).markTaskFinished(TASK_ID, "NEEDS_CONFIRMATION", null, null, null);
     }
 
     // ---------- fixtures ----------

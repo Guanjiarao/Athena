@@ -1,0 +1,425 @@
+openapi: 3.0.3
+info:
+  title: Athena Cognition Graph API（认知图谱提案管线）
+  version: 1.1.0
+  description: |
+    Athena 认知图谱 Agent 管线接口（第二次交接），与《cognition-contract-v1》的旧闭环接口并行，旧接口不变。
+    本文档以 athena-cognition-biz 实际代码为准（2026-08-29 版本）。
+
+    ## 统一响应信封
+
+    所有接口返回 `Result<T>` 信封：`{ "code": 200, "message": "成功", "data": ..., "total": null }`。
+    空值字段会被省略（服务端 Jackson non_null），即可空字段不出现时表示 null。
+
+    ## 错误约定
+
+    已处理的业务错误 HTTP 状态为 200，语义值在外层 `code`，稳定错误码在 `data.errorCode`：
+
+    | errorCode | code | 场景 |
+    | --- | --- | --- |
+    | COGNITION_INVALID_ARGUMENT | 400 | 字段或枚举非法 |
+    | COGNITION_NOT_FOUND | 404 | 对象不存在或不属于当前用户 |
+    | COGNITION_STATE_CONFLICT | 409 | 提案已决定、行动已反馈等状态冲突 |
+    | COGNITION_VERSION_CONFLICT | 409 | 图谱版本已变化（提案过期 STALE） |
+    | COGNITION_PROPOSAL_NOT_READY | 409 | 提案当前状态不能确认 |
+    | COGNITION_RATE_LIMITED | 409 | 触发限流（每用户每分钟 5 个 Agent 任务） |
+    | COGNITION_AGENT_TASK_FAILED | 500 | Agent 任务执行失败 |
+
+    未登录返回 `code=401`（无 data.errorCode）。网关层无 token / 假 token 直接拦截。
+
+    ## 用户隔离
+
+    `userId` 只从网关透传的登录上下文（UserIdHolder）获取，请求体与参数中的任何 userId 都会被忽略。
+
+    ## 核心流程
+
+    1. `POST /clues` 创建 RELATED 线索 → 响应 `data.agentTask.taskId` 直接可用；
+       也可用 `GET /agent-tasks/by-clue/{clueId}` 反查。
+    2. 轮询 `GET /agent-tasks/{taskId}` → `status=SUCCEEDED` 且带 `proposalId`。
+    3. `GET /proposals/{proposalId}` 展示确认页（operations + graphPreview 仅供展示）。
+    4. `POST /proposals/{proposalId}/decision` 用户决定，接受后图谱版本 +1。
+    5. `GET /graph` 查看真实图谱。对 `ACTION` 节点用 `POST /graph-actions/{actionId}/feedback` 反馈，
+       反馈同样产出提案，走同一个确认流程。
+servers:
+  - url: http://121.41.200.73:13715/athena/cognition
+    description: 开发环境（经网关）
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: graph-pipeline
+    description: 认知图谱提案管线（新增）
+
+paths:
+  /clues:
+    post:
+      tags: [graph-pipeline]
+      summary: 创建线索（旧接口，RELATED 自动触发 Agent 任务）
+      description: 响应新增 `data.agentTask` 字段（仅 RELATED 且 status=PENDING 时有值），前端可直接拿到 agentTaskId。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ClueCreateRequest'}
+      responses:
+        '200':
+          description: 创建成功（业务错误也在 200 中通过 code 表达）
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ResultClueCreateView'}
+
+  /graph-update-tasks:
+    post:
+      tags: [graph-pipeline]
+      summary: 手动触发图谱整理 / 歧义时带用户选择重跑
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/GraphUpdateTaskCreateRequest'}
+      responses:
+        '200':
+          description: 任务已创建
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ResultAgentTaskView'}
+
+  /agent-tasks:
+    get:
+      tags: [graph-pipeline]
+      summary: 当前用户的 Agent 任务列表（新的在前）
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, default: 20, maximum: 50}}
+      responses:
+        '200':
+          description: 任务列表
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ResultAgentTaskViewList'}
+
+  /agent-tasks/{taskId}:
+    get:
+      tags: [graph-pipeline]
+      summary: 单个 Agent 任务状态
+      parameters:
+        - {name: taskId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: 任务详情
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ResultAgentTaskView'}
+
+  /agent-tasks/by-clue/{clueId}:
+    get:
+      tags: [graph-pipeline]
+      summary: 按 clueId 反查对应 Agent 任务
+      description: 按幂等键 `clue:{clueId}:cognition-graph-workflow-v1` 精确反查，不存在返回 COGNITION_NOT_FOUND。
+      parameters:
+        - {name: clueId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: 任务详情或 404 业务错误
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ResultAgentTaskView'}
+
+  /proposals:
+    get:
+      tags: [graph-pipeline]
+      summary: 提案列表
+      parameters:
+        - {name: status, in: query, schema: {type: string, enum: [READY_FOR_CONFIRMATION, ACCEPTED, KEPT_AS_KNOWLEDGE, REJECTED, STALE, BLOCKED]}}
+        - {name: page, in: query, schema: {type: integer, default: 1}}
+        - {name: pageSize, in: query, schema: {type: integer, default: 20}}
+      responses:
+        '200':
+          description: 提案列表（data 为数组，total 为总数）
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ResultProposalViewList'}
+
+  /proposals/{proposalId}:
+    get:
+      tags: [graph-pipeline]
+      summary: 提案详情（确认页数据）
+      parameters:
+        - {name: proposalId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: 提案详情
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ResultProposalDetailView'}
+
+  /proposals/{proposalId}/decision:
+    post:
+      tags: [graph-pipeline]
+      summary: 提案决定（接受/只存知识/拒绝）
+      description: 接受时在单事务内应用 Patch，图谱版本 +1；重复决定返回 COGNITION_STATE_CONFLICT；版本过期返回 COGNITION_VERSION_CONFLICT。
+      parameters:
+        - {name: proposalId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProposalDecisionRequest'}
+      responses:
+        '200':
+          description: 决定结果
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ResultProposalDecisionView'}
+
+  /graph:
+    get:
+      tags: [graph-pipeline]
+      summary: 当前用户的真实认知图谱
+      responses:
+        '200':
+          description: 图谱（节点+边+版本）
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ResultPersonalCognitionGraph'}
+
+  /graph-actions/{actionId}/feedback:
+    post:
+      tags: [graph-pipeline]
+      summary: 对图谱行动提交反馈
+      description: 同一行动只能反馈一次，重复提交返回同一任务（幂等）。反馈产出新提案，走 proposals/decision 确认流程。
+      parameters:
+        - {name: actionId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/GraphActionFeedbackRequest'}
+      responses:
+        '200':
+          description: 反馈任务已创建
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ResultAgentTaskView'}
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: sa-token
+
+  schemas:
+    ClueCreateRequest:
+      type: object
+      required: [type, intent]
+      properties:
+        type: {type: string, enum: [ARTICLE_HIGHLIGHT]}
+        intent: {type: string, enum: [RELATED, QUESTION, KNOWLEDGE_ONLY]}
+        relationType: {type: string, nullable: true, enum: [CURRENT, PAST, OBSERVE, KNOWLEDGE_ONLY]}
+        helpRequestType: {type: string, nullable: true, enum: [OBSERVE, KNOWLEDGE, ATTENTION, SAVE_ONLY]}
+        articleId: {type: string, maxLength: 128}
+        articleTitle: {type: string, maxLength: 255}
+        articleType: {type: integer, nullable: true}
+        selectedText: {type: string, maxLength: 4000}
+        questionType: {type: string, nullable: true, enum: [IS_COMMON, POSSIBLE_CAUSES, SELF_CARE, PROFESSIONAL_HELP, CUSTOM]}
+        questionText: {type: string, nullable: true, maxLength: 1000}
+        occurredAt: {type: string, format: date-time, nullable: true}
+        cycleRelation: {type: string, nullable: true, enum: [BEFORE_PERIOD, DURING_PERIOD, AFTER_PERIOD, NO_RELATION, UNKNOWN]}
+        severity: {type: integer, minimum: 0, maximum: 10, nullable: true}
+        resolved: {type: boolean, nullable: true}
+        suggestedTopicId: {type: string, nullable: true}
+        suggestedTopicTitle: {type: string, nullable: true}
+        originalLabel: {type: string}
+
+    GraphUpdateTaskCreateRequest:
+      type: object
+      properties:
+        triggerType: {type: string, enum: [USER_REQUEST], default: USER_REQUEST}
+        clueIds: {type: array, items: {type: string}, maxItems: 20}
+        suggestedTopicTitle: {type: string, nullable: true}
+        userSelectedTopicId: {type: string, nullable: true, description: 歧义时用户选定的主题节点 id，必须是本人图谱中的 ACTIVE TOPIC}
+
+    ProposalDecisionRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision: {type: string, enum: [ACCEPT, KEEP_AS_KNOWLEDGE, REJECT]}
+        reason: {type: string, nullable: true}
+
+    GraphActionFeedbackRequest:
+      type: object
+      required: [result]
+      properties:
+        result: {type: string, enum: [OCCURRED, NOT_OCCURRED, UNCERTAIN, SKIPPED]}
+        note: {type: string, nullable: true, maxLength: 500}
+        occurredAt: {type: string, format: date-time, nullable: true}
+
+    AgentTaskView:
+      type: object
+      properties:
+        taskId: {type: string}
+        workflowVersion: {type: string, enum: [cognition-graph-workflow-v1, action-feedback-workflow-v1]}
+        idempotencyKey: {type: string}
+        triggerType: {type: string, enum: [CLUE_CREATED, USER_REQUEST, RETRY, ACTION_FEEDBACK]}
+        status: {type: string, enum: [PENDING, RUNNING, SUCCEEDED, NO_CHANGE, NEEDS_CONFIRMATION, FAILED, DEAD]}
+        retryCount: {type: integer}
+        maxRetry: {type: integer}
+        proposalId: {type: string, nullable: true, description: 仅 SUCCEEDED 时有值}
+        errorCode: {type: string, nullable: true}
+        errorRetryable: {type: boolean, nullable: true}
+        clueIds: {type: array, items: {type: string}, description: 本次处理的线索（ACTION_FEEDBACK 任务为空数组）}
+        suggestedTopicTitle: {type: string, nullable: true, description: 建议的新主题标题}
+        candidates: {type: array, nullable: true, items: {$ref: '#/components/schemas/CandidateTopic'}, description: NEEDS_CONFIRMATION 时的候选主题；当前 Agent 合同不返回候选，恒为 null，请用 GET /graph 的 TOPIC 节点作为候选列表}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+
+    CandidateTopic:
+      type: object
+      properties:
+        topicId: {type: string}
+        title: {type: string, nullable: true}
+
+    ProposalView:
+      type: object
+      properties:
+        proposalId: {type: string}
+        status: {type: string, enum: [READY_FOR_CONFIRMATION, ACCEPTED, KEPT_AS_KNOWLEDGE, REJECTED, STALE, BLOCKED]}
+        route: {type: string, enum: [UPDATE_EXISTING, CREATE_BRANCH, NO_CHANGE, NEEDS_CONFIRMATION]}
+        targetTopicId: {type: string, nullable: true}
+        baseGraphVersion: {type: integer}
+        changeSummary: {type: string}
+        evidenceIds: {type: array, items: {type: string}}
+        createdAt: {type: string, format: date-time}
+
+    ProposalDetailView:
+      allOf:
+        - {$ref: '#/components/schemas/ProposalView'}
+        - type: object
+          properties:
+            operations: {type: array, items: {$ref: '#/components/schemas/ProposalOperation'}}
+            graphPreview: {$ref: '#/components/schemas/PersonalCognitionGraph', description: 模拟预览，仅供展示 diff，不是真实图谱}
+            userDecision: {type: string, nullable: true}
+            decidedAt: {type: string, format: date-time, nullable: true}
+
+    ProposalOperation:
+      type: object
+      properties:
+        operationIndex: {type: integer}
+        operationType: {type: string, enum: [ADD_NODE, UPDATE_NODE, ADD_EDGE, SUPERSEDE_NODE, DEACTIVATE_EDGE, NO_OP]}
+        targetId: {type: string, nullable: true}
+        node: {$ref: '#/components/schemas/GraphNode'}
+        edge: {$ref: '#/components/schemas/GraphEdge'}
+        evidenceIds: {type: array, items: {type: string}}
+        reason: {type: string}
+
+    GraphNode:
+      type: object
+      properties:
+        id: {type: string}
+        type: {type: string, enum: [TOPIC, SOURCE_EVIDENCE, SELF_REPORTED_FACT, PATTERN_HYPOTHESIS, OPEN_QUESTION, ACTION]}
+        status: {type: string, enum: [ACTIVE, SUPERSEDED, ARCHIVED]}
+        topicId: {type: string, nullable: true}
+        title: {type: string, nullable: true}
+        content: {type: string, nullable: true}
+        domain: {type: string, nullable: true}
+        evidenceIds: {type: array, items: {type: string}}
+        actionType: {type: string, nullable: true, enum: [RECORD_BODY, RECORD_MOOD, RECORD_SLEEP, READ_CONTENT, ANSWER_QUESTION, CONFIRM_STATUS]}
+        actionStatus: {type: string, nullable: true, enum: [PENDING, COMPLETED, SKIPPED, EXPIRED]}
+        dueAt: {type: string, format: date-time, nullable: true}
+        feedbackOptions: {type: array, items: {type: string, enum: [OCCURRED, NOT_OCCURRED, UNCERTAIN, SKIPPED]}}
+        version: {type: integer}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+
+    GraphEdge:
+      type: object
+      properties:
+        id: {type: string}
+        type: {type: string, enum: [ABOUT, GROUNDS, SUPPORTS, CHALLENGES, NEXT_STEP_FOR, FEEDBACK_FOR]}
+        fromNodeId: {type: string}
+        toNodeId: {type: string}
+        evidenceIds: {type: array, items: {type: string}}
+        active: {type: boolean}
+        version: {type: integer}
+
+    PersonalCognitionGraph:
+      type: object
+      properties:
+        graphSchemaVersion: {type: string, example: personal-cognition-graph-v1}
+        graphId: {type: string}
+        graphVersion: {type: integer}
+        nodes: {type: array, items: {$ref: '#/components/schemas/GraphNode'}}
+        edges: {type: array, items: {$ref: '#/components/schemas/GraphEdge'}}
+        updatedAt: {type: string, format: date-time}
+
+    ClueCreateView:
+      type: object
+      properties:
+        clue: {type: object, description: 线索对象（字段与 cognition-contract-v1 一致）}
+        digestTask: {type: object, description: 旧管线整理任务触发信息}
+        agentTask: {$ref: '#/components/schemas/AgentTaskView', nullable: true, description: 新增：RELATED 线索自动创建的 Agent 任务，QUESTION/KNOWLEDGE_ONLY 为 null}
+
+    ProposalDecisionView:
+      type: object
+      properties:
+        proposalId: {type: string}
+        status: {type: string}
+        userDecision: {type: string}
+        appliedGraphVersion: {type: integer, nullable: true, description: 仅 ACCEPT 时有值}
+
+    ResultClueCreateView:
+      type: object
+      properties:
+        code: {type: integer, example: 200}
+        message: {type: string, example: 成功}
+        data: {$ref: '#/components/schemas/ClueCreateView'}
+        total: {type: integer, nullable: true}
+
+    ResultAgentTaskView:
+      type: object
+      properties:
+        code: {type: integer, example: 200}
+        message: {type: string}
+        data: {$ref: '#/components/schemas/AgentTaskView'}
+        total: {type: integer, nullable: true}
+
+    ResultAgentTaskViewList:
+      type: object
+      properties:
+        code: {type: integer, example: 200}
+        message: {type: string}
+        data: {type: array, items: {$ref: '#/components/schemas/AgentTaskView'}}
+        total: {type: integer, nullable: true}
+
+    ResultProposalViewList:
+      type: object
+      properties:
+        code: {type: integer, example: 200}
+        message: {type: string}
+        data: {type: array, items: {$ref: '#/components/schemas/ProposalView'}}
+        total: {type: integer}
+
+    ResultProposalDetailView:
+      type: object
+      properties:
+        code: {type: integer, example: 200}
+        message: {type: string}
+        data: {$ref: '#/components/schemas/ProposalDetailView'}
+        total: {type: integer, nullable: true}
+
+    ResultProposalDecisionView:
+      type: object
+      properties:
+        code: {type: integer, example: 200}
+        message: {type: string}
+        data: {$ref: '#/components/schemas/ProposalDecisionView'}
+        total: {type: integer, nullable: true}
+
+    ResultPersonalCognitionGraph:
+      type: object
+      properties:
+        code: {type: integer, example: 200}
+        message: {type: string}
+        data: {$ref: '#/components/schemas/PersonalCognitionGraph'}
+        total: {type: integer, nullable: true}

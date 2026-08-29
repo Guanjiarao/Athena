@@ -3,9 +3,11 @@ package athena.cognition.biz.agenttask;
 import athena.cognition.biz.agenttask.AgentTaskService.FeedbackTaskContext;
 import athena.cognition.biz.agenttask.AgentTaskService.GraphTaskContext;
 import athena.cognition.biz.domain.CognitionException;
+import athena.cognition.biz.domain.CognitionGraphModels.CandidateTopic;
 import athena.cognition.biz.domain.CognitionIds;
 import athena.cognition.biz.repository.CognitionAgentJdbcRepository;
 import athena.cognition.biz.repository.CognitionAgentJdbcRepository.AgentTaskRow;
+import athena.cognition.biz.repository.CognitionGraphJdbcRepository.GraphNodeRow;
 import athena.cognition.biz.repository.CognitionGraphJdbcRepository.GraphSnapshot;
 import athena.cognition.biz.repository.CognitionJdbcRepository;
 import athena.cognition.biz.repository.CognitionJdbcRepository.ClueRow;
@@ -42,6 +44,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -209,8 +212,11 @@ public class AgentTaskWorker {
                         return;
                     }
                     case NEEDS_CONFIRMATION -> {
-                        // ambiguous target topic: candidates stay in the run observation for the user to pick
+                        // ambiguous target topic: extract the candidate topics from the target
+                        // node's result and persist them into the payload, so the task view can
+                        // offer them for the user to pick (null = let the user pick freely)
                         recordRun(task, runId, "NEEDS_CONFIRMATION", null, startedAt, response.observation);
+                        persistCandidateTopics(taskId, extractCandidateTopics(response.targetResult, snapshot));
                         agentRepository.markTaskFinished(taskId, "NEEDS_CONFIRMATION", null, null, null);
                         return;
                     }
@@ -442,6 +448,77 @@ public class AgentTaskWorker {
     }
 
     // ---------- candidates ----------
+
+    /**
+     * NEEDS_CONFIRMATION candidate topics, read out of the target node's opaque
+     * result. Looks for a candidate array (candidates / candidateTopics / topics —
+     * the field is contract-evolving), tolerating topicId-or-id and filling a
+     * missing title from the current graph nodes; falls back to the single
+     * targetTopicId when no array exists. null when nothing can be extracted.
+     */
+    private List<CandidateTopic> extractCandidateTopics(JsonNode targetResult, GraphSnapshot snapshot) {
+        if (targetResult == null || !targetResult.isObject()) {
+            return null;
+        }
+        JsonNode array = null;
+        for (String field : List.of("candidates", "candidateTopics", "topics")) {
+            JsonNode node = targetResult.get(field);
+            if (node != null && node.isArray()) {
+                array = node;
+                break;
+            }
+        }
+        List<CandidateTopic> topics = new ArrayList<>();
+        if (array != null) {
+            for (JsonNode item : array) {
+                String topicId = textOrNull(item.get("topicId"));
+                if (topicId == null) {
+                    topicId = textOrNull(item.get("id"));
+                }
+                if (topicId == null || topicId.isBlank()) {
+                    continue;
+                }
+                String title = textOrNull(item.get("title"));
+                topics.add(new CandidateTopic(topicId, title != null ? title : topicTitleOf(snapshot, topicId)));
+            }
+        } else {
+            String topicId = textOrNull(targetResult.get("targetTopicId"));
+            if (topicId != null && !topicId.isBlank()) {
+                topics.add(new CandidateTopic(topicId, topicTitleOf(snapshot, topicId)));
+            }
+        }
+        return topics.isEmpty() ? null : topics;
+    }
+
+    private static String topicTitleOf(GraphSnapshot snapshot, String topicId) {
+        return snapshot.nodes().stream()
+                .filter(node -> topicId.equals(node.nodeId()))
+                .map(GraphNodeRow::title)
+                .filter(title -> title != null && !title.isBlank())
+                .findFirst().orElse(null);
+    }
+
+    /**
+     * Attaches the candidate topics to the persisted payload (read-modify-write).
+     * Best-effort: a payload hiccup must never turn a NEEDS_CONFIRMATION finish
+     * into a FAILED one.
+     */
+    private void persistCandidateTopics(String taskId, List<CandidateTopic> candidates) {
+        if (candidates == null) {
+            return;
+        }
+        try {
+            String json = agentRepository.findTaskPayload(taskId).orElse(null);
+            if (json == null) {
+                log.warn("agent task {} has no payload; candidate topics not persisted", taskId);
+                return;
+            }
+            AgentTaskPayload payload = objectMapper.readValue(json, AgentTaskPayload.class);
+            agentRepository.updateTaskPayload(taskId, writeJson(payload.withCandidates(candidates)));
+        } catch (Exception ex) {
+            log.error("agent task {} candidate topics not persisted", taskId, ex);
+        }
+    }
 
     /**
      * Handoff section 2.1 fixed mapping: summary is always clue.selectedText
