@@ -90,8 +90,9 @@ public class GatewayGraphSemanticModelProvider implements GraphSemanticModelProv
     }
 
     private boolean userVisibleTextIsChinese(GraphSemanticUpdateDraft draft) {
-        if (!UserVisibleTextPolicy.isUserVisibleChinese(draft.topicTitle)
-                || !UserVisibleTextPolicy.isUserVisibleChinese(draft.stageUnderstanding)
+        // topicTitle is exempt: by contract it is a verbatim copy of the frozen target
+        // topic title (see the prompt), whose language is whatever the user originally set.
+        if (!UserVisibleTextPolicy.isUserVisibleChinese(draft.stageUnderstanding)
                 || !UserVisibleTextPolicy.isUserVisibleChinese(draft.changeSummary)) {
             return false;
         }

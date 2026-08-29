@@ -48,11 +48,10 @@ public class GatewayGraphTargetModelProvider implements GraphTargetModelProvider
                         false);
             }
             JsonNode output = response.output();
+            // suggestedTopicTitle is exempt: by contract it passes through the frozen/user
+            // title, whose language is whatever the user originally set (same as topicTitle).
             boolean chinese = UserVisibleTextPolicy.isUserVisibleChinese(
-                    output.path("suggestedTopicTitle").isNull()
-                            ? null : output.path("suggestedTopicTitle").asText())
-                    && UserVisibleTextPolicy.isUserVisibleChinese(
-                            output.path("rationale").asText());
+                    output.path("rationale").asText());
             if (!chinese && attempt == 0) {
                 continue;
             }
